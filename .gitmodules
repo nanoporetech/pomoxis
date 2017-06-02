@@ -1,0 +1,21 @@
+[submodule "submodules/bwa"]
+	path = submodules/bwa
+	url = https://github.com/lh3/bwa
+[submodule "submodules/fast5_research"]
+	path = submodules/fast5_research
+	url = https://github.com/nanoporetech/fast5_research
+[submodule "submodules/miniasm"]
+	path = submodules/miniasm
+	url = https://github.com/lh3/miniasm
+[submodule "submodules/minimap"]
+	path = submodules/minimap
+	url = https://github.com/lh3/minimap
+[submodule "submodules/nanonet"]
+	path = submodules/nanonet
+	url = https://github.com/nanoporetech/nanonet
+[submodule "submodules/racon"]
+	path = submodules/racon
+	url = https://github.com/isovic/racon
+[submodule "submodules/scrappie"]
+	path = submodules/scrappie
+	url = https://github.com/nanoporetech/scrappie.git

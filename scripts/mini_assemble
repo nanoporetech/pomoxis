@@ -1,0 +1,65 @@
+#!/bin/bash
+
+usage="$(basename "$0") [-h] -i <fastq>
+
+Assemble fastq formatted reads and perform POA consensus.
+
+    -h  show this help text.
+    -i  fastq input reads (required).
+    -o  output folder (default: assm).
+    -p  output file prefix (default: reads).
+    -t  number of minimap and racon threads (default: 1)."
+
+OUTPUT="assm"
+NAME="reads"
+THREADS=1
+iflag=false
+while getopts ':hi:o:p:' option; do
+  case "$option" in
+    h  ) echo "$usage" >&2; exit;;
+    i  ) iflag=true; INPUT=$OPTARG;;
+    o  ) OUTPUT=$OPTARG;;
+    p  ) NAME=$OPTARG;;
+    t  ) THREADS=$OPTARG;;
+    \? ) echo "Invalid option: -${OPTARG}." >&2; exit 1;;
+    :  ) echo "Option -$OPTARG requires an argument." >&2; exit 1;;
+  esac
+done
+shift $(($OPTIND - 1))
+
+if ! $iflag; then
+  echo "$usage" >&2;
+  echo "-i must be specified." >&2;
+  exit 1;
+fi
+
+if [[ ! -e ${OUTPUT} ]]; then
+  mkdir -p ${OUTPUT}
+else
+  echo "Output ${OUTPUT} already exists." >&2; exit 1
+fi
+
+cp ${INPUT} ${OUTPUT}/${NAME}.fq
+cd ${OUTPUT}
+
+ASMOPTS="-s 100 -e 3"
+
+echo "Overlapping reads..."
+minimap -Sw5 -L100 -m0 -t${THREADS} ${NAME}.fq ${NAME}.fq | gzip -1 > ${NAME}.paf.gz
+echo "Assembling graph..."
+miniasm ${ASMOPTS} -f ${NAME}.fq ${NAME}.paf.gz | tee ${NAME}.gfa | awk '/^S/{print ">"$2"\n"$3}' > ${NAME}.gfa.fasta
+
+DRAFT=${NAME}.gfa.fasta
+READS=${NAME}.fq
+for ROUND in {01..04}; do
+     echo "Running round ${ROUND} consensus"
+     READS2TIGS=reads2contigs_${ROUND}.paf
+     NEWDRAFT=racon_${ROUND}.fasta
+     minimap ${DRAFT} ${READS} > ${READS2TIGS}
+     racon -M 8 -X -1 -G -4 -E -1 -t ${THREADS} --bq -1  ${READS} ${READS2TIGS} ${DRAFT} ${NEWDRAFT}
+     DRAFT=${NEWDRAFT}
+done;
+
+FINAL=${NAME}_final.fa
+cp ${DRAFT} ${FINAL}
+echo "Final assembly written to ${OUTPUT}/${FINAL}. Have a nice day."

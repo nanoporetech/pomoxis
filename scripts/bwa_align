@@ -1,0 +1,78 @@
+#!/bin/bash
+
+usage="$(basename "$0") [-h] -r <reference> -i <fastq>
+
+Align fastq/a formatted reads to a genome using bwa.
+
+    -h  show this help text.
+    -r  reference, should be a fasta file. If correspondng bwa indices
+        do not exist they will be created. (required).
+    -i  fastq/a input reads (required).
+    -a  aggresively extend gaps (sets -A1 -B2 -O2 -E1 for bwa mem).
+    -c  chunk size. Input reads/contigs will be broken into chunks
+        prior to alignment.
+    -t  alignment threads (default: 1).
+    -p  output file prefix (default: reads)."
+
+OUTPUT="assm"
+PREFIX="reads"
+ALIGN_OPTS="-x ont2d"
+THREADS=1
+CHUNK=""
+rflag=false
+iflag=false
+while getopts ':hr:i:p:ac:t:' option; do
+  case "$option" in
+    h  ) echo "$usage" >&2; exit;;
+    r  ) rflag=true; REFERENCE=$OPTARG;;
+    i  ) iflag=true; INPUT=$OPTARG;;
+    p  ) PREFIX=$OPTARG;;
+    a  ) ALIGN_OPTS="${ALIGN_OPTS} -A1 -B2 -O2 -E1";;
+    c  ) CHUNK=$OPTARG;;
+    t  ) THREADS=$OPTARG;;
+    \? ) echo "Invalid option: -${OPTARG}." >&2; exit 1;;
+    :  ) echo "Option -$OPTARG requires an argument." >&2; exit 1;;
+  esac
+done
+shift $(($OPTIND - 1))
+
+if ! $iflag || ! $rflag; then
+  echo "$usage" >&2;
+  echo "-i and -r must be specified." >&2;
+  exit 1;
+fi
+
+# bwa will fail is index is currupt, but lets provide a
+# little more help.
+bwa_exts=('.amb'  '.ann'  '.bwt' '.pac' '.sa')
+num_bwa_exts=${#bwa_exts[@]}
+missing=0
+for ext in "${bwa_exts[@]}"; do
+  bwa_index=${REFERENCE}${ext}
+  if [[ ! -e ${bwa_index} ]]; then
+    ((missing+=1))
+  fi
+done;
+
+if [ "$missing" -eq 0 ]; then
+  echo "Found bwa index files." >&2
+elif [ "$missing" -eq "$num_bwa_exts" ]; then
+  echo "Constructing bwa index." >&2
+  bwa index ${REFERENCE}
+else
+  echo "Missing ${missing} index files. Clean up any files named
+${REFERENCE}<EXT> where <EXT> is one of ${bwa_exts[*]}." >&2
+  exit 1;
+fi
+
+if [ "$CHUNK" != "" ]; then
+  echo "Splitting input into ${CHUNK} chunks." >&2
+  split_fastx ${INPUT} ${INPUT}.chunks ${CHUNK}
+  INPUT=${INPUT}.chunks
+fi
+
+bwa mem -t ${THREADS} ${ALIGN_OPTS} ${REFERENCE} ${INPUT} | \
+  samtools view -T ${REFERENCE} -bS - | \
+  samtools sort -o ${PREFIX}.bam -
+samtools index ${PREFIX}.bam ${PREFIX}.bam.bai
+
