@@ -4,5 +4,8 @@ python:
     - "3.6"
 dist: trusty
 
+git:
+  submodules: true
+
 script: make install 
 
