@@ -4,6 +4,7 @@ Prototype fast assembly
 Pomoxis contains a set of services to perform analysis of squiggles as they are
 produced in real-time along with fast pipelines for generating draft assemblies.
 
+[![Build Status](https://travis-ci.org/nanoporetech/pomoxis.svg?branch=master)](https://travis-ci.org/nanoporetech/pomoxis)
 
 Build
 -----
