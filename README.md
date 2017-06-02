@@ -1,8 +1,10 @@
-Prototype fast assembly
-=======================
+Prototype real-time analysis components
+=======================================
 
 Pomoxis contains a set of services to perform analysis of squiggles as they are
 produced in real-time along with fast pipelines for generating draft assemblies.
+
+Documentation can be found on [readthedocs](http://pomoxis.readthedocs.io/).
 
 [![Build Status](https://travis-ci.org/nanoporetech/pomoxis.svg?branch=master)](https://travis-ci.org/nanoporetech/pomoxis)
 
@@ -33,17 +35,4 @@ currently used by pomoxis itself):
 * bwa
 * samtools
 
-The "raw" binaries are distributed under e.g.
-
-    venv/lib/python{pyversion}/site-packages/pomoxis-{version}-py{pyversion}.egg/exes/
-    
-and wrapping python entry points are installed into the virtual environment.
-
-
-Offline assembly
-----------------
-
-An offline assembly benchmarking script is available within the virtual
-environment as:
-
-    mini_assemble -i input.fastq -o output_directory -p my_assembly
+These will be compiled and installed into the virtual environment created as above.
