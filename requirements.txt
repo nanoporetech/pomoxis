@@ -6,3 +6,4 @@ msgpack-python
 numpy
 pysam
 watchdog
+sphinx-argparse
