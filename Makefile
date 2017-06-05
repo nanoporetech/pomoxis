@@ -1,48 +1,53 @@
-.PHONY: develop docs minimap miniasm racon bwa samtools nanonet
+.PHONY: pip_submodules install docs
 
-venv: venv/bin/activate
+# Builds a cache of binaries which can just be copied for CI
+BINARIES=minimap miniasm racon bwa samtools
+BINCACHEDIR=bincache
+$(BINCACHEDIR):
+	mkdir -p $(BINCACHEDIR)
+define build_rule
+    $(BINCACHEDIR)/$1: $(BINCACHEDIR) submodules/$1/$1
+	cp submodules/$1/$1 $(BINCACHEDIR)/$1
+endef
+$(foreach f,$(BINARIES),$(eval $(call build_rule,$f)))
+CACHEDBIN=$(addprefix $(BINCACHEDIR)/, $(BINARIES))
 
-venv/bin/activate:
-	test -d venv || virtualenv venv --python=python3
-	. ./venv/bin/activate && pip install pip --upgrade
-	#touch venv/bin/activate
 
-install: venv externals
-	. ./venv/bin/activate && pip install -r requirements.txt && python setup.py install
 
-externals: minimap miniasm racon bwa samtools nanonet fast5_research
-
-minimap: submodules/minimap/minimap
 submodules/minimap/minimap:
 	cd submodules/minimap && make
 
-miniasm: submodules/miniasm/miniasm
 submodules/miniasm/miniasm:
 	cd submodules/miniasm && make
 
-racon: submodules/racon/racon
 submodules/racon/racon:
 	cd submodules/racon && make modules && make tools && make -j
-	cp submodules/racon/bin/racon submodules/racon/racon
+	cp submodules/racon/bin/racon $@
 
-bwa: submodules/bwa/bwa
 submodules/bwa/bwa:
 	cd submodules/bwa && make
 
-samtools: submodules/samtools/samtools
 submodules/samtools/samtools:
 	cd submodules && wget https://github.com/samtools/samtools/releases/download/1.3.1/samtools-1.3.1.tar.bz2 && tar -xjf samtools-1.3.1.tar.bz2
 	mv submodules/samtools-1.3.1 submodules/samtools
 	cd submodules/samtools && make
 
-fast5_research: venv
-	. ./venv/bin/activate && cd submodules/fast5_research && pip install .
 
-nanonet: venv
-	. ./venv/bin/activate && pip install numpy
-	. ./venv/bin/activate && cd submodules/nanonet && pip install .
+venv: venv/bin/activate
+IN_VENV=. ./venv/bin/activate
 
+venv/bin/activate:
+	test -d venv || virtualenv venv --python=python3
+	${IN_VENV} && pip install pip --upgrade
+
+install: venv pip_submodules | $(CACHEDBIN)
+	${IN_VENV} && pip install -r requirements.txt && python setup.py install
+
+pip_submodules:
+	${IN_VENV} && pip install numpy
+	${IN_VENV} && cd submodules/nanonet && pip install .
+	${IN_VENV} && cd submodules/fast5_research && pip install .
 
 docs: venv
-	. ./venv/bin/activate && pip install sphinx sphinx_rtd_theme sphinx-argparse
-	. ./venv/bin/activate && cd docs && make clean api html
+	${IN_VENV} && pip install sphinx sphinx_rtd_theme sphinx-argparse
+	${IN_VENV} && cd docs && make clean api html
