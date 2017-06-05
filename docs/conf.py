@@ -44,6 +44,10 @@ __pkg_name__ = u'pomoxis'
 project = __pkg_name__.capitalize()
 copyright = u'2017, Oxford Nanopore Technologies'
 
+# Generate API documentation:
+if subprocess.call(['sphinx-apidoc', '-o', './', "../{}".format(__pkg_name__)]) != 0:
+    sys.stderr.write('Failed to generate API documentation!\n')
+
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
 # built documents.
