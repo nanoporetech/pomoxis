@@ -1,6 +1,8 @@
 import numpy as np
 from pysam import FastaFile
 
+"""Bioinformatics helpers."""
+
 comp = {
     'A': 'T', 'T': 'A', 'C': 'G', 'G': 'C', 'X': 'X', 'N': 'N',
     'a': 't', 't': 'a', 'c': 'g', 'g': 'c', 'x': 'x', 'n': 'n',
@@ -10,6 +12,12 @@ comp_trans = str.maketrans(''.join(comp.keys()), ''.join(comp.values()))
 
 
 def reverse_complement(seq):
+    """Reverse complement sequence.
+
+    :param: input sequence string.
+
+    :returns: reverse-complemented string.
+    """
     return seq.translate(comp_trans)[::-1]
 
 
@@ -21,6 +29,8 @@ def shotgun_library(fasta_file, mu, sigma, direction=(1,-1)):
     :param sigma: stdv of fragment length.
     :param direction: tuple represention direction of output sequences with
         respect to the input sequence.
+
+    :yields: sequence fragments.
 
     .. note:: Could be made more efficient using buffers for random samples
         and handling cases separately.

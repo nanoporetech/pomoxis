@@ -4,6 +4,11 @@ import itertools
 from pysam import FastxFile
 
 def chunks(iterable, n):
+    """Generate fixed length chunks of an interable.
+
+    :param iterable: input sequence.
+    :param n: chunk size.
+    """
     it = iter(iterable)
     while True:
         chunk_it = itertools.islice(it, n)
@@ -15,7 +20,12 @@ def chunks(iterable, n):
 
 
 def cat(files, output, chunks=1024*1024*10):
-    """Concatenate a set of files."""
+    """Concatenate a set of files.
+
+    :param files: input filenames.
+    :param output: output filenames.
+    :param chunks: buffersize for filecopy.
+    """
     with open(output,'wb') as wfd:
         for f in files:
             with open(f, 'rb') as fd:
@@ -23,7 +33,12 @@ def cat(files, output, chunks=1024*1024*10):
 
 
 def split_fastx(fname, output, chunksize=10000):
-    """Split records in a fasta/q into fixed lengths."""
+    """Split records in a fasta/q into fixed lengths.
+
+    :param fname: input filename.
+    :param output: output filename.
+    :param chunksize: (maximum) length of output records.
+    """
     with open(output, 'w') as fout:
         with FastxFile(fname, persist=False) as fin:
             for rec in fin:
@@ -47,5 +62,6 @@ def split_fastx(fname, output, chunksize=10000):
 
 
 def split_fastx_cmdline():
+    """Split records in a fasta/q file into chunks of a maximum size."""
     fname, output, chunksize = sys.argv[1:]
     split_fastx(fname, output, int(chunksize))

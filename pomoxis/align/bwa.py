@@ -13,6 +13,16 @@ logger = logging.getLogger(__name__)
 class BwaServe(rpc.AttrHandler):
 
     def __init__(self, index, *args, bwa_cmd=None, **kwargs):
+        """An RPC server around bwa. The server uses the shared memory
+        functionality of bwa to persist the indices once loaded. Calls
+        to align sequences currently run bwa as a subprocess.
+
+        :param index: a list of reference indices for bwa.
+        :param bwa_cmd: bwa commandline options used during alignment.
+
+        ..note:: `args` and `kwargs` are passed to `aiozmq.rpc.AttrHandler`.
+
+        """
         super().__init__(*args, **kwargs)
         self.logger = logging.getLogger('BwaServe')
         if isinstance(index, (str, bytes)):
@@ -37,6 +47,12 @@ class BwaServe(rpc.AttrHandler):
     @rpc.method
     @asyncio.coroutine
     def align(self, sequence):
+        """Align a sequence.
+
+        :param sequence: sequence to align, expressed simply as string.
+        
+        :returns: output of bwa call (samfile string).
+        """
         self.logger.debug("Aligning sequence of length {}.".format(len(sequence)))
         
         if isinstance(sequence, bytes):
@@ -60,11 +76,18 @@ class BwaServe(rpc.AttrHandler):
 
     @rpc.method
     def clean_shm(self):
+        """Clean bwa's shared memory."""
         run_prog(self.bwa, ['shm', '-d'])
 
 
 @asyncio.coroutine
 def align_server(index, port):
+    """Create an alignment server.
+
+    :param port: port to receive requests.
+
+    :returns: instance of :class:`.BwaServe`.
+    """
     server = yield from rpc.serve_rpc(
         BwaServe(index), bind='tcp://127.0.0.1:{}'.format(port)
     )
@@ -72,6 +95,10 @@ def align_server(index, port):
 
 @asyncio.coroutine
 def align_client(port):
+    """Create an alignment client to send requests.
+
+    :param port: port to receive requests.
+    """
     client = yield from rpc.connect_rpc(
         connect='tcp://127.0.0.1:{}'.format(port),
     )

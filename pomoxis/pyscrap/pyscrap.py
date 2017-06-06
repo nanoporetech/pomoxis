@@ -14,9 +14,19 @@ ffi = FFI()
 import logging
 logger = logging.getLogger(__name__)
 
+"""Python bindings to scrappie basecaller. scrappie is bundled with this
+project and uses a hard-coded header file to encode the neural network.
+To use different network specifications see the setup.py command --model.
+"""
+
+
 def get_shared_lib(name):
     """Cross-platform resolution of shared-object libraries, working
-    around vagueries of setuptools
+    around vagueries of setuptools.
+
+    :param name: name of shared library to find.
+    
+    :returns: FFI shared library object.
     """
     try:
         # after 'python setup.py install' we should be able to do this
@@ -62,6 +72,10 @@ ffi.cdef("""
 def build_events(events):
     """Transform numpy events into scrappie event_t[].
 
+    :params events: input numpy events.
+
+    :returns: pointer to scrappie event_t[]. 
+
     .. note::
 
         the memory for the events is managed by python and therefore
@@ -81,7 +95,12 @@ def build_events(events):
 
 
 def basecall_events(events):
-    """Basecall numpy events using scrappie."""
+    """Basecall numpy events using scrappie.
+
+    :param events: numpy event array.
+
+    :returns: tuple (basecall score, sequence)
+    """
     c_events = build_events(events)
     result = library.basecall_events(c_events, len(events))
     if result.bases == ffi.NULL:
@@ -98,6 +117,7 @@ def basecall_file(fname=None, event_detect=True):
         to be given on command line.
     :param event_detect: do event detection?
 
+    :returns: tuple (basecall score, sequence).
     """
     is_main = False
     if fname is None: #called as entrypoint
