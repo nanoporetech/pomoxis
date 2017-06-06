@@ -1,7 +1,0 @@
-pomoxis
-=======
-
-.. toctree::
-   :maxdepth: 4
-
-   pomoxis
