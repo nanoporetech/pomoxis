@@ -1,0 +1,22 @@
+pomoxis\.pyscrap package
+========================
+
+Submodules
+----------
+
+pomoxis\.pyscrap\.pyscrap module
+--------------------------------
+
+.. automodule:: pomoxis.pyscrap.pyscrap
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+
+Module contents
+---------------
+
+.. automodule:: pomoxis.pyscrap
+    :members:
+    :undoc-members:
+    :show-inheritance:

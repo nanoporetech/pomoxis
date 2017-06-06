@@ -1,0 +1,32 @@
+pomoxis package
+===============
+
+Subpackages
+-----------
+
+.. toctree::
+
+    pomoxis.align
+    pomoxis.common
+    pomoxis.provider
+    pomoxis.pyscrap
+
+Submodules
+----------
+
+pomoxis\.watcher module
+-----------------------
+
+.. automodule:: pomoxis.watcher
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+
+Module contents
+---------------
+
+.. automodule:: pomoxis
+    :members:
+    :undoc-members:
+    :show-inheritance:
