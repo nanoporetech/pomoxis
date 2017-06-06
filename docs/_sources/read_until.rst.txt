@@ -58,3 +58,6 @@ On its own this is pretty useless, but one can quickly build a read until app
 
 Here, the unblock call passes backsome meta data on the events. This is merely
 for programming convenience, the API may be simplified in the future.
+
+A more fullsome example of an concurrent alignment system is given in
+:module:`pomoxis.apps`read_until_filter`.

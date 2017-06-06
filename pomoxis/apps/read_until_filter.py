@@ -12,7 +12,7 @@ from nanonet.eventdetection.filters import minknow_event_detect
 from pomoxis import set_wakeup
 from pomoxis.provider import replayfast5
 from pomoxis.align import bwa
-from pomoxis.basecall.pyscrap import pyscrap
+from pomoxis.pyscrap import pyscrap
 
 import logging
 logger = logging.getLogger(__name__)

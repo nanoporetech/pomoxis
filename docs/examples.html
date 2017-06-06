@@ -94,6 +94,7 @@
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Pomoxis Examples</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#read-alignment-with-bwa">Read Alignment with bwa</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#fast-de-novo-assembly">Fast de-novo assembly</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#distributed-basecalling">Distributed basecalling</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="read_until.html">Read Until Simulator</a></li>
@@ -205,6 +206,42 @@ Assemble fastq formatted reads and perform POA consensus
 </div>
 <p>For E.coli on a computer with 16 CPUs this should take around 5 minutes for
 a 50-fold coverage dataset.</p>
+</div>
+<div class="section" id="distributed-basecalling">
+<h2>Distributed basecalling<a class="headerlink" href="#distributed-basecalling" title="Permalink to this headline">¶</a></h2>
+<p>A distributed basecalling platform is included in the epi3me program. This
+comprises a <cite>dealer</cite> and a <cite>router</cite> component. The former wil watch for .fast5
+files appearing a a given path; numerous instances of the latter can be started
+(on networked machines) to perform the basecalling. A current restriction is
+that all machines used for basecalling must shared a filesystem.</p>
+<p>` and a <cite>router</cite> component. The former wil watch for .fast5
+files appearing a a given path; numerous instances of the latter can be started
+(on networked machines) to perform the basecalling. A current restriction is
+that all machines used for basecalling must shared a filesystem.</p>
+<p>To start watching a filesytem for new .fast5 files use the dealer component:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>usage: epi3me dealer <span class="o">[</span>-h<span class="o">]</span> <span class="o">[</span>--port PORT<span class="o">]</span> <span class="o">[</span>--output OUTPUT<span class="o">]</span> path outpath
+
+positional arguments:
+  path             Path to watch <span class="k">for</span> new files.
+  outpath          Path to move finished files.
+
+optional arguments:
+  -h, --help       show this <span class="nb">help</span> message and <span class="nb">exit</span>
+  --port PORT      port on which to run.
+  --output OUTPUT  output fasta file.
+</pre></div>
+</div>
+<p>Once the dealer is running and picking up new files, one can start running
+router jobs on the same or different machine:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>usage: epi3me router <span class="o">[</span>-h<span class="o">]</span> <span class="o">[</span>--addr ADDR<span class="o">]</span>
+
+optional arguments:
+  -h, --help   show this <span class="nb">help</span> message and <span class="nb">exit</span>
+  --addr ADDR  Address to use, should include port.
+</pre></div>
+</div>
+<p>The platform was used to basecall the CliveOME2 dataset on an SGE cluster
+within AWS EC2 with files being synced concurrently from AWS S3.</p>
 </div>
 </div>
 

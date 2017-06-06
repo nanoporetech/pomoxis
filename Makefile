@@ -70,4 +70,6 @@ docs: venv
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html."
 	rm -rf docs/*
-	cp doc_src/$(BUILDDIR)/html/* docs
+	mkdir -p docs
+	cp -r doc_src/$(BUILDDIR)/html/* docs
+	touch docs/.nojekyll

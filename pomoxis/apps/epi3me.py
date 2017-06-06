@@ -15,18 +15,10 @@ from multiprocessing import freeze_support, Process
 
 from pomoxis import set_wakeup
 from pomoxis.watcher import watch_path
-from pomoxis.basecall.pyscrap import pyscrap
+from pomoxis.pyscrap import pyscrap
 
 import logging
 
-@asyncio.coroutine
-def monitor_stream(stream):
-    try:
-        while True:
-            event = yield from stream.read_event()
-            print(event)
-    except aiozmq.ZmqStreamClosed:
-        pass
 
 def basecall_file(fname, event_detect=True):
     score, basecall = 0, ''

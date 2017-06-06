@@ -107,7 +107,6 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            '{} = {}.assembly:main'.format(__pkg_name__, __pkg_name__),
             'split_fastx = {}.common.util:split_fastx_cmdline'.format(__pkg_name__),
             'pyscrap = {}.basecall.pyscrap.pyscrap:basecall_file'.format(__pkg_name__),
             'epi3me = {}.apps.epi3me:main'.format(__pkg_name__),

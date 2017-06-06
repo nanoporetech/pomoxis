@@ -1,0 +1,411 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>pomoxis.apps.epi3me &mdash; Pomoxis 0.0.1 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="../../../genindex.html"/>
+        <link rel="search" title="Search" href="../../../search.html"/>
+    <link rel="top" title="Pomoxis 0.0.1 documentation" href="../../../index.html"/>
+        <link rel="up" title="pomoxis" href="../../pomoxis.html"/> 
+
+  
+  <script src="../../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../../index.html" class="icon icon-home"> Pomoxis
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.0.1
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples.html">Pomoxis Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../read_until.html">Read Until Simulator</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../pomoxis.html">pomoxis package</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Pomoxis</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../../index.html">Module code</a> &raquo;</li>
+        
+          <li><a href="../../pomoxis.html">pomoxis</a> &raquo;</li>
+        
+      <li>pomoxis.apps.epi3me</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for pomoxis.apps.epi3me</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">argparse</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">shutil</span>
+<span class="kn">import</span> <span class="nn">asyncio</span>
+<span class="kn">import</span> <span class="nn">aiozmq</span>
+<span class="kn">import</span> <span class="nn">zmq</span>
+<span class="kn">import</span> <span class="nn">uuid</span>
+<span class="kn">import</span> <span class="nn">struct</span>
+<span class="kn">from</span> <span class="nn">functools</span> <span class="k">import</span> <span class="n">partial</span>
+<span class="kn">import</span> <span class="nn">socket</span>
+
+<span class="kn">from</span> <span class="nn">concurrent.futures</span> <span class="k">import</span> <span class="n">ProcessPoolExecutor</span> <span class="k">as</span> <span class="n">PoolExecutor</span>
+<span class="kn">from</span> <span class="nn">multiprocessing</span> <span class="k">import</span> <span class="n">freeze_support</span><span class="p">,</span> <span class="n">Process</span>
+
+<span class="kn">from</span> <span class="nn">pomoxis</span> <span class="k">import</span> <span class="n">set_wakeup</span>
+<span class="kn">from</span> <span class="nn">pomoxis.watcher</span> <span class="k">import</span> <span class="n">watch_path</span>
+<span class="kn">from</span> <span class="nn">pomoxis.pyscrap</span> <span class="k">import</span> <span class="n">pyscrap</span>
+
+<span class="kn">import</span> <span class="nn">logging</span>
+
+
+<div class="viewcode-block" id="basecall_file"><a class="viewcode-back" href="../../../pomoxis.apps.html#pomoxis.apps.epi3me.basecall_file">[docs]</a><span class="k">def</span> <span class="nf">basecall_file</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">event_detect</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="n">score</span><span class="p">,</span> <span class="n">basecall</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;&#39;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="n">pyscrap</span><span class="o">.</span><span class="n">basecall_file</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">event_detect</span><span class="o">=</span><span class="n">event_detect</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">results</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">score</span><span class="p">,</span> <span class="n">basecall</span> <span class="o">=</span> <span class="n">results</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="k">pass</span>
+    <span class="k">return</span> <span class="n">score</span><span class="p">,</span> <span class="n">basecall</span></div>
+
+
+<div class="viewcode-block" id="main_router"><a class="viewcode-back" href="../../../pomoxis.apps.html#pomoxis.apps.epi3me.main_router">[docs]</a><span class="nd">@asyncio</span><span class="o">.</span><span class="n">coroutine</span>
+<span class="k">def</span> <span class="nf">main_router</span><span class="p">(</span><span class="n">addr</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">name</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">()</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Starting client </span><span class="si">{}</span><span class="s2"> connected to </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">addr</span><span class="p">))</span>
+    <span class="n">router</span> <span class="o">=</span> <span class="k">yield from</span> <span class="n">aiozmq</span><span class="o">.</span><span class="n">create_zmq_stream</span><span class="p">(</span>
+        <span class="n">zmq</span><span class="o">.</span><span class="n">ROUTER</span>
+    <span class="p">)</span>
+    <span class="k">yield from</span> <span class="n">router</span><span class="o">.</span><span class="n">transport</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">addr</span><span class="p">)</span>
+
+    <span class="n">event_loop</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">get_event_loop</span><span class="p">()</span>
+    <span class="n">executor</span> <span class="o">=</span> <span class="n">PoolExecutor</span><span class="p">(</span><span class="n">max_workers</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">event_loop</span><span class="o">.</span><span class="n">set_default_executor</span><span class="p">(</span><span class="n">executor</span><span class="p">)</span>
+
+    <span class="k">while</span> <span class="kc">True</span><span class="p">:</span> 
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="k">yield from</span> <span class="n">router</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+        <span class="k">except</span> <span class="n">aiozmq</span><span class="o">.</span><span class="n">ZmqStreamClosed</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Client </span><span class="si">{}</span><span class="s1"> got stream closed&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">))</span>
+            <span class="k">break</span>
+        <span class="k">if</span> <span class="n">data</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="sa">b</span><span class="s1">&#39;FINISHED&#39;</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Client </span><span class="si">{}</span><span class="s1"> got finished signal&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">))</span>
+            <span class="k">break</span>
+
+        <span class="c1">#TODO: restructure so we can multiprocess</span>
+        <span class="n">fname</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span>
+        <span class="n">score</span><span class="p">,</span> <span class="n">basecall</span> <span class="o">=</span> <span class="k">yield from</span> <span class="n">event_loop</span><span class="o">.</span><span class="n">run_in_executor</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">basecall_file</span><span class="p">,</span> <span class="n">fname</span><span class="p">)</span>
+
+        <span class="n">data</span> <span class="o">=</span> <span class="n">data</span> <span class="o">+</span> <span class="p">[</span><span class="n">name</span><span class="o">.</span><span class="n">bytes</span><span class="p">,</span> <span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="s1">&#39;f&#39;</span><span class="p">,</span> <span class="n">score</span><span class="p">),</span> <span class="n">basecall</span><span class="o">.</span><span class="n">encode</span><span class="p">()]</span>
+        <span class="n">router</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+    <span class="n">router</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="main_dealer"><a class="viewcode-back" href="../../../pomoxis.apps.html#pomoxis.apps.epi3me.main_dealer">[docs]</a><span class="nd">@asyncio</span><span class="o">.</span><span class="n">coroutine</span>
+<span class="k">def</span> <span class="nf">main_dealer</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">outpath</span><span class="p">,</span> <span class="n">output</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="s1">&#39;*&#39;</span><span class="p">):</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Starting server...&quot;</span><span class="p">)</span>
+    <span class="n">ip</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">gethostbyname</span><span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">gethostname</span><span class="p">())</span>
+    <span class="k">if</span> <span class="n">ip</span> <span class="o">==</span> <span class="s1">&#39;127.0.0.1&#39;</span><span class="p">:</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;ip found as 127.0.0.1, remote connections won&#39;t work.&quot;</span><span class="p">)</span>
+    <span class="n">dealer</span> <span class="o">=</span> <span class="k">yield from</span> <span class="n">aiozmq</span><span class="o">.</span><span class="n">create_zmq_stream</span><span class="p">(</span>
+        <span class="n">zmq</span><span class="o">.</span><span class="n">DEALER</span><span class="p">,</span>
+        <span class="n">bind</span><span class="o">=</span><span class="s1">&#39;tcp://</span><span class="si">{}</span><span class="s1">:</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">ip</span><span class="p">,</span> <span class="n">port</span><span class="p">))</span>
+    <span class="n">addr</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">dealer</span><span class="o">.</span><span class="n">transport</span><span class="o">.</span><span class="n">bindings</span><span class="p">())[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Server started on </span><span class="si">{}</span><span class="s2">.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">addr</span><span class="p">))</span>
+    
+    <span class="n">path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Watching files at </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">path</span><span class="p">))</span>
+
+    <span class="nd">@asyncio</span><span class="o">.</span><span class="n">coroutine</span>
+    <span class="k">def</span> <span class="nf">_callback</span><span class="p">(</span><span class="n">fname</span><span class="p">):</span>
+        <span class="n">dealer</span><span class="o">.</span><span class="n">write</span><span class="p">((</span><span class="n">fname</span><span class="o">.</span><span class="n">encode</span><span class="p">(),))</span>
+        
+    <span class="n">event_loop</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">get_event_loop</span><span class="p">()</span>
+    <span class="n">event_loop</span><span class="o">.</span><span class="n">create_task</span><span class="p">(</span><span class="n">watch_path</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">_callback</span><span class="p">,</span> <span class="n">recursive</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
+
+    <span class="n">file_counter</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">call_counter</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">output_handle</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">calls_per_file</span> <span class="o">=</span> <span class="mi">100000</span>
+
+    <span class="n">fail_folder</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">outpath</span><span class="p">,</span> <span class="s1">&#39;_FAILED&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">fail_folder</span><span class="p">):</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">rmdir</span><span class="p">(</span><span class="n">fail_folder</span><span class="p">)</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">fail_folder</span><span class="p">)</span>
+    <span class="n">pass_folder</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">outpath</span><span class="p">,</span> <span class="s1">&#39;_PASSED&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">pass_folder</span><span class="p">):</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">rmdir</span><span class="p">(</span><span class="n">pass_folder</span><span class="p">)</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">pass_folder</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">output</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">output</span><span class="p">,</span> <span class="n">ext</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">output</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">_start_new_file</span><span class="p">(</span><span class="n">fh</span><span class="p">,</span> <span class="n">counter</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">output</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span>
+        <span class="k">if</span> <span class="n">fh</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Closing output file: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">fh</span><span class="p">))</span>
+            <span class="n">fh</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="n">fname</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">{}</span><span class="s1">_</span><span class="si">{}{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="n">counter</span><span class="p">,</span> <span class="n">ext</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Starting new output file: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">fname</span><span class="p">))</span>
+        <span class="k">return</span> <span class="nb">open</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="n">answer</span> <span class="o">=</span> <span class="k">yield from</span> <span class="n">dealer</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+            <span class="n">fname</span> <span class="o">=</span> <span class="n">answer</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span>
+            <span class="n">client</span> <span class="o">=</span> <span class="n">uuid</span><span class="o">.</span><span class="n">UUID</span><span class="p">(</span><span class="nb">bytes</span><span class="o">=</span><span class="n">answer</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+            <span class="n">score</span> <span class="o">=</span> <span class="n">struct</span><span class="o">.</span><span class="n">unpack</span><span class="p">(</span><span class="s1">&#39;f&#39;</span><span class="p">,</span> <span class="n">answer</span><span class="p">[</span><span class="mi">2</span><span class="p">])[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">basecall</span> <span class="o">=</span> <span class="n">answer</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">basecall</span> <span class="o">!=</span> <span class="s1">&#39;&#39;</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">shutil</span><span class="o">.</span><span class="n">move</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">pass_folder</span><span class="p">)</span>
+                <span class="k">except</span><span class="p">:</span>
+                    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Could not move passed file </span><span class="si">{}</span><span class="s2">, ...Penny Lane.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">fname</span><span class="p">))</span>
+                <span class="k">if</span> <span class="n">call_counter</span> <span class="o">%</span> <span class="n">calls_per_file</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">file_counter</span> <span class="o">+=</span> <span class="mi">1</span>
+                    <span class="n">output_handle</span> <span class="o">=</span> <span class="n">_start_new_file</span><span class="p">(</span><span class="n">output_handle</span><span class="p">,</span> <span class="n">file_counter</span><span class="p">)</span>
+                <span class="n">fasta_name</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">fname</span><span class="p">)</span>
+                <span class="n">output_handle</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;&gt;</span><span class="si">{}</span><span class="s2"> score=</span><span class="si">{}</span><span class="se">\n</span><span class="si">{}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                    <span class="n">fasta_name</span><span class="p">,</span> <span class="n">score</span><span class="p">,</span> <span class="n">basecall</span><span class="p">)</span>
+                <span class="p">)</span>
+                <span class="n">call_counter</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Basecall failed for </span><span class="si">{}</span><span class="s2">.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">fname</span><span class="p">))</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">shutil</span><span class="o">.</span><span class="n">move</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">fail_folder</span><span class="p">)</span>
+                <span class="k">except</span><span class="p">:</span>
+                    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Could not move failed file </span><span class="si">{}</span><span class="s2"> to fail folder, ...Penny Lane.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">fname</span><span class="p">))</span>
+                
+    <span class="k">except</span> <span class="ne">KeyboardInterrupt</span><span class="p">:</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Closing down server...&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">output</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">output_handle</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+    <span class="n">dealer</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="run_dealer"><a class="viewcode-back" href="../../../pomoxis.apps.html#pomoxis.apps.epi3me.run_dealer">[docs]</a><span class="k">def</span> <span class="nf">run_dealer</span><span class="p">(</span><span class="n">args</span><span class="p">):</span>
+    <span class="n">set_wakeup</span><span class="p">()</span>
+    <span class="n">asyncio</span><span class="o">.</span><span class="n">get_event_loop</span><span class="p">()</span><span class="o">.</span><span class="n">run_until_complete</span><span class="p">(</span><span class="n">main_dealer</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">path</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">outpath</span><span class="p">,</span> <span class="n">output</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">output</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">port</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="run_router"><a class="viewcode-back" href="../../../pomoxis.apps.html#pomoxis.apps.epi3me.run_router">[docs]</a><span class="k">def</span> <span class="nf">run_router</span><span class="p">(</span><span class="n">args</span><span class="p">):</span>
+    <span class="n">set_wakeup</span><span class="p">()</span>
+    <span class="n">asyncio</span><span class="o">.</span><span class="n">get_event_loop</span><span class="p">()</span><span class="o">.</span><span class="n">run_until_complete</span><span class="p">(</span><span class="n">main_router</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">addr</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="main"><a class="viewcode-back" href="../../../pomoxis.apps.html#pomoxis.apps.epi3me.main">[docs]</a><span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="nb">format</span><span class="o">=</span><span class="s1">&#39;[</span><span class="si">%(asctime)s</span><span class="s1"> - </span><span class="si">%(name)s</span><span class="s1">] </span><span class="si">%(message)s</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">datefmt</span><span class="o">=</span><span class="s1">&#39;%H:%M:%S&#39;</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span><span class="s1">&#39;Epi3Me -- Distributed basecalling platform.&#39;</span><span class="p">)</span>
+    <span class="n">subparsers</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">add_subparsers</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s1">&#39;subcommands&#39;</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s1">&#39;valid commands&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;additional help&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s1">&#39;command&#39;</span><span class="p">)</span>
+    <span class="n">subparsers</span><span class="o">.</span><span class="n">required</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="n">dealer</span> <span class="o">=</span> <span class="n">subparsers</span><span class="o">.</span><span class="n">add_parser</span><span class="p">(</span><span class="s1">&#39;dealer&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Create a ZMQ dealer (server).&#39;</span><span class="p">)</span>
+    <span class="n">dealer</span><span class="o">.</span><span class="n">set_defaults</span><span class="p">(</span><span class="n">func</span><span class="o">=</span><span class="n">run_dealer</span><span class="p">)</span>
+    <span class="n">dealer</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;path&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Path to watch for new files.&#39;</span><span class="p">)</span>
+    <span class="n">dealer</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;outpath&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Path to move finished files.&#39;</span><span class="p">)</span>
+    <span class="n">dealer</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--port&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s1">&#39;*&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;port on which to run.&#39;</span><span class="p">)</span>
+    <span class="n">dealer</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--output&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;output fasta file.&#39;</span><span class="p">)</span>
+    
+    <span class="n">router</span> <span class="o">=</span> <span class="n">subparsers</span><span class="o">.</span><span class="n">add_parser</span><span class="p">(</span><span class="s1">&#39;router&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Create a ZMQ router (client).&#39;</span><span class="p">)</span>    
+    <span class="n">router</span><span class="o">.</span><span class="n">set_defaults</span><span class="p">(</span><span class="n">func</span><span class="o">=</span><span class="n">run_router</span><span class="p">)</span>
+    <span class="n">router</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--addr&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Address to use, should include port.&#39;</span><span class="p">)</span>
+
+
+    <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+    <span class="n">args</span><span class="o">.</span><span class="n">func</span><span class="p">(</span><span class="n">args</span><span class="p">)</span></div>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">main</span><span class="p">()</span>
+</pre></div>
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, Oxford Nanopore Technologies.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../../',
+            VERSION:'0.0.1',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="../../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

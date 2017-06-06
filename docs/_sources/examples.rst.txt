@@ -45,5 +45,50 @@ consensus using the `mini_assemble` tool.
         -p  output file prefix (default: reads)
     -i must be specified.
 
+
 For E.coli on a computer with 16 CPUs this should take around 5 minutes for
 a 50-fold coverage dataset.
+
+
+Distributed basecalling
+-----------------------
+
+A distributed basecalling platform is included in the epi3me program. This
+comprises a `dealer` and a `router` component. The former wil watch for .fast5
+files appearing a a given path; numerous instances of the latter can be started
+(on networked machines) to perform the basecalling. A current restriction is
+that all machines used for basecalling must shared a filesystem.
+
+` and a `router` component. The former wil watch for .fast5
+files appearing a a given path; numerous instances of the latter can be started
+(on networked machines) to perform the basecalling. A current restriction is
+that all machines used for basecalling must shared a filesystem.
+
+To start watching a filesytem for new .fast5 files use the dealer component:
+
+.. code-block:: bash
+
+    usage: epi3me dealer [-h] [--port PORT] [--output OUTPUT] path outpath
+    
+    positional arguments:
+      path             Path to watch for new files.
+      outpath          Path to move finished files.
+    
+    optional arguments:
+      -h, --help       show this help message and exit
+      --port PORT      port on which to run.
+      --output OUTPUT  output fasta file.
+
+Once the dealer is running and picking up new files, one can start running
+router jobs on the same or different machine:
+
+.. code-block:: bash
+
+    usage: epi3me router [-h] [--addr ADDR]
+    
+    optional arguments:
+      -h, --help   show this help message and exit
+      --addr ADDR  Address to use, should include port.
+
+The platform was used to basecall the CliveOME2 dataset on an SGE cluster
+within AWS EC2 with files being synced concurrently from AWS S3.
