@@ -48,13 +48,8 @@ venv/bin/activate:
 	test -d venv || virtualenv venv --python=python3
 	${IN_VENV} && pip install pip --upgrade
 
-install: venv pip_submodules | $(addprefix $(BINCACHEDIR)/, $(BINARIES))
+install: venv | $(addprefix $(BINCACHEDIR)/, $(BINARIES))
 	${IN_VENV} && pip install -r requirements.txt && python setup.py install
-
-pip_submodules:
-	${IN_VENV} && pip install numpy
-	${IN_VENV} && cd submodules/nanonet && pip install .
-	${IN_VENV} && cd submodules/fast5_research && pip install .
 
 
 # You can set these variables from the command line.
