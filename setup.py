@@ -97,7 +97,7 @@ setup(
     #place binaries as package data, below we'll copy them to standard path in dist
     data_files=[
         ('exes', [
-            'submodules/{}/{}'.format(x, x) for x in exes
+            'bincache/{}'.format(x, x) for x in exes
         ])
     ],
     entry_points={

@@ -1,36 +1,44 @@
-.PHONY: pip_submodules install docs
+.PHONY: externals pip_submodules install docs
 
 # Builds a cache of binaries which can just be copied for CI
 BINARIES=minimap miniasm racon bwa samtools
 BINCACHEDIR=bincache
 $(BINCACHEDIR):
 	mkdir -p $(BINCACHEDIR)
-define build_rule
-    $(BINCACHEDIR)/$1: $(BINCACHEDIR) submodules/$1/$1
-	cp submodules/$1/$1 $(BINCACHEDIR)/$1
-endef
-$(foreach f,$(BINARIES),$(eval $(call build_rule,$f)))
-CACHEDBIN=$(addprefix $(BINCACHEDIR)/, $(BINARIES))
 
 
-
-submodules/minimap/minimap:
+$(BINCACHEDIR)/minimap: | $(BINCACHEDIR)
+	@echo Making $(@F)
 	cd submodules/minimap && make
+	cp submodules/minimap/minimap $@
 
-submodules/miniasm/miniasm:
+$(BINCACHEDIR)/miniasm: | $(BINCACHEDIR)
+	@echo Making $(@F)
 	cd submodules/miniasm && make
+	cp submodules/miniasm/miniasm $@
 
-submodules/racon/racon:
+$(BINCACHEDIR)/racon: | $(BINCACHEDIR)
+	@echo Making $(@F)
 	cd submodules/racon && make modules && make tools && make -j
 	cp submodules/racon/bin/racon $@
 
-submodules/bwa/bwa:
+$(BINCACHEDIR)/bwa: | $(BINCACHEDIR)
+	@echo Making $(@F)
 	cd submodules/bwa && make
+	cp submodules/bwa/bwa $@
 
-submodules/samtools/samtools:
-	cd submodules && wget https://github.com/samtools/samtools/releases/download/1.3.1/samtools-1.3.1.tar.bz2 && tar -xjf samtools-1.3.1.tar.bz2
-	mv submodules/samtools-1.3.1 submodules/samtools
-	cd submodules/samtools && make
+SAMVER=1.3.1
+$(BINCACHEDIR)/samtools: | $(BINCACHEDIR)
+	@echo Making $(@F)
+	# tar.bz is not a dependency, since that would cause it to be fetched
+	#   even when installing from $(BINCACHEDIR)
+	if [ ! -e submodules/samtools-${SAMVER}.tar.bz2 ]; then \
+	  cd submodules; \
+	  wget https://github.com/samtools/samtools/releases/download/${SAMVER}/samtools-${SAMVER}.tar.bz2; \
+	fi
+	cd submodules && tar -xjf samtools-${SAMVER}.tar.bz2
+	cd submodules/samtools-${SAMVER} && make
+	cp submodules/samtools-${SAMVER}/samtools $@
 
 
 venv: venv/bin/activate
@@ -40,7 +48,7 @@ venv/bin/activate:
 	test -d venv || virtualenv venv --python=python3
 	${IN_VENV} && pip install pip --upgrade
 
-install: venv pip_submodules | $(CACHEDBIN)
+install: venv pip_submodules | $(addprefix $(BINCACHEDIR)/, $(BINARIES))
 	${IN_VENV} && pip install -r requirements.txt && python setup.py install
 
 pip_submodules:
