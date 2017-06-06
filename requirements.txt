@@ -7,3 +7,6 @@ numpy
 pysam
 watchdog
 sphinx-argparse
+git+https://github.com/nanoporetech/fast5_research
+git+https://github.com/nanoporetech/nanonet@cd805595
+
