@@ -1,0 +1,284 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Pomoxis Examples &mdash; Pomoxis 0.0.1 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
+    <link rel="top" title="Pomoxis 0.0.1 documentation" href="index.html"/>
+        <link rel="next" title="Read Until Simulator" href="read_until.html"/>
+        <link rel="prev" title="Welcome to Pomoxis’ documentation!" href="index.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> Pomoxis
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.0.1
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Pomoxis Examples</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#read-alignment-with-bwa">Read Alignment with bwa</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#fast-de-novo-assembly">Fast de-novo assembly</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="read_until.html">Read Until Simulator</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="pomoxis.html">pomoxis package</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Pomoxis</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Pomoxis Examples</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/examples.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="pomoxis-examples">
+<h1>Pomoxis Examples<a class="headerlink" href="#pomoxis-examples" title="Permalink to this headline">¶</a></h1>
+<p>Below you will find examples of some key tools and ways in which they may be
+usefully combined.</p>
+<div class="section" id="read-alignment-with-bwa">
+<h2>Read Alignment with bwa<a class="headerlink" href="#read-alignment-with-bwa" title="Permalink to this headline">¶</a></h2>
+<p>Pomoxis bundles bwa and samtools to accomplish fastq to bam conversion in a
+streamlined manner with the <cite>bwa_align</cite> tool:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>bwa_align <span class="o">[</span>-h<span class="o">]</span> <span class="o">[</span>-r reference<span class="o">]</span> <span class="o">[</span>-i fastq<span class="o">]</span> <span class="o">[</span>-p prefix<span class="o">]</span>
+
+Align fastq/a formatted reads to a genome using bwa.
+
+    -h  show this <span class="nb">help</span> text.
+    -r  reference, should be a fasta file. If correspondng bwa indices
+        <span class="k">do</span> not exist they will be created. <span class="o">(</span>required<span class="o">)</span>.
+    -i  fastq/a input reads <span class="o">(</span>required<span class="o">)</span>.
+    -a  aggresively extend gaps <span class="o">(</span>sets -A1 -B2 -O2 -E1 <span class="k">for</span> bwa mem<span class="o">)</span>.
+    -c  chunk size. Input reads/contigs will be broken into chunks
+        prior to alignment.
+    -t  alignment threads <span class="o">(</span>default: <span class="m">1</span><span class="o">)</span>.
+    -p  output file prefix <span class="o">(</span>default: reads<span class="o">)</span>.
+-i and -r must be specified.
+</pre></div>
+</div>
+</div>
+<div class="section" id="fast-de-novo-assembly">
+<h2>Fast de-novo assembly<a class="headerlink" href="#fast-de-novo-assembly" title="Permalink to this headline">¶</a></h2>
+<p>From a .fastq file containing basecalls one can perform an assembly and
+consensus using the <cite>mini_assemble</cite> tool.</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>mini_assemble <span class="o">[</span>-h<span class="o">]</span> <span class="o">[</span>-i fastq<span class="o">]</span> <span class="o">[</span>-o directory<span class="o">]</span> <span class="o">[</span>-p prefix<span class="o">]</span>
+
+Assemble fastq formatted reads and perform POA consensus
+
+    -h  show this <span class="nb">help</span> text
+    -i  fastq input reads <span class="o">(</span>required<span class="o">)</span>
+    -o  output folder <span class="o">(</span>default: assm<span class="o">)</span>
+    -p  output file prefix <span class="o">(</span>default: reads<span class="o">)</span>
+-i must be specified.
+</pre></div>
+</div>
+<p>For E.coli on a computer with 16 CPUs this should take around 5 minutes for
+a 50-fold coverage dataset.</p>
+</div>
+</div>
+
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="read_until.html" class="btn btn-neutral float-right" title="Read Until Simulator" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="index.html" class="btn btn-neutral" title="Welcome to Pomoxis’ documentation!" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, Oxford Nanopore Technologies.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'0.0.1',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

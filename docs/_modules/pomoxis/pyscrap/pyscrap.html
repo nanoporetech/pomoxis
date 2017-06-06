@@ -1,0 +1,378 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>pomoxis.pyscrap.pyscrap &mdash; Pomoxis 0.0.1 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="../../../genindex.html"/>
+        <link rel="search" title="Search" href="../../../search.html"/>
+    <link rel="top" title="Pomoxis 0.0.1 documentation" href="../../../index.html"/>
+        <link rel="up" title="pomoxis" href="../../pomoxis.html"/> 
+
+  
+  <script src="../../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../../index.html" class="icon icon-home"> Pomoxis
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.0.1
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples.html">Pomoxis Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../read_until.html">Read Until Simulator</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../pomoxis.html">pomoxis package</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Pomoxis</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../../index.html">Module code</a> &raquo;</li>
+        
+          <li><a href="../../pomoxis.html">pomoxis</a> &raquo;</li>
+        
+      <li>pomoxis.pyscrap.pyscrap</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for pomoxis.pyscrap.pyscrap</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">importlib</span>
+<span class="kn">import</span> <span class="nn">imp</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+
+<span class="kn">from</span> <span class="nn">fast5_research.fast5</span> <span class="k">import</span> <span class="n">Fast5</span>
+<span class="kn">from</span> <span class="nn">nanonet.segment</span> <span class="k">import</span> <span class="n">segment</span>
+<span class="kn">from</span> <span class="nn">nanonet.eventdetection.filters</span> <span class="k">import</span> <span class="n">minknow_event_detect</span>
+
+
+<span class="kn">from</span> <span class="nn">cffi</span> <span class="k">import</span> <span class="n">FFI</span>
+<span class="n">ffi</span> <span class="o">=</span> <span class="n">FFI</span><span class="p">()</span>
+
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+<span class="sd">&quot;&quot;&quot;Python bindings to scrappie basecaller. scrappie is bundled with this</span>
+<span class="sd">project and uses a hard-coded header file to encode the neural network.</span>
+<span class="sd">To use different network specifications see the setup.py command --model.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+<div class="viewcode-block" id="get_shared_lib"><a class="viewcode-back" href="../../../pomoxis.pyscrap.html#pomoxis.pyscrap.pyscrap.get_shared_lib">[docs]</a><span class="k">def</span> <span class="nf">get_shared_lib</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Cross-platform resolution of shared-object libraries, working</span>
+<span class="sd">    around vagueries of setuptools.</span>
+
+<span class="sd">    :param name: name of shared library to find.</span>
+<span class="sd">    </span>
+<span class="sd">    :returns: FFI shared library object.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="c1"># after &#39;python setup.py install&#39; we should be able to do this</span>
+        <span class="n">lib_file</span> <span class="o">=</span> <span class="n">importlib</span><span class="o">.</span><span class="n">import_module</span><span class="p">(</span><span class="n">name</span><span class="p">)</span><span class="o">.</span><span class="vm">__file__</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># after &#39;python setup.py develop&#39; this should work</span>
+            <span class="n">lib_file</span> <span class="o">=</span> <span class="n">imp</span><span class="o">.</span><span class="n">find_module</span><span class="p">(</span><span class="n">name</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span><span class="s1">&#39;Cannot locate C library &quot;</span><span class="si">{}</span><span class="s1">&quot;.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">lib_file</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">lib_file</span><span class="p">)</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="n">library</span> <span class="o">=</span> <span class="n">ffi</span><span class="o">.</span><span class="n">dlopen</span><span class="p">(</span><span class="n">lib_file</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">library</span></div>
+
+
+<span class="n">library</span> <span class="o">=</span> <span class="n">get_shared_lib</span><span class="p">(</span><span class="s1">&#39;pyscrap&#39;</span><span class="p">)</span>
+
+<span class="n">ffi</span><span class="o">.</span><span class="n">cdef</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">    typedef struct {</span>
+<span class="s2">        double start;</span>
+<span class="s2">        float length;</span>
+<span class="s2">        float mean, stdv;</span>
+<span class="s2">        int pos, state;</span>
+<span class="s2">    } event_t;</span>
+
+<span class="s2">    typedef struct {</span>
+<span class="s2">        unsigned int n, start, end;</span>
+<span class="s2">        event_t * event;</span>
+<span class="s2">    } event_table;</span>
+
+<span class="s2">    typedef struct {</span>
+<span class="s2">        float score;</span>
+<span class="s2">        char * bases;</span>
+<span class="s2">    } basecall_result;</span>
+
+<span class="s2">    void free_char(char* ptr);</span>
+<span class="s2">    basecall_result basecall_events(event_t * events, const int n_events);</span>
+<span class="s2">&quot;&quot;&quot;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="build_events"><a class="viewcode-back" href="../../../pomoxis.pyscrap.html#pomoxis.pyscrap.pyscrap.build_events">[docs]</a><span class="k">def</span> <span class="nf">build_events</span><span class="p">(</span><span class="n">events</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Transform numpy events into scrappie event_t[].</span>
+
+<span class="sd">    :params events: input numpy events.</span>
+
+<span class="sd">    :returns: pointer to scrappie event_t[]. </span>
+
+<span class="sd">    .. note::</span>
+
+<span class="sd">        the memory for the events is managed by python and therefore</span>
+<span class="sd">        should not be freed on the C side otherwise a doublefree will occur.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">n_events</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">events</span><span class="p">)</span>
+    <span class="n">event</span> <span class="o">=</span> <span class="n">ffi</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="s1">&#39;event_t[]&#39;</span><span class="p">,</span> <span class="n">n_events</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_events</span><span class="p">):</span>
+        <span class="n">event</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">start</span> <span class="o">=</span> <span class="n">events</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="s1">&#39;start&#39;</span><span class="p">]</span>
+        <span class="n">event</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">length</span> <span class="o">=</span> <span class="n">events</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="s1">&#39;length&#39;</span><span class="p">]</span>
+        <span class="n">event</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span> <span class="o">=</span> <span class="n">events</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="s1">&#39;mean&#39;</span><span class="p">]</span>
+        <span class="n">event</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">stdv</span> <span class="o">=</span> <span class="n">events</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="s1">&#39;stdv&#39;</span><span class="p">]</span>
+        <span class="n">event</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">pos</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+        <span class="n">event</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+    <span class="k">return</span> <span class="n">event</span></div>
+
+
+<div class="viewcode-block" id="basecall_events"><a class="viewcode-back" href="../../../pomoxis.pyscrap.html#pomoxis.pyscrap.pyscrap.basecall_events">[docs]</a><span class="k">def</span> <span class="nf">basecall_events</span><span class="p">(</span><span class="n">events</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Basecall numpy events using scrappie.</span>
+
+<span class="sd">    :param events: numpy event array.</span>
+
+<span class="sd">    :returns: tuple (basecall score, sequence)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">c_events</span> <span class="o">=</span> <span class="n">build_events</span><span class="p">(</span><span class="n">events</span><span class="p">)</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">library</span><span class="o">.</span><span class="n">basecall_events</span><span class="p">(</span><span class="n">c_events</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">events</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">bases</span> <span class="o">==</span> <span class="n">ffi</span><span class="o">.</span><span class="n">NULL</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">basecall</span> <span class="o">=</span> <span class="n">ffi</span><span class="o">.</span><span class="n">string</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">bases</span><span class="p">)</span>
+    <span class="n">library</span><span class="o">.</span><span class="n">free_char</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">bases</span><span class="p">)</span>
+    <span class="k">return</span> <span class="o">-</span><span class="n">result</span><span class="o">.</span><span class="n">score</span><span class="o">/</span><span class="nb">len</span><span class="p">(</span><span class="n">events</span><span class="p">),</span> <span class="n">basecall</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="basecall_file"><a class="viewcode-back" href="../../../pomoxis.pyscrap.html#pomoxis.pyscrap.pyscrap.basecall_file">[docs]</a><span class="k">def</span> <span class="nf">basecall_file</span><span class="p">(</span><span class="n">fname</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">event_detect</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Read event data from file and print scrappie basecall.</span>
+
+<span class="sd">    :param fname: filename to read data from (if not given assumed</span>
+<span class="sd">        to be given on command line.</span>
+<span class="sd">    :param event_detect: do event detection?</span>
+
+<span class="sd">    :returns: tuple (basecall score, sequence).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">is_main</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="k">if</span> <span class="n">fname</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span> <span class="c1">#called as entrypoint</span>
+        <span class="n">fname</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">is_main</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="c1"># magic numbers</span>
+    <span class="n">ed_params</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s1">&#39;window_lengths&#39;</span><span class="p">:[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">8</span><span class="p">],</span>
+        <span class="s1">&#39;thresholds&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">1.5</span><span class="p">,</span> <span class="mf">9.0</span><span class="p">],</span>
+        <span class="s1">&#39;peak_height&#39;</span><span class="p">:</span> <span class="mf">0.2</span><span class="p">,</span>
+    <span class="p">}</span>
+
+    <span class="k">with</span> <span class="n">Fast5</span><span class="p">(</span><span class="n">fname</span><span class="p">)</span> <span class="k">as</span> <span class="n">fh</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">event_detect</span><span class="p">:</span>
+            <span class="n">events</span> <span class="o">=</span> <span class="n">minknow_event_detect</span><span class="p">(</span>
+                <span class="n">fh</span><span class="o">.</span><span class="n">get_read</span><span class="p">(</span><span class="n">raw</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span> <span class="n">fh</span><span class="o">.</span><span class="n">sample_rate</span><span class="p">,</span> <span class="o">**</span><span class="n">ed_params</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">events</span> <span class="o">=</span> <span class="n">fh</span><span class="o">.</span><span class="n">get_read</span><span class="p">()</span>
+    <span class="n">events</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">segment</span><span class="p">(</span><span class="n">events</span><span class="p">,</span> <span class="n">section</span><span class="o">=</span><span class="s1">&#39;template&#39;</span><span class="p">)</span> 
+
+    <span class="n">results</span> <span class="o">=</span> <span class="n">basecall_events</span><span class="p">(</span><span class="n">events</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">results</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">is_main</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">{}</span><span class="s2"> score=</span><span class="si">{}</span><span class="se">\n</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="o">*</span><span class="n">results</span><span class="p">))</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">results</span></div>
+</pre></div>
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, Oxford Nanopore Technologies.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../../',
+            VERSION:'0.0.1',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="../../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>
