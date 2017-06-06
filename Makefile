@@ -47,6 +47,7 @@ IN_VENV=. ./venv/bin/activate
 venv/bin/activate:
 	test -d venv || virtualenv venv --python=python3
 	${IN_VENV} && pip install pip --upgrade
+	${IN_VENV} && pip install numpy # needs to get done before other things
 
 install: venv | $(addprefix $(BINCACHEDIR)/, $(BINARIES))
 	${IN_VENV} && pip install -r requirements.txt && python setup.py install
