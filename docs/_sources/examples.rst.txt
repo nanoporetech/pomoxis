@@ -59,11 +59,6 @@ files appearing a a given path; numerous instances of the latter can be started
 (on networked machines) to perform the basecalling. A current restriction is
 that all machines used for basecalling must shared a filesystem.
 
-` and a `router` component. The former wil watch for .fast5
-files appearing a a given path; numerous instances of the latter can be started
-(on networked machines) to perform the basecalling. A current restriction is
-that all machines used for basecalling must shared a filesystem.
-
 To start watching a filesytem for new .fast5 files use the dealer component:
 
 .. code-block:: bash
