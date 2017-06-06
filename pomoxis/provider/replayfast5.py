@@ -28,6 +28,14 @@ logger = logging.getLogger(__name__)
 class Fast5Data(np.ndarray):
 
     def __new__(cls, input_array, info=None, start=None, end=None, sample_rate=6000):
+        """Helper class for transmitting raw and event data over RPC requests.
+
+        :param input_array: numpy array to encode.
+        :param info: metadata.
+        :param start: start time of data.
+        :param end: end time of data.
+        :param sample_rate: sampling rate of source data.
+        """
         obj = np.asarray(input_array).view(cls)
         obj.info = info
         obj.start = start
@@ -44,6 +52,7 @@ class Fast5Data(np.ndarray):
 
     @staticmethod
     def encode(obj):
+        """Serialize data to send over RPC."""
         data = {
             b'shape': obj.shape,
             b'info': obj.info, 
@@ -58,6 +67,7 @@ class Fast5Data(np.ndarray):
 
     @staticmethod
     def decode(obj):
+        """Deserialize data from RPC request."""
         if obj[b'kind'] == b'V':
             descr = [(x.decode('utf-8'), y.decode('utf-8')) for x, y in obj[b'type']]
         else:
@@ -86,6 +96,16 @@ translation_table = {
 class ReplayChannel(rpc.AttrHandler):
 
     def __init__(self, fast5, channel, *args, good_class='strand', time_warp=1, **kwargs):
+        """An RPC service for replaying a channel from a .fast5 file.
+
+        :param fast5: input filename.
+        :param channel: channel to simulate.
+        :param good_class: read classification name of desirable reads.
+        :param time_warp: time multiplier for playback speed.
+
+        ..note:: `args` and `kwargs` are passed to `aiozmq.rpc.AttrHandler`.
+        
+        """
         super().__init__(*args, **kwargs)
         self.fast5 = fast5
         self.channel = channel
@@ -103,6 +123,7 @@ class ReplayChannel(rpc.AttrHandler):
 
     @rpc.method
     def reset_time(self):
+        """Reset internal time to zero."""
         self.start_time = now()
         self.sample_offset = 0
         self._current_event = 0
@@ -110,20 +131,26 @@ class ReplayChannel(rpc.AttrHandler):
 
     @property
     def current_sample(self):
+        """Current simulated sample (the simulation time)."""
         return int((now() - self.start_time) * self.sample_rate * self.time_warp + self.sample_offset)
 
 
     @property
     def experiment_time(self):
+        """Current simulated time."""
         return self.current_sample * self.time_base 
 
     @property
     def time_saved(self):
+        """Difference between current real time and simulated time. (How far
+        we've fast-forwarded the channel.)
+
+        """
         return self.sample_offset * self.time_base
 
     @property
     def current_event(self):
-        """Optimise a little finding of the current event."""
+        """Index of the current event."""
         prev = self._current_event
         with BulkFast5(self.fast5) as fh:
             event_path = fh.__event_data__.format(self.channel)
@@ -134,6 +161,7 @@ class ReplayChannel(rpc.AttrHandler):
 
     @property
     def current_read(self):
+        """Index of the current read."""
         search_start = max(0, self._current_read - 2)
         self._current_read = search_start - 1 + np.searchsorted(self.read_starts[search_start:], self.current_sample)
         return self._current_read
@@ -141,14 +169,17 @@ class ReplayChannel(rpc.AttrHandler):
 
     @property
     def good_reads_to_now(self):
+        """Reads with classification equal to `good_class` until current time."""
         return [x for x in self.reads[:self._current_read + 1] if x['classification'] == self.good_class]
         
     @property
     def total_good_reads(self):
+        """Total number of good reads seen up to current simulation time."""
         return len(self.good_reads_to_now)
 
     @property
     def cumulative_good_read_time_to_now(self):
+        """Total duration of reads with classification equal to `good_class` until current time."""
         return sum(read['read_length'] for read in self.good_reads_to_now) * self.time_base
 
 
@@ -156,7 +187,9 @@ class ReplayChannel(rpc.AttrHandler):
     def get_events(self, n_events=400):
         """Return events from the start of the current read.
 
-        :param nevents: maximum number of events to return
+        :param nevents: maximum number of events to return.
+
+        :returns: Serialized event data, see :class:`Fast5Data`.
         """
         self.logger.debug("Request for events at {}".format(self.current_sample))
         read = self.reads[self.current_read]
@@ -183,6 +216,8 @@ class ReplayChannel(rpc.AttrHandler):
         """Return events from the start of the current read.
 
         :param nevents: maximum number of events to return
+
+        :returns: Serialized raw data, see :class:`Fast5Data`.
         """
         self.logger.debug("Request for raw at {}".format(self.current_sample))
         read = self.reads[self.current_read]
@@ -208,7 +243,12 @@ class ReplayChannel(rpc.AttrHandler):
 
     @rpc.method
     def unblock(self, read_id, read_end):
-        """Fast forward to next read, returns new current sample."""
+        """Fast forward to next read, returns new current sample. If the
+        given read has already ended, no action is taken.
+
+        :param read_id: read_id of read to unblock.
+        :param read_end: expiration time for request, used only for logging.
+        """
         cur_read = self.reads[self.current_read]
         if str(cur_read['read_id']) == read_id:
             next_read = self.reads[self.current_read + 1]
@@ -227,12 +267,24 @@ class ReplayChannel(rpc.AttrHandler):
 
 class ReplayFast5(rpc.AttrHandler):
     def __init__(self, fast5, channels, *args, good_class='strand', time_warp=1, **kwargs):
+        """Replay multiple channels from a .fast5 file.
+
+        :param fast5: input filename.
+        :param channel: list of channels to simulate.
+        :param good_class: read classification name of desirable reads.
+        :param time_warp: time multiplier for playback speed.
+
+        ..note:: `args` and `kwargs` are passed to `aiozmq.rpc.AttrHandler`.
+
+        """
         super().__init__(*args, **kwargs)
         self.fast5 = fast5
         self.channels = channels
         self.good_class = good_class
         self.time_warp = time_warp
         self.logger = logging.getLogger('Replay Fast5')
+        if self.time_warp < 1:
+            self.logger.warn("time_warp set to slow down time, behaviour may be undefined.")
 
         self.replay_channels = {
             channel:ReplayChannel(self.fast5, channel, good_class=self.good_class, time_warp=self.time_warp)
@@ -244,31 +296,66 @@ class ReplayFast5(rpc.AttrHandler):
 
     @rpc.method
     def time_saved(self):
+        """Difference between current real time and simulated time. (How far
+        we've fast-forwarded the channel.)
+
+        """
         return sum(chan.time_saved for chan in self.replay_channels.values())
 
     @rpc.method
     def total_good_reads(self):
+        """Total number of good reads seen up to current simulation time."""
         return sum(chan.total_good_reads for chan in self.replay_channels.values())
 
     @rpc.method
     def cumulative_good_read_time(self):
+        """Total duration of reads with classification equal to `good_class` until current time."""
         return sum(chan.cumulative_good_read_time_to_now for chan in self.replay_channels.values())
 
     @rpc.method
     def get_events(self, channel, n_events=400):
+        """Return events from the start of the current read.
+
+        :param nevents: maximum number of events to return.
+        :param channel: channel for which to get events.
+
+        :returns: Serialized event data, see :class:`Fast5Data`.
+        """
         return self.replay_channels[channel].get_events(n_events=n_events)
 
     @rpc.method
     def get_raw(self, channel, seconds=0.5):
+        """Return raw data from the start of the current read.
+
+        :param channel: channel for which to get raw data.
+
+        :returns: Serialized raw data, see :class:`Fast5Data`.
+        """
         return self.replay_channels[channel].get_raw(seconds=seconds)
 
     @rpc.method
     def unblock(self, channel, read_id, read_end):
+        """Fast forward to next read, returns new current sample. If the
+        given read has already ended, no action is taken.
+
+        :param channel: channel to unblock.
+        :param read_id: read_id of read to unblock.
+        :param read_end: expiration time for request, used only for logging.
+        """
         return self.replay_channels[channel].unblock(read_id, read_end)
 
 
 @asyncio.coroutine
 def replay_server(fast5, channels, port, good_class, time_warp=1):
+    """Create an RPC server to replay data from a .fast5 file.
+
+    :param fast5: input .fast5 file for simulation.
+    :param channels: list of channels to simulate.
+    :param port: port on which to listen for clients.
+    :param good_class: read classification name of desirable reads.
+    
+    :returns: instance of :class:`ReplayFast5`.
+    """
     server = yield from rpc.serve_rpc(
         ReplayFast5(fast5, channels, good_class=good_class, time_warp=time_warp),
         bind='tcp://127.0.0.1:{}'.format(port),
@@ -279,6 +366,10 @@ def replay_server(fast5, channels, port, good_class, time_warp=1):
 
 @asyncio.coroutine
 def replay_client(port):
+    """Create an RPC client to request raw/event data and send unblock requests.
+
+    :param port: server port.
+    """
     client = yield from rpc.connect_rpc(
         connect='tcp://127.0.0.1:{}'.format(port),
         translation_table=translation_table
@@ -287,6 +378,12 @@ def replay_client(port):
 
 
 def read_until_demo(fast5, channels, port=5555):
+    """Simple demo of read until server and client application.
+
+    :param fast5: input .fast5 file.
+    :param channels: list of channels to simulate.
+    :param port: port on which to run server and cliant.
+    """
     logger = logging.getLogger('ReadUntil App')
     good_class = 'strand'
     time_warp=2
