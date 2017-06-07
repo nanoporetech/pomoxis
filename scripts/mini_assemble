@@ -14,7 +14,7 @@ OUTPUT="assm"
 NAME="reads"
 THREADS=1
 iflag=false
-while getopts ':hi:o:p:' option; do
+while getopts ':hi:o:p:t:' option; do
   case "$option" in
     h  ) echo "$usage" >&2; exit;;
     i  ) iflag=true; INPUT=$OPTARG;;
