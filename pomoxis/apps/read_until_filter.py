@@ -52,7 +52,7 @@ def read_until_align_filter(fast5, bwa_index, channels, start_port=5555):
     def poll_data(port):
         align_client = yield from bwa.align_client(align_port) 
         replay_client = yield from replayfast5.replay_client(replay_port)
-        pyscrap.scrappie_init()
+        yield from asyncio.sleep(5)
         start_time = now()
         target_count = 0
         while True:
@@ -87,7 +87,7 @@ def read_until_align_filter(fast5, bwa_index, channels, start_port=5555):
                 if read_block is None:
                     logger.debug("Channel not in '{}' classification".format(good_class))
                 elif read_block.info in identified_reads:
-                    #logger.info("Skipping because I've seen before.")
+                    logger.debug("Skipping because I've seen before.")
                     continue
                 else:
                     logger.debug("Analysing {} samples".format(len(read_block)))
@@ -100,15 +100,17 @@ def read_until_align_filter(fast5, bwa_index, channels, start_port=5555):
                     )
                     if len(events) < 100:
                         continue
+
                     #TODO: do this in a process pool
-                    basecall = pyscrap.basecall_events(events)
+                    score, basecall = pyscrap.basecall_events(events)
                     #TODO: check sanity of basecall
                     if len(basecall) < 100:
                         continue
+
                     alignment, returncode = yield from align_client.call.align(basecall)
                     hits = []
                     if returncode != 0:
-                        logger.warn('Alignment failed for {}'.format(read_block.info))
+                        logger.warning('Alignment failed for {}'.format(read_block.info))
                     else:
                         recs = [x for x in alignment.split('\n') if len(x) > 0 and x[0] != '@']
                         for r in recs:
@@ -116,6 +118,7 @@ def read_until_align_filter(fast5, bwa_index, channels, start_port=5555):
                             if fields[2] != '*':
                                 hits.append(fields[2])
                     logger.debug('{} aligns to {}'.format(read_block.info, hits))
+
                     if len(hits) == 1:
                         identified_reads[read_block.info] = hits[0]
                         # maybe got 0 or >1 previously
