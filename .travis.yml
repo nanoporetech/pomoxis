@@ -15,5 +15,15 @@ before_install:
   - sudo apt-get -qq update
   - sudo apt-get install -y zlib1g-dev libncurses5-dev python3-all-dev libhdf5-dev libatlas-base-dev libopenblas-base libopenblas-dev libbz2-dev liblzma-dev libffi-dev
 
-script: make install 
+script:
+  - make install
+  - make docs
 
+deploy:
+  provider: pages
+  skip_cleanup: true
+  github_token: $GHPAGES_TOKEN
+  local_dir: docs/_build/html
+  target_branch: gh-pages
+  on:
+    branch: master
