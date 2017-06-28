@@ -4,6 +4,7 @@ python:
     - "3.6"
 dist: trusty
 sudo: required
+group: deprecated-2017Q2 #for neo4j hash sum mismatch
 
 cache:
   directories:
