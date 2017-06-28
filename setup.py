@@ -40,7 +40,6 @@ extra_requires = {
 }
 
 exes = ['minimap', 'miniasm', 'racon', 'bwa', 'samtools']
-
 scrappie_path = os.path.join('submodules', 'scrappie', 'src')
 
 extensions = []
@@ -110,6 +109,7 @@ setup(
             'split_fastx = {}.common.util:split_fastx_cmdline'.format(__pkg_name__),
             'pyscrap = {}.basecall.pyscrap.pyscrap:basecall_file'.format(__pkg_name__),
             'epi3me = {}.apps.epi3me:main'.format(__pkg_name__),
+            'read_until_filter = {}.apps.read_until_filter:main'.format(__pkg_name__),
             'pomoxis_path = {}:show_prog_path'.format(__pkg_name__),
         ]
     },

@@ -19,8 +19,23 @@ from pomoxis.pyscrap import pyscrap
 
 import logging
 
+"""A python3 version of a minimal distributed basecaller. Functionality is
+exposed as an entry point of the pomoxis package. The infrastucture runs
+as two components: a server which watches a filepath for new files to
+basecall and a client server which can run on any networked computer sharing
+a filesytem with the server.
+"""
+
 
 def basecall_file(fname, event_detect=True):
+    """Peform a basecall from a file.
+
+    :param fname: .fast5 file to basecall.
+    :param event_detect: perform event detection (else use
+        pre-existing events in file.
+
+    :returns: tuple (score, basecall).
+    """
     score, basecall = 0, ''
     try:
         results = pyscrap.basecall_file(fname, event_detect=event_detect)
@@ -33,6 +48,14 @@ def basecall_file(fname, event_detect=True):
 
 @asyncio.coroutine
 def main_router(addr, name=None):
+    """Asynchronous client routine to process read files.
+
+    :param addr: server address.
+    :param name: a name for the client.
+
+    :returns: None, sends results back to server
+    """
+
     if name is None:
         name = uuid.uuid4()
     logging.info("Starting client {} connected to {}".format(name, addr))
@@ -66,6 +89,17 @@ def main_router(addr, name=None):
 
 @asyncio.coroutine
 def main_dealer(path, outpath, output=None, port='*'):
+    """Asynchrous server routine. Watches an input path to distribute
+    work to clients.
+
+    :param path: input folder to watch for files.
+    :param outpath: output folder in which to place processed files.
+    :param output: output filename pattern. Reads are written in batches
+        to file. If not given, output is to stdout.
+    :param port: port for server-client communication.
+
+    :returns: None, and often won't die gracefully.
+    """
     logging.info("Starting server...")
     ip = socket.gethostbyname(socket.gethostname())
     if ip == '127.0.0.1':
@@ -148,17 +182,19 @@ def main_dealer(path, outpath, output=None, port='*'):
 
 
 def run_dealer(args):
+    """Entry point handler for server."""
     set_wakeup()
     asyncio.get_event_loop().run_until_complete(main_dealer(args.path, args.outpath, output=args.output, port=args.port))
 
 def run_router(args):
+    """Entry point handler for client."""
     set_wakeup()
     asyncio.get_event_loop().run_until_complete(main_router(args.addr))
 
 
 def main():
     logging.basicConfig(format='[%(asctime)s - %(name)s] %(message)s', datefmt='%H:%M:%S', level=logging.INFO)
-    parser = argparse.ArgumentParser('Epi3Me -- Distributed basecalling platform.')
+    parser = argparse.ArgumentParser(description='Epi3Me -- Distributed basecalling platform.')
     subparsers = parser.add_subparsers(title='subcommands', description='valid commands', help='additional help', dest='command')
     subparsers.required = True
 

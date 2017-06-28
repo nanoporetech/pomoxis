@@ -13,6 +13,14 @@ requests are made the simulation records the difference between the current
 simulated sample and the start sample of the following read. This sample offset
 is accumulated as subsequent unblock requests are made.
 
+.. note::
+
+    The read until simulator takes as input a "bulk .fast5" file. These are an
+    optional output of MinKnow which contains the signal data for all channels
+    of a Oxford Nanopore Technologies' device (including periods of time where
+    a channel is not undergoing an strand translocation). Outputting a bulk
+    .fast5 can be configured when the user starts and experiment in MinKnow.
+
 To create an RPC server for an input .fast5 file:
 
 .. code-block:: python
@@ -60,4 +68,4 @@ Here, the unblock call passes backsome meta data on the events. This is merely
 for programming convenience, the API may be simplified in the future.
 
 A more fullsome example of an concurrent alignment system is given in
-:module:`pomoxis.apps`read_until_filter`.
+:py:mod:`pomoxis.apps.read_until_filter`.

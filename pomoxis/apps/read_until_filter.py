@@ -18,7 +18,23 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def read_until_align_filter(fast5, bwa_index, channels, start_port=5555):
+def read_until_align_filter(fast5, bwa_index, channels, start_port=5555, targets=['Ecoli', 'yeast'], whitelist=False):
+    """Demonstration read until application using scrappie and bwa to filter
+    reads by identity.
+
+    :param fast5: input bulk .fast5 file for read until simulation.
+    :param bwa_index: list of bwa index files (just basename without additional
+        suffixes).
+    :param channels: list of channels to simulate.
+    :param start_port: port on which to run .fast5 replay server, bwa alignment
+        server will be run on the following numbered port.
+    :param targets: list of reference names. If `whitelist` is `False`, reads
+        aligning to these references will be ejected. If `whitelist` is `True`
+        any read alinging to a reference other than those contained in this
+        list will be ejected. Unidentified reads are never ejected.
+    :param whitelist: see `target`.
+    """
+
     logger = logging.getLogger('ReadUntil App')
     good_class = 'strand'
     time_warp=2
@@ -39,12 +55,9 @@ def read_until_align_filter(fast5, bwa_index, channels, start_port=5555):
     ))
 
 
-
     identified_reads = {}
     unidentified_reads = defaultdict(list)
     unblocks = Counter()
-    targets = ['Ecoli', 'yeast']
-    whitelist = False
 
     ###
     # The read until app
@@ -164,14 +177,23 @@ class ExpandRanges(argparse.Action):
                 elts.append(int(item))
         setattr(namespace, self.dest, elts)
 
-
-
-if __name__ == '__main__':
+def main():
     freeze_support()
     logging.basicConfig(format='[%(asctime)s - %(name)s] %(message)s', datefmt='%H:%M:%S', level=logging.INFO)
-    parser = argparse.ArgumentParser('Read until with alignment filter.')
+    parser = argparse.ArgumentParser(description="""
+Read until with alignment filter. The read until simulator takes as input a
+"bulk .fast5" file. These are an optional output of MinKnow which contains
+the signal data for all channels of a Oxford Nanopore Technologies’ device
+(including periods of time where a channel is not undergoing an strand
+translocation). Outputting a bulk .fast5 can be configured when the user
+starts and experiment in MinKnow.
+""")
     parser.add_argument('fast5', help='Input fast5.')
     parser.add_argument('channels', action=ExpandRanges, help='Fast5 channel for source data.')
     parser.add_argument('bwa_index', nargs='+', help='Filename path prefix for BWA index files.')
     args = parser.parse_args()
     read_until_align_filter(args.fast5, args.bwa_index, [str(x) for x in args.channels])
+
+
+if __name__ == '__main__':
+    main()
