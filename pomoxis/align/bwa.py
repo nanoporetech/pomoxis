@@ -1,9 +1,11 @@
+import argparse
 import asyncio
+from multiprocessing import freeze_support
 import subprocess
 
 from aiozmq import rpc
 
-from pomoxis import get_prog_path, run_prog
+from pomoxis import get_prog_path, run_prog, set_wakeup
 from pomoxis.common import util
 
 import logging
@@ -13,16 +15,6 @@ logger = logging.getLogger(__name__)
 class BwaServe(rpc.AttrHandler):
 
     def __init__(self, index, *args, bwa_cmd=None, **kwargs):
-        """An RPC server around bwa. The server uses the shared memory
-        functionality of bwa to persist the indices once loaded. Calls
-        to align sequences currently run bwa as a subprocess.
-
-        :param index: a list of reference indices for bwa.
-        :param bwa_cmd: bwa commandline options used during alignment.
-
-        ..note:: `args` and `kwargs` are passed to `aiozmq.rpc.AttrHandler`.
-
-        """
         super().__init__(*args, **kwargs)
         self.logger = logging.getLogger('BwaServe')
         if isinstance(index, (str, bytes)):
@@ -47,12 +39,6 @@ class BwaServe(rpc.AttrHandler):
     @rpc.method
     @asyncio.coroutine
     def align(self, sequence):
-        """Align a sequence.
-
-        :param sequence: sequence to align, expressed simply as string.
-        
-        :returns: output of bwa call (samfile string).
-        """
         self.logger.debug("Aligning sequence of length {}.".format(len(sequence)))
         
         if isinstance(sequence, bytes):
@@ -76,30 +62,98 @@ class BwaServe(rpc.AttrHandler):
 
     @rpc.method
     def clean_shm(self):
-        """Clean bwa's shared memory."""
+        self.logger.info('Cleaning shared memory.')
         run_prog(self.bwa, ['shm', '-d'])
 
 
 @asyncio.coroutine
 def align_server(index, port):
-    """Create an alignment server.
-
-    :param port: port to receive requests.
-
-    :returns: instance of :class:`.BwaServe`.
-    """
     server = yield from rpc.serve_rpc(
         BwaServe(index), bind='tcp://127.0.0.1:{}'.format(port)
     )
     return server
 
+
 @asyncio.coroutine
 def align_client(port):
-    """Create an alignment client to send requests.
-
-    :param port: port to receive requests.
-    """
     client = yield from rpc.connect_rpc(
         connect='tcp://127.0.0.1:{}'.format(port),
     )
     return client
+
+
+class AlignClient(object):
+    def __init__(self, port):
+        """A synchronous alignment client.
+
+        :param port: RPC server port.
+        """
+        self.port = port
+
+    @asyncio.coroutine
+    def _run_align(self, sequence):
+        client = yield from align_client(self.port)
+        results = yield from client.call.align(sequence)
+        return results
+
+    def align(self, sequence):
+        """Align a given sequence."""
+        loop = asyncio.get_event_loop()
+        result = loop.run_until_complete(self._run_align(sequence))
+        return result
+
+
+def serve(args):
+    loop = asyncio.get_event_loop()
+    set_wakeup()
+    server = loop.create_task(align_server(
+        args.bwa_index, args.port
+    ))
+
+    @asyncio.coroutine
+    def clean_up():
+        client = yield from align_client(args.port)
+        yield from client.call.clean_shm()
+    
+    logger.info('Alignment server running, awaiting requests...')
+    try:
+        loop.run_forever()
+    except KeyboardInterrupt:
+        logger.info('Shutting down server...')
+        if args.clean:
+            loop.run_until_complete(clean_up())
+        logger.info('Server shut down.')
+
+def send(args):
+    client = AlignClient(args.port)
+    for seq in args.sequences:
+        print(client.align(seq))
+
+
+def get_parser():
+    parser = argparse.ArgumentParser('BWA alignment server/client.')
+    subparsers = parser.add_subparsers(title='subcommands', description='valid commands', help='additional help', dest='command')
+    subparsers.required = True
+
+    sparser = subparsers.add_parser('server', help='Launch alignment server.')
+    sparser.set_defaults(func=serve)
+    sparser.add_argument('port', type=int, help='Port on which to serve.')
+    sparser.add_argument('bwa_index', nargs='+', help='Filename path prefix for BWA index files.')
+    sparser.add_argument('--clean', action='store_true', default=False, help='Clean bwa shm when done.')
+
+
+    sparser = subparsers.add_parser('client', help='Test client.')
+    sparser.set_defaults(func=send)
+    sparser.add_argument('port', type=int, help='Port on which to serve.')
+    sparser.add_argument('sequences', nargs='+', help='Base sequences to align.')
+
+    return parser
+
+
+def main():
+    freeze_support()
+    logging.basicConfig(format='[%(asctime)s - %(name)s] %(message)s', datefmt='%H:%M:%S', level=logging.INFO)
+    args = get_parser().parse_args()
+    args.func(args)
+
+

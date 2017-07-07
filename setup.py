@@ -111,6 +111,7 @@ setup(
             'epi3me = {}.apps.epi3me:main'.format(__pkg_name__),
             'read_until_filter = {}.apps.read_until_filter:main'.format(__pkg_name__),
             'pomoxis_path = {}:show_prog_path'.format(__pkg_name__),
+            'bwa_rpc = {}.align.bwa:main'.format(__pkg_name__),
         ]
     },
     scripts=[
