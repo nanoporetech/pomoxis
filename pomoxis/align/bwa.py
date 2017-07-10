@@ -5,6 +5,12 @@ import subprocess
 
 from aiozmq import rpc
 
+try:
+    from bwapy import BwaAligner
+except ImportError:
+    BwaAligner = None
+
+
 from pomoxis import get_prog_path, run_prog, set_wakeup
 from pomoxis.common import util
 
@@ -14,43 +20,83 @@ logger = logging.getLogger(__name__)
 
 class BwaServe(rpc.AttrHandler):
 
-    def __init__(self, index, *args, bwa_cmd=None, **kwargs):
+    def __init__(self, index, *args, clean=False, bwa_opts='-x ont2d', **kwargs):
+        """bwa mem alignment server implementation using shared memory and
+        subprocess calls.
+
+        :param index: bwa index base path, or list thereof.
+        :param clean: clean-up shared memory on exit.
+        :param bwa_opts: command line options for bwa mem.
+
+        """
+        DeprecationWarning('The class BwapyServe should be used in preference.')
         super().__init__(*args, **kwargs)
         self.logger = logging.getLogger('BwaServe')
         if isinstance(index, (str, bytes)):
             index = [index]
         self.index = index
-        self.bwa_cmd = 'mem -x ont2d'
-        if bwa_cmd is not None:
-            self.bwa_cmd  = bwa_cmd
-        self.bwa_cmd = self.bwa_cmd.split()
+        self.clean = clean
+        self.bwa_opts = bwa_opts.split()
         self.bwa = get_prog_path('bwa')
         self.logger.info("Found bwa at {}".format(self.bwa))
 
-        for ind in self.index:
-            try:
-                run_prog(self.bwa, ['shm', ind])
-            except Exception as e:
-                logger.debug(e)
-                raise RuntimeError('Cannot load bwa index "{}" into shared memory.'.format(ind))
-        self.logger.info('BWA service started.')
+        self.loaded = False
+        self._load_index()
+        self.logger.info('bwa service started.')
 
+    def _load_index(self):
+        """Load indices into shared memory."""
+        if not self.loaded:
+            for ind in self.index:
+                try:
+                    run_prog(self.bwa, ['shm', ind])
+                except Exception as e:
+                    logger.debug(e)
+                    raise RuntimeError('Cannot load bwa index "{}" into shared memory.'.format(ind))
+        self.loaded = True
+
+    def _clean_index(self):
+        self.logger.info('Cleaning shared memory.')
+        run_prog(self.bwa, ['shm', '-d'])
+        self.loaded = False
+
+    def __del__(self):
+        if self.clean:
+            self._clean_index()
+
+    @rpc.method
+    def clean_index(self):
+        """Clean bwa shared memory, note that this clears any and all
+        indices in memory not just the ones placed by this class.
+
+        """
+        self._clean_index()
 
     @rpc.method
     @asyncio.coroutine
     def align(self, sequence):
+        """Align a base sequence.
+
+        :param sequence: sequence to align.
+
+        :returns: the output of bwa mem call.
+        """
+
         self.logger.debug("Aligning sequence of length {}.".format(len(sequence)))
-        
+
+        if not self.loaded:
+            self._load_index()       
+ 
         if isinstance(sequence, bytes):
             sequence = sequence.decode('utf-8')
         sequence = '>seq\n{}\n'.format(sequence)
         
-        #TODO move this to a process pool
+        #TODO: move this to a thread pool
         results = []
         returncode = 0
         for ind in self.index:
             proc = subprocess.Popen(
-                [self.bwa, 'mem', '-x', 'ont2d', '-A1', '-B2', '-O2', '-E1', ind, '-'],
+                [self.bwa, 'mem'] + self.bwa_opts + [ind, '-'],
                 stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE
             )
             stdout, stderr = proc.communicate(sequence.encode('utf-8'))
@@ -60,17 +106,73 @@ class BwaServe(rpc.AttrHandler):
             results.append(stdout.decode('utf-8'))
         return ''.join(results), returncode
 
+
+class BwapyServe(rpc.AttrHandler):
+
+    def __init__(self, index, *args, clean=False, bwa_opts='-x ont2d', **kwargs):
+        """bwa mem alignment server implementation using shared memory and
+        subprocess calls.
+
+        :param index: bwa index base path, or list thereof.
+        :param clean: clean-up shared memory on exit.
+        :param bwa_opts: command line options for bwa mem.
+
+        """
+        super().__init__(*args, **kwargs)
+        self.logger = logging.getLogger('BwaServe')
+        self.index = index
+        self.bwa_opts = bwa_opts
+
+        self.aligner = None
+        if BwaAligner is None:
+            raise ImportError(
+                '{} requires BwaAligner which could not be imported.'.format(
+                self.__class__.__name__
+            ))
+        self.aligner = BwaAligner(self.index, options=self.bwa_opts)
+        self.logger.info('bwa service started.')
+
+    def _clean_index(self):
+        self.logger.info('Cleaning alignment proxy.')
+        self.aligner = None
+
+    def __del__(self):
+            self._clean_index()
+
     @rpc.method
-    def clean_shm(self):
-        self.logger.info('Cleaning shared memory.')
-        run_prog(self.bwa, ['shm', '-d'])
+    def clean_index(self):
+        """Destroy the aligner object, which will cleanup the index in memory."""
+        self._clean_index()
+
+    @rpc.method
+    @asyncio.coroutine
+    def align(self, sequence):
+        """Align a base sequence.
+
+        :param sequence: sequence to align.
+
+        :returns: the output of bwa mem call.
+        """
+        print("Got {} for alignment".format(sequence))
+        if self.aligner is None:
+            self.aligner = BwaAligner(self.index, options=self.bwa_opts)
+        self.logger.debug("Aligning sequence of length {}.".format(len(sequence)))
+        print(self.aligner)
+        print(self.aligner.__dict__)
+        return self.aligner.align_seq(sequence)
 
 
 @asyncio.coroutine
-def align_server(index, port):
-    server = yield from rpc.serve_rpc(
-        BwaServe(index), bind='tcp://127.0.0.1:{}'.format(port)
-    )
+def align_server(index, port, shm=False, clean=False):
+    if shm:
+        server = yield from rpc.serve_rpc(
+            BwaServe(index, clean=clean), bind='tcp://127.0.0.1:{}'.format(port)
+        )
+    else:
+        print('Starting bwapy server.')
+        server = yield from rpc.serve_rpc(
+            BwapyServe(index[0]), bind='tcp://127.0.0.1:{}'.format(port)
+        )
     return server
 
 
@@ -104,17 +206,21 @@ class AlignClient(object):
 
 
 def serve(args):
+    #aligner = BwaAligner(args.bwa_index[0])
+    #for seq in ['CCACACCACACCCACACACCCACACACCACACCACACACCACACCACACCCACACACACACATCCTAACACTACCCTAACACAGCCCTAATCTAACCCTGGCCAACCTGTCTCTCAACTTACCCTCCATTACCCTGCCTCCAC']:
+    #    print(aligner.align_seq(seq))
+
     loop = asyncio.get_event_loop()
     set_wakeup()
     server = loop.create_task(align_server(
-        args.bwa_index, args.port
+        args.bwa_index, args.port, shm=args.shm, clean=args.clean
     ))
 
     @asyncio.coroutine
     def clean_up():
         client = yield from align_client(args.port)
-        yield from client.call.clean_shm()
-    
+        yield from client.call.clean_index()
+
     logger.info('Alignment server running, awaiting requests...')
     try:
         loop.run_forever()
@@ -122,7 +228,9 @@ def serve(args):
         logger.info('Shutting down server...')
         if args.clean:
             loop.run_until_complete(clean_up())
+        server.cancel()
         logger.info('Server shut down.')
+
 
 def send(args):
     client = AlignClient(args.port)
@@ -139,8 +247,8 @@ def get_parser():
     sparser.set_defaults(func=serve)
     sparser.add_argument('port', type=int, help='Port on which to serve.')
     sparser.add_argument('bwa_index', nargs='+', help='Filename path prefix for BWA index files.')
+    sparser.add_argument('--shm', action='store_true', help='Use deprecated shared memory implementation server.')
     sparser.add_argument('--clean', action='store_true', default=False, help='Clean bwa shm when done.')
-
 
     sparser = subparsers.add_parser('client', help='Test client.')
     sparser.set_defaults(func=send)
