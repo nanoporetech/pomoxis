@@ -81,9 +81,7 @@ class BwaServe(rpc.AttrHandler):
 
         :returns: the output of bwa mem call.
         """
-
         self.logger.debug("Aligning sequence of length {}.".format(len(sequence)))
-
         if not self.loaded:
             self._load_index()       
  
@@ -110,8 +108,7 @@ class BwaServe(rpc.AttrHandler):
 class BwapyServe(rpc.AttrHandler):
 
     def __init__(self, index, *args, clean=False, bwa_opts='-x ont2d', **kwargs):
-        """bwa mem alignment server implementation using shared memory and
-        subprocess calls.
+        """bwa mem alignment server implementation using python binding.
 
         :param index: bwa index base path, or list thereof.
         :param clean: clean-up shared memory on exit.
@@ -153,12 +150,9 @@ class BwapyServe(rpc.AttrHandler):
 
         :returns: the output of bwa mem call.
         """
-        print("Got {} for alignment".format(sequence))
         if self.aligner is None:
             self.aligner = BwaAligner(self.index, options=self.bwa_opts)
         self.logger.debug("Aligning sequence of length {}.".format(len(sequence)))
-        print(self.aligner)
-        print(self.aligner.__dict__)
         return self.aligner.align_seq(sequence)
 
 
@@ -169,7 +163,6 @@ def align_server(index, port, shm=False, clean=False):
             BwaServe(index, clean=clean), bind='tcp://127.0.0.1:{}'.format(port)
         )
     else:
-        print('Starting bwapy server.')
         server = yield from rpc.serve_rpc(
             BwapyServe(index[0]), bind='tcp://127.0.0.1:{}'.format(port)
         )
@@ -206,29 +199,29 @@ class AlignClient(object):
 
 
 def serve(args):
-    #aligner = BwaAligner(args.bwa_index[0])
-    #for seq in ['CCACACCACACCCACACACCCACACACCACACCACACACCACACCACACCCACACACACACATCCTAACACTACCCTAACACAGCCCTAATCTAACCCTGGCCAACCTGTCTCTCAACTTACCCTCCATTACCCTGCCTCCAC']:
-    #    print(aligner.align_seq(seq))
-
-    loop = asyncio.get_event_loop()
-    set_wakeup()
-    server = loop.create_task(align_server(
-        args.bwa_index, args.port, shm=args.shm, clean=args.clean
-    ))
-
     @asyncio.coroutine
     def clean_up():
+        # Doesn't seem right to have a client clean up the server
+        logger.info('Creating cleanup client')
         client = yield from align_client(args.port)
         yield from client.call.clean_index()
 
-    logger.info('Alignment server running, awaiting requests...')
+    @asyncio.coroutine
+    def _run():
+        set_wakeup()
+        server = yield from align_server(
+            args.bwa_index, args.port, shm=args.shm, clean=not args.noclean
+        )
+        logger.info('Alignment server running, awaiting requests...')
+        yield from server.wait_closed()
+
+    loop = asyncio.get_event_loop()
     try:
-        loop.run_forever()
+        loop.run_until_complete(_run())
     except KeyboardInterrupt:
         logger.info('Shutting down server...')
-        if args.clean:
-            loop.run_until_complete(clean_up())
-        server.cancel()
+        if not args.noclean:
+             loop.run_until_complete(clean_up())
         logger.info('Server shut down.')
 
 
@@ -248,7 +241,7 @@ def get_parser():
     sparser.add_argument('port', type=int, help='Port on which to serve.')
     sparser.add_argument('bwa_index', nargs='+', help='Filename path prefix for BWA index files.')
     sparser.add_argument('--shm', action='store_true', help='Use deprecated shared memory implementation server.')
-    sparser.add_argument('--clean', action='store_true', default=False, help='Clean bwa shm when done.')
+    sparser.add_argument('--noclean', action='store_true', default=False, help='Clean bwa shm when done.')
 
     sparser = subparsers.add_parser('client', help='Test client.')
     sparser.set_defaults(func=send)
