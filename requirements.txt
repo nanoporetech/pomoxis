@@ -3,7 +3,7 @@
 aiozmq
 cffi
 msgpack-python
-numpy
+numpy==1.9.0 #since fast5_research is pinned to this
 pysam
 watchdog
 sphinx-argparse
