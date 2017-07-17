@@ -4,7 +4,6 @@ python:
     - "3.6"
 dist: trusty
 sudo: required
-group: deprecated-2017Q2 #for neo4j hash sum mismatch
 
 cache:
   directories:
@@ -18,8 +17,9 @@ before_install:
   - sudo apt-get install -y zlib1g-dev libncurses5-dev python3-all-dev libhdf5-dev libatlas-base-dev libopenblas-base libopenblas-dev libbz2-dev liblzma-dev libffi-dev
 
 script:
+  - echo $TRAVIS_PYTHON_VERSION
   - make install
-  - make docs
+  - if [[ "$TRAVIS_PYTHON_VERSION" == "3.4" ]]; then make docs; fi
 
 deploy:
   provider: pages
@@ -29,3 +29,4 @@ deploy:
   target_branch: gh-pages
   on:
     branch: master
+    python: "3.4"
