@@ -191,9 +191,10 @@ class AlignClient(object):
         results = yield from client.call.align(sequence)
         return results
 
-    def align(self, sequence):
+    def align(self, sequence, loop=None):
         """Align a given sequence."""
-        loop = asyncio.get_event_loop()
+        if loop is None:
+            loop = asyncio.get_event_loop()
         result = loop.run_until_complete(self._run_align(sequence))
         return result
 
