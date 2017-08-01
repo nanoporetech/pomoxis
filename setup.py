@@ -39,7 +39,7 @@ extra_requires = {
     'nanonet':'nanonet'
 }
 
-exes = ['minimap', 'miniasm', 'racon', 'bwa', 'samtools']
+exes = ['minimap', 'minimap2', 'miniasm', 'racon', 'bwa', 'samtools']
 scrappie_path = os.path.join('submodules', 'scrappie', 'src')
 
 extensions = []

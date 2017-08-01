@@ -13,3 +13,6 @@
 [submodule "submodules/scrappie"]
 	path = submodules/scrappie
 	url = https://github.com/nanoporetech/scrappie.git
+[submodule "submodules/minimap2"]
+	path = submodules/minimap2
+	url = https://github.com/lh3/minimap2
