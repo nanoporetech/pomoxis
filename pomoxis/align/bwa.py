@@ -126,6 +126,7 @@ class BwapyServe(rpc.AttrHandler):
                 '{} requires BwaAligner which could not be imported.'.format(
                 self.__class__.__name__
             ))
+        print(self.bwa_opts)
         self.aligner = BwaAligner(self.index, options=self.bwa_opts)
         self.logger.info('bwa service started.')
 
@@ -153,18 +154,22 @@ class BwapyServe(rpc.AttrHandler):
         if self.aligner is None:
             self.aligner = BwaAligner(self.index, options=self.bwa_opts)
         self.logger.debug("Aligning sequence of length {}.".format(len(sequence)))
-        return self.aligner.align_seq(sequence)
+        results = self.aligner.align_seq(sequence)
+        self.logger.info("Aligned sequence of {} bases with {} hits.".format(
+            len(sequence), len(results)
+        ))
+        return results
 
 
 @asyncio.coroutine
-def align_server(index, port, shm=False, clean=False):
+def align_server(index, port, shm=False, clean=False, opts=''):
     if shm:
         server = yield from rpc.serve_rpc(
-            BwaServe(index, clean=clean), bind='tcp://127.0.0.1:{}'.format(port)
+            BwaServe(index, clean=clean, bwa_opts=opts), bind='tcp://127.0.0.1:{}'.format(port)
         )
     else:
         server = yield from rpc.serve_rpc(
-            BwapyServe(index[0]), bind='tcp://127.0.0.1:{}'.format(port)
+            BwapyServe(index[0], bwa_opts=opts), bind='tcp://127.0.0.1:{}'.format(port)
         )
     return server
 
@@ -193,9 +198,10 @@ class AlignClient(object):
 
     def align(self, sequence, loop=None):
         """Align a given sequence."""
-        if loop is None:
-            loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
         result = loop.run_until_complete(self._run_align(sequence))
+        loop.close()
         return result
 
 
@@ -211,7 +217,7 @@ def serve(args):
     def _run():
         set_wakeup()
         server = yield from align_server(
-            args.bwa_index, args.port, shm=args.shm, clean=not args.noclean
+            args.bwa_index, args.port, shm=args.shm, clean=not args.noclean, opts=args.opts
         )
         logger.info('Alignment server running, awaiting requests...')
         yield from server.wait_closed()
@@ -243,6 +249,7 @@ def get_parser():
     sparser.add_argument('bwa_index', nargs='+', help='Filename path prefix for BWA index files.')
     sparser.add_argument('--shm', action='store_true', help='Use deprecated shared memory implementation server.')
     sparser.add_argument('--noclean', action='store_true', default=False, help='Clean bwa shm when done.')
+    sparser.add_argument('--opts', default='', help='Alignment options as bwa mem command line')
 
     sparser = subparsers.add_parser('client', help='Test client.')
     sparser.set_defaults(func=send)
