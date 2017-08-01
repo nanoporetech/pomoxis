@@ -1,5 +1,6 @@
 import importlib
 import imp
+import numpy as np
 import os
 import sys
 
@@ -70,9 +71,9 @@ ffi.cdef("""
 
 
 def build_events(events):
-    """Transform numpy events into scrappie event_t[].
-
-    :params events: input numpy events.
+    """Transform events structure into scrappie event_t[].
+        
+    :params events: input numpy events or list of events with event attributes
 
     :returns: pointer to scrappie event_t[]. 
 
@@ -84,13 +85,23 @@ def build_events(events):
     """
     n_events = len(events)
     event = ffi.new('event_t[]', n_events)
-    for i in range(n_events):
-        event[i].start = events[i]['start']
-        event[i].length = events[i]['length']
-        event[i].mean = events[i]['mean']
-        event[i].stdv = events[i]['stdv']
-        event[i].pos = -1
-        event[i].state = -1
+
+    if isinstance(events, list):
+        for i in range(n_events):
+            event[i].start = events[i].start
+            event[i].length = events[i].length
+            event[i].mean = events[i].mean
+            event[i].stdv = events[i].sd
+            event[i].pos = -1
+            event[i].state = -1
+    elif isinstance(events, np.ndarray):
+        for i in range(n_events):
+            event[i].start = events[i]['start']
+            event[i].length = events[i]['length']
+            event[i].mean = events[i]['mean']
+            event[i].stdv = events[i]['stdv']
+            event[i].pos = -1
+            event[i].state = -1
     return event
 
 

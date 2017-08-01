@@ -1,7 +1,7 @@
 .PHONY: externals pip_submodules install docs
 
 # Builds a cache of binaries which can just be copied for CI
-BINARIES=minimap miniasm racon bwa samtools
+BINARIES=minimap minimap2 miniasm racon bwa samtools
 BINCACHEDIR=bincache
 $(BINCACHEDIR):
 	mkdir -p $(BINCACHEDIR)
@@ -11,6 +11,12 @@ $(BINCACHEDIR)/minimap: | $(BINCACHEDIR)
 	@echo Making $(@F)
 	cd submodules/minimap && make
 	cp submodules/minimap/minimap $@
+
+
+$(BINCACHEDIR)/minimap2: | $(BINCACHEDIR)
+	@echo Making $(@F)
+	cd submodules/minimap2 && make
+	cp submodules/minimap2/minimap2 $@
 
 $(BINCACHEDIR)/miniasm: | $(BINCACHEDIR)
 	@echo Making $(@F)
