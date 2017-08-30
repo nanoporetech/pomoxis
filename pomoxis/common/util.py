@@ -1,7 +1,11 @@
+import itertools
+import os
 import shutil
 import sys
-import itertools
+
+from Bio import SeqIO
 from pysam import FastxFile
+
 
 def chunks(iterable, n):
     """Generate fixed length chunks of an interable.
@@ -65,3 +69,47 @@ def split_fastx_cmdline():
     """Split records in a fasta/q file into chunks of a maximum size."""
     fname, output, chunksize = sys.argv[1:]
     split_fastx(fname, output, int(chunksize))
+
+
+def fast_convert(convert=None, mock_q=10):
+    """Convert between fasta<->fastq.
+
+    :param convert: conversion code: from->to, e.g. 'aq'.
+    :param mockq: mock quality value, valid for convert=aq.
+    """
+
+    if convert is None:
+        parser = argparse.ArgumentParser(description='fast_convert -- Convert between fasta<->fastq.')
+        parser.add_argument('convert', choices=['qq', 'aa', 'aq', 'qa'],
+            help='Conversion code: from->to.')
+        parser.add_argument('--mock_q', default=mock_q, type=int,
+            help='Mock quality value, valid for convert=aq.')
+        args = parser.parse_args()
+        convert, mock_q = args.convert, args.mock_q
+
+    in_fmt = 'fastq'
+    out_fmt= 'fasta'
+    flag = False
+    if convert == 'qq':
+        out_fmt = 'fastq'
+    elif convert == 'aa':
+        in_fmt = 'fasta'
+    elif convert == 'aq':
+        in_fmt = 'fasta'
+        out_fmt = 'fastq'
+        flag = True
+    elif convert == 'qa':
+        pass # default
+    else:
+        raise ValueError("convert must be 'qq', 'aq', or aa'\n")
+    
+    if flag:
+        def fq_gen(io):
+            for rec in SeqIO.parse(io, in_fmt):
+                rec.letter_annotations["phred_quality"] = [mock_q] * len(rec)
+                yield rec
+        sys.stderr.write('Mocking fastq from fasta\n')
+        SeqIO.write(fq_gen(sys.stdin), sys.stdout, out_fmt)
+    else:
+        SeqIO.convert(sys.stdin, in_fmt, sys.stdout, out_fmt)
+
