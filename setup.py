@@ -87,7 +87,7 @@ setup(
     cmdclass={
         model_cmd_name:CustomBasecallModel
     },
-    url='https://git.oxfordnanolabs.local/research/{}'.format(__pkg_name__),
+    url='https://github.com/nanoporetech/{}'.format(__pkg_name__),
     author='cwright',
     author_email='cwright@nanoporetech.com',
     description='Real-time assembly.',
