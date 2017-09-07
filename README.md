@@ -18,7 +18,7 @@ environment.
 
 To setup the environment run:
 
-    git clone --recursive https://git/research/pomoxis.git
+    git clone --recursive https://github.com/nanoporetech/pomoxis
     cd pomoxis
     make install
     . ./venv/bin/activate
