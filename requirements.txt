@@ -9,4 +9,5 @@ watchdog
 sphinx-argparse
 fast5_research
 git+https://github.com/nanoporetech/nanonet@cd805595
+biopython >= 1.63
 
