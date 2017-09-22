@@ -2,22 +2,28 @@
 
 usage="$(basename "$0") [-h] -i <fastq>
 
-Assemble fastq formatted reads and perform POA consensus.
+Assemble fastq/fasta formatted reads and perform POA consensus.
 
     -h  show this help text.
-    -i  fastq input reads (required).
+    -i  fastx input reads (required).
+    -q  use qualities as is (default: false).
     -o  output folder (default: assm).
     -p  output file prefix (default: reads).
-    -t  number of minimap and racon threads (default: 1)."
+    -t  number of minimap and racon threads (default: 1).
+
+Be default 
+"
 
 OUTPUT="assm"
 NAME="reads"
 THREADS=1
+USEQUAL=false
 iflag=false
 while getopts ':hi:o:p:t:' option; do
   case "$option" in
     h  ) echo "$usage" >&2; exit;;
     i  ) iflag=true; INPUT=$OPTARG;;
+    q  ) USEQUAL=true;;
     o  ) OUTPUT=$OPTARG;;
     p  ) NAME=$OPTARG;;
     t  ) THREADS=$OPTARG;;
@@ -39,7 +45,20 @@ else
   echo "Output ${OUTPUT} already exists." >&2; exit 1
 fi
 
-cp ${INPUT} ${OUTPUT}/${NAME}.fq
+# Simple test for fastq
+ext=$(sed 's/^\w\+.//' <<< "${INPUT}")
+FASTQ=${OUTPUT}/${NAME}.fq
+MOCKQ=10
+if [ "$ext" = 'fq' ] || [ "$ext" = 'fastq' ]; then
+  if ${USEQUAL}; then
+    cp ${INPUT} ${FASTQ}
+  else
+    cat ${INPUT} | fast_convert qq --discard_q --mock_q ${MOCKQ} > ${FASTQ}
+  fi
+else
+  cat ${INPUT} | fast_convert aq --mock_q ${MOCKQ} > ${FASTQ}
+fi
+
 cd ${OUTPUT}
 
 ASMOPTS="-s 100 -e 3"
