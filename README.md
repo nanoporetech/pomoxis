@@ -7,14 +7,16 @@ Pomoxis contains a set of services to perform analysis of squiggles as they are
 produced in real-time along with fast pipelines for generating draft assemblies.
 
 Documentation can be found at https://nanoporetech.github.io/pomoxis/.
+
+Currently pomoxis supports only unix-like environments.
   
 
 Build
 -----
 
 Pomoxis should be installed inside a virtual environment. A Makefile is
-provided to fetch, compile and install all direct dependencies into an
-environment.
+provided to create a fresh environment, and to fetch, compile and install
+all direct dependencies into the environment.
 
 To setup the environment run:
 
@@ -22,6 +24,10 @@ To setup the environment run:
     cd pomoxis
     make install
     . ./venv/bin/activate
+
+Running the above within a pre-exisiting virtual environnment may well fail;
+advanced may wish to simply run the `setup.py` file in the standard manner
+after compiling the third party programs as in the `Makefile`.
 
 
 Extras
