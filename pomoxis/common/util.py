@@ -1,3 +1,4 @@
+import argparse
 import itertools
 import os
 import shutil
@@ -71,44 +72,42 @@ def split_fastx_cmdline():
     split_fastx(fname, output, int(chunksize))
 
 
-def fast_convert(convert=None, mock_q=10):
-    """Convert between fasta<->fastq.
-
-    :param convert: conversion code: from->to, e.g. 'aq'.
-    :param mockq: mock quality value, valid for convert=aq.
-    """
-
-    if convert is None:
-        parser = argparse.ArgumentParser(description='fast_convert -- Convert between fasta<->fastq.')
-        parser.add_argument('convert', choices=['qq', 'aa', 'aq', 'qa'],
-            help='Conversion code: from->to.')
-        parser.add_argument('--mock_q', default=mock_q, type=int,
-            help='Mock quality value, valid for convert=aq.')
-        args = parser.parse_args()
-        convert, mock_q = args.convert, args.mock_q
+def fast_convert():
+    """Convert between fasta<->fastq."""
+    
+    parser = argparse.ArgumentParser(description='fast_convert -- Convert between fasta<->fastq.')
+    parser.add_argument('convert', choices=['qq', 'aa', 'aq', 'qa'],
+        help='Conversion code: from->to.')
+    parser.add_argument('--discard_q', action='store_true',
+        help='Discard quality information from fastq, use with --mock_q.')
+    parser.add_argument('--mock_q', default=10, type=int,
+        help='Mock quality value, valid for convert=aq|qq.')
+    args = parser.parse_args()
 
     in_fmt = 'fastq'
     out_fmt= 'fasta'
-    flag = False
-    if convert == 'qq':
+    qflag = False # controls quality manipulation
+    if arg.convert == 'qq':
         out_fmt = 'fastq'
-    elif convert == 'aa':
+        if args.discard_q is not None:
+            qflag = True
+    elif args.convert == 'aa':
         in_fmt = 'fasta'
-    elif convert == 'aq':
+    elif args.convert == 'aq':
         in_fmt = 'fasta'
         out_fmt = 'fastq'
-        flag = True
-    elif convert == 'qa':
+        qflag = True
+    elif args.convert == 'qa':
         pass # default
     else:
-        raise ValueError("convert must be 'qq', 'aq', or aa'\n")
+        raise ValueError("convert must be 'qq', 'aq', 'qa', or 'aa'\n")
     
-    if flag:
+    if qflag:
         def fq_gen(io):
             for rec in SeqIO.parse(io, in_fmt):
-                rec.letter_annotations["phred_quality"] = [mock_q] * len(rec)
+                rec.letter_annotations["phred_quality"] = [args.mock_q] * len(rec)
                 yield rec
-        sys.stderr.write('Mocking fastq from fasta\n')
+        sys.stderr.write('Creating/ignoring quality information in input.\n')
         SeqIO.write(fq_gen(sys.stdin), sys.stdout, out_fmt)
     else:
         SeqIO.convert(sys.stdin, in_fmt, sys.stdout, out_fmt)
