@@ -46,16 +46,21 @@ else
 fi
 
 # Simple test for fastq
-ext=$(sed 's/^\w\+.//' <<< "${INPUT}")
+filename=$(basename "$INPUT")
+ext="${filename##*.}"
 FASTQ=${OUTPUT}/${NAME}.fq
 MOCKQ=10
+echo "extention is '$ext'"
 if [ "$ext" = 'fq' ] || [ "$ext" = 'fastq' ]; then
   if ${USEQUAL}; then
+    echo "Copying input to workspace: ${INPUT} > ${FASTQ}"
     cp ${INPUT} ${FASTQ}
   else
+    echo "Discarding quality values: ${INPUT} > ${FASTQ}"
     cat ${INPUT} | fast_convert qq --discard_q --mock_q ${MOCKQ} > ${FASTQ}
   fi
 else
+  echo "Mocking quality values: ${INPUT} > ${FASTQ}"
   cat ${INPUT} | fast_convert aq --mock_q ${MOCKQ} > ${FASTQ}
 fi
 

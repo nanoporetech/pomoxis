@@ -87,7 +87,7 @@ def fast_convert():
     in_fmt = 'fastq'
     out_fmt= 'fasta'
     qflag = False # controls quality manipulation
-    if arg.convert == 'qq':
+    if args.convert == 'qq':
         out_fmt = 'fastq'
         if args.discard_q is not None:
             qflag = True
