@@ -110,6 +110,7 @@ setup(
         'console_scripts': [
             'split_fastx = {}.common.util:split_fastx_cmdline'.format(__pkg_name__),
             'fast_convert = {}.common.util:fast_convert'.format(__pkg_name__),
+            'long_fastq = {}.common.util:extract_long_reads'.format(__pkg_name__), 
             'pyscrap = {}.basecall.pyscrap.pyscrap:basecall_file'.format(__pkg_name__),
             'epi3me = {}.apps.epi3me:main'.format(__pkg_name__),
             'read_until_filter = {}.apps.read_until_filter:main'.format(__pkg_name__),

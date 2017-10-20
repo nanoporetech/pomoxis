@@ -10,3 +10,4 @@ pysam
 sphinx-argparse
 watchdog
 git+https://github.com/nanoporetech/nanonet@cd805595
+git+https://github.com/rrwick/Porechop
