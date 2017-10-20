@@ -2,10 +2,12 @@
 
 usage="$(basename "$0") [-h] -i <fastq>
 
-Assemble fastq formatted reads and perform POA consensus.
+Assemble fastq/fasta formatted reads and perform POA consensus.
 
     -h  show this help text.
-    -i  fastq input reads (required).
+    -i  fastx input reads (required).
+    -q  use qualities as is (default: false).
+    -r  reference fasta for reference-guided consensus (instead of de novo assembly)
     -o  output folder (default: assm).
     -p  output file prefix (default: reads).
     -t  number of minimap and racon threads (default: 1)."
@@ -13,11 +15,15 @@ Assemble fastq formatted reads and perform POA consensus.
 OUTPUT="assm"
 NAME="reads"
 THREADS=1
+USEQUAL=false
 iflag=false
-while getopts ':hi:o:p:t:' option; do
+rflag=false
+while getopts ':hi:q:r:o:p:t:' option; do
   case "$option" in
     h  ) echo "$usage" >&2; exit;;
     i  ) iflag=true; INPUT=$OPTARG;;
+    q  ) USEQUAL=true;;
+    r  ) rflag=true; REF=$OPTARG;;
     o  ) OUTPUT=$OPTARG;;
     p  ) NAME=$OPTARG;;
     t  ) THREADS=$OPTARG;;
@@ -39,18 +45,45 @@ else
   echo "Output ${OUTPUT} already exists." >&2; exit 1
 fi
 
-cp ${INPUT} ${OUTPUT}/${NAME}.fq
+# Simple test for fastq
+filename=$(basename "$INPUT")
+ext="${filename##*.}"
+FASTQ=${OUTPUT}/${NAME}.fq
+MOCKQ=10
+echo "extention is '$ext'"
+if [ "$ext" = 'fq' ] || [ "$ext" = 'fastq' ]; then
+  if ${USEQUAL}; then
+    echo "Copying input to workspace: ${INPUT} > ${FASTQ}"
+    cp ${INPUT} ${FASTQ}
+  else
+    echo "Discarding quality values: ${INPUT} > ${FASTQ}"
+    cat ${INPUT} | fast_convert qq --discard_q --mock_q ${MOCKQ} > ${FASTQ}
+  fi
+else
+  echo "Mocking quality values: ${INPUT} > ${FASTQ}"
+  cat ${INPUT} | fast_convert aq --mock_q ${MOCKQ} > ${FASTQ}
+fi
+
 cd ${OUTPUT}
 
-ASMOPTS="-s 100 -e 3"
+if ! $rflag; then 
 
-echo "Overlapping reads..."
-minimap -Sw5 -L100 -m0 -t${THREADS} ${NAME}.fq ${NAME}.fq | gzip -1 > ${NAME}.paf.gz
-echo "Assembling graph..."
-miniasm ${ASMOPTS} -f ${NAME}.fq ${NAME}.paf.gz | tee ${NAME}.gfa | awk '/^S/{print ">"$2"\n"$3}' > ${NAME}.gfa.fasta
+  ASMOPTS="-s 100 -e 3"
 
-DRAFT=${NAME}.gfa.fasta
+  echo "Overlapping reads..."
+  minimap -Sw5 -L100 -m0 -t${THREADS} ${NAME}.fq ${NAME}.fq | gzip -1 > ${NAME}.paf.gz
+  echo "Assembling graph..."
+  miniasm ${ASMOPTS} -f ${NAME}.fq ${NAME}.paf.gz | tee ${NAME}.gfa | awk '/^S/{print ">"$2"\n"$3}' > ${NAME}.gfa.fasta
+
+  DRAFT=${NAME}.gfa.fasta
+
+else
+  echo "Using supplied reference to perform reference-guided consensus..."
+  DRAFT=${REF}
+fi
+
 READS=${NAME}.fq
+
 for ROUND in {01..04}; do
      echo "Running round ${ROUND} consensus"
      READS2TIGS=reads2contigs_${ROUND}.paf
