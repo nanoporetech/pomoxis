@@ -1,12 +1,12 @@
 # pomoxis requirements. 
 # Add comments to keep track of why we are using particular versions
 aiozmq
-cffi
-msgpack-python
-numpy==1.9.0 #since fast5_research is pinned to this
-pysam
-watchdog
-sphinx-argparse
-fast5_research
-git+https://github.com/nanoporetech/nanonet@cd805595
 biopython >= 1.63
+cffi
+fast5_research
+msgpack-python
+numpy
+pysam
+sphinx-argparse
+watchdog
+git+https://github.com/nanoporetech/nanonet@cd805595
