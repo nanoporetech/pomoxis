@@ -75,7 +75,7 @@ if [ "$CHUNK" != "" ]; then
 fi
 
 # Seems like minimap2 can get ahead of sorting...
-minimap2 ${ALIGN_OPTS} -t ${THREADS} -a ${REFERENCE}.mmi ${INPUT} |
+minimap2 -L ${ALIGN_OPTS} -t ${THREADS} -a ${REFERENCE}.mmi ${INPUT} |
   samtools view -@ ${THREADS} -T ${REFERENCE} ${FILTER} -bS - |
   samtools sort -@ ${THREADS} -o ${PREFIX}.bam -
 samtools index ${PREFIX}.bam ${PREFIX}.bam.bai
