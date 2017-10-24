@@ -1,5 +1,8 @@
 .PHONY: externals pip_submodules install docs
 
+# for porechop on travis (or other platform with older gcc)
+CXX         ?= g++
+
 # Builds a cache of binaries which can just be copied for CI
 BINARIES=minimap minimap2 miniasm racon bwa samtools
 BINCACHEDIR=bincache
@@ -53,10 +56,8 @@ venv/bin/activate:
 	${IN_VENV} && pip install pip --upgrade
 	${IN_VENV} && pip install numpy==1.9.0 # needs to get done before other things
 
-# for porechop on travis (or other platform with older gcc)
-CXX         ?= g++
 install: venv | $(addprefix $(BINCACHEDIR)/, $(BINARIES))
-	${IN_VENV} && export CXX=${CXX} && pip install -r requirements.txt && python setup.py install
+	${IN_VENV} && pip install -r requirements.txt && python setup.py install
 
 
 # You can set these variables from the command line.
