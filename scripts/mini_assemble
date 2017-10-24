@@ -126,5 +126,5 @@ for ROUND in {01..04}; do
 done;
 
 FINAL=${NAME}_final.fa
-cp ${DRAFT} ${FINAL}
+sed 's/Consensus_Consensus_Consensus_//' ${DRAFT} > ${FINAL}
 echo "Final assembly written to ${OUTPUT}/${FINAL}. Have a nice day."
