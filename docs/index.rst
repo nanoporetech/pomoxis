@@ -14,16 +14,22 @@ Installation
 Pomoxis should be installed inside a virtual environment. A Makefile is
 provided to fetch, compile and install all direct dependencies into an
 environment. (Some additional build dependencies are not installed via this
-Makefile, see `.gitlab-ci.yml` for additional requirements if things fail.
+Makefile, see `.travis.yml` for additional requirements if things fail.
 
 To setup the environment run:
 
 .. code-block:: bash
 
-    git clone --recursive https://git/research/pomoxis.git
+    git clone --recursive https://github.com/nanoporetech/pomoxis.git
     cd pomoxis
+    # For porechop to be compiled on older systems set these, e.g.:
+    #    export CXX="g++-4.9" CC="gcc-4.9"
     make install
     . ./venv/bin/activate
+
+The installation of porechop `porechop <https://github.com/rrwick/Porechop>`_
+requires a newer compiler than is a available on some systems. It may therefore
+be necessary to install a newer compiler and set variables as in the above.
 
 See :doc:`examples` for common bundled workflows.
 
