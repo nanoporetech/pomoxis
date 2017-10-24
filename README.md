@@ -8,7 +8,9 @@ produced in real-time along with fast pipelines for generating draft assemblies.
 
 Documentation can be found at https://nanoporetech.github.io/pomoxis/.
 
-Currently pomoxis supports only unix-like environments.
+Currently pomoxis supports only unix-like environments. Also of note is that
+the porechop dependency requires a compiler version that may not be installed
+by default on some systems.
   
 
 Build
@@ -37,9 +39,11 @@ The distribution bundles some common bioinformatics tools (some of which are not
 currently used by pomoxis itself):
 
 * miniasm
-* minimap
+* minimap (to be deprecated)
+* minimap2
 * racon
 * bwa
 * samtools
+* porechop
 
 These will be compiled and installed into the virtual environment created as above.
