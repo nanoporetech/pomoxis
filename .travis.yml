@@ -44,7 +44,6 @@ script:
 before_deploy:
   - if [[ "$TRAVIS_PYTHON_VERSION" == "3.4" ]]; then make docs; fi
 
-
 deploy:
   provider: pages
   skip_cleanup: true
