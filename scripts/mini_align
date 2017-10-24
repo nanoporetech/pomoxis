@@ -10,6 +10,7 @@ Align fastq/a formatted reads to a genome using minimap2.
     -i  fastq/a input reads (required).
     -a  aggresively extend gaps (sets -A1 -B2 -O2 -E1 for minimap2).
     -P  filter to only primary alignments (i.e. run samtools view -F 2308)
+    -n  sort bam by read name.
     -c  chunk size. Input reads/contigs will be broken into chunks
         prior to alignment.
     -t  alignment threads (default: 1).
@@ -20,15 +21,17 @@ PREFIX="reads"
 ALIGN_OPTS="-x map-ont"
 THREADS=1
 FILTER=""
+SORT=""
 CHUNK=""
 rflag=false
 iflag=false
-while getopts ':hr:i:p:aPc:t:' option; do
+while getopts ':hr:i:p:aPnc:t:' option; do
   case "$option" in
     h  ) echo "$usage" >&2; exit;;
     r  ) rflag=true; REFERENCE=$OPTARG;;
     i  ) iflag=true; INPUT=$OPTARG;;
     P  ) FILTER="-F 2308";;
+    n  ) SORT="-n";;
     p  ) PREFIX=$OPTARG;;
     a  ) ALIGN_OPTS="${ALIGN_OPTS} -A1 -B2 -O2 -E1";;
     c  ) CHUNK=$OPTARG;;
@@ -75,8 +78,8 @@ if [ "$CHUNK" != "" ]; then
 fi
 
 # Seems like minimap2 can get ahead of sorting...
-minimap2 ${ALIGN_OPTS} -t ${THREADS} -a ${REFERENCE}.mmi ${INPUT} |
+minimap2 -L ${ALIGN_OPTS} -t ${THREADS} -a ${REFERENCE}.mmi ${INPUT} |
   samtools view -@ ${THREADS} -T ${REFERENCE} ${FILTER} -bS - |
-  samtools sort -@ ${THREADS} -o ${PREFIX}.bam -
+  samtools sort -@ ${THREADS} ${SORT} -o ${PREFIX}.bam -
 samtools index ${PREFIX}.bam ${PREFIX}.bam.bai
 
