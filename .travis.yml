@@ -12,9 +12,6 @@ cache:
 git:
   submodules: true
 
-before_install:
-  - if [ "$CXX" = "g++" ]; then export CXX="g++-4.9" CC="gcc-4.9"; fi
-
 addons:
   apt:
     sources:
@@ -34,10 +31,19 @@ addons:
       - libffi-dev
 
 
-script:
+install:
   - echo $TRAVIS_PYTHON_VERSION
+  - export CXX="g++-4.9" CC="gcc-4.9"
   - make install
+
+
+script:
+  - echo "No testing implemented"
+
+
+before_deploy:
   - if [[ "$TRAVIS_PYTHON_VERSION" == "3.4" ]]; then make docs; fi
+
 
 deploy:
   provider: pages
