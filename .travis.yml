@@ -13,8 +13,27 @@ git:
   submodules: true
 
 before_install:
-  - sudo apt-get -qq update
-  - sudo apt-get install -y zlib1g-dev libncurses5-dev python3-all-dev libhdf5-dev libatlas-base-dev libopenblas-base libopenblas-dev libbz2-dev liblzma-dev libffi-dev
+  # 5.4 is what one gets on xenial
+  - if [ "$CXX" = "g++" ]; then export CXX="g++-5.4" CC="gcc-5.4"; fi
+
+addons:
+  apt:
+    sources:
+      - ubuntu-toolchain-r-test
+    packages:
+      - gcc-5.4
+      - g++-5.4
+      - zlib1g-dev
+      - libncurses5-dev
+      - python3-all-dev
+      - libhdf5-dev
+      - libatlas-base-dev
+      - libopenblas-base
+      - libopenblas-dev
+      - libbz2-dev
+      - liblzma-dev
+      - libffi-dev
+
 
 script:
   - echo $TRAVIS_PYTHON_VERSION
