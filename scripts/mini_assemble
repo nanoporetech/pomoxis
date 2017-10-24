@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 usage="$(basename "$0") [-h] -i <fastq>
 
@@ -10,15 +11,19 @@ Assemble fastq/fasta formatted reads and perform POA consensus.
     -r  reference fasta for reference-guided consensus (instead of de novo assembly)
     -o  output folder (default: assm).
     -p  output file prefix (default: reads).
-    -t  number of minimap and racon threads (default: 1)."
+    -t  number of minimap and racon threads (default: 1).
+    -c  trim adapters from reads prior to everything else.
+    -e  error correct longest e% of reads prior to assembly."
 
 OUTPUT="assm"
 NAME="reads"
 THREADS=1
 USEQUAL=false
+CHOP=false
 iflag=false
 rflag=false
-while getopts ':hi:q:r:o:p:t:' option; do
+eflag=false
+while getopts ':hi:q:r:o:p:t:ce:' option; do
   case "$option" in
     h  ) echo "$usage" >&2; exit;;
     i  ) iflag=true; INPUT=$OPTARG;;
@@ -27,6 +32,8 @@ while getopts ':hi:q:r:o:p:t:' option; do
     o  ) OUTPUT=$OPTARG;;
     p  ) NAME=$OPTARG;;
     t  ) THREADS=$OPTARG;;
+    c  ) CHOP=true;;
+    e  ) eflag=true; ERRCORR=$OPTARG;;
     \? ) echo "Invalid option: -${OPTARG}." >&2; exit 1;;
     :  ) echo "Option -$OPTARG requires an argument." >&2; exit 1;;
   esac
@@ -65,24 +72,49 @@ else
 fi
 
 cd ${OUTPUT}
+READS=$(basename "$FASTQ")
+
+if $CHOP; then
+  echo "Trimming reads..."
+  TRIMMED=${NAME}_trimmed.fq
+  porechop -i ${READS} -o ${TRIMMED} --threads ${THREADS} --check_reads 1000
+  READS=${TRIMMED}
+else
+  echo "Skipped adapter trimming."
+fi
+
+if $eflag; then
+  echo "Extracting longest ${ERRCORR}% of reads..." 
+  LONG_READS=long_${READS}
+  OTHERS=other_${READS}
+  long_fastq ${READS} ${LONG_READS} ${ERRCORR} --others ${OTHERS}
+
+  echo "Correcting long reads"
+  LONG_PAF=long_corr.paf
+  LONG_READ_CORR=corr_${LONG_READS}
+  minimap -Sw5 -L100 -m0 -t${THREADS} ${LONG_READS} ${READS} > ${LONG_PAF}
+  racon -M 8 -X -1 -G -4 -E -1 -t ${THREADS} --erc --bq -1 ${READS} ${LONG_PAF} ${LONG_READS} ${LONG_READ_CORR}
+
+  CORR_READS=${NAME}_corrected.fq
+  cat ${LONG_READ_CORR} | fast_convert aq --mock_q ${MOCKQ} | cat - ${OTHERS} > ${CORR_READS}
+  READS=${CORR_READS}
+else
+  echo "Skipped pre-assembly correction." 
+fi
+
 
 if ! $rflag; then 
-
   ASMOPTS="-s 100 -e 3"
-
   echo "Overlapping reads..."
-  minimap -Sw5 -L100 -m0 -t${THREADS} ${NAME}.fq ${NAME}.fq | gzip -1 > ${NAME}.paf.gz
+  minimap -Sw5 -L100 -m0 -t${THREADS} ${READS} ${READS}| gzip -1 > ${NAME}.paf.gz
   echo "Assembling graph..."
-  miniasm ${ASMOPTS} -f ${NAME}.fq ${NAME}.paf.gz | tee ${NAME}.gfa | awk '/^S/{print ">"$2"\n"$3}' > ${NAME}.gfa.fasta
-
+  miniasm ${ASMOPTS} -f ${READS} ${NAME}.paf.gz | tee ${NAME}.gfa | awk '/^S/{print ">"$2"\n"$3}' > ${NAME}.gfa.fasta
   DRAFT=${NAME}.gfa.fasta
-
 else
   echo "Using supplied reference to perform reference-guided consensus..."
   DRAFT=${REF}
 fi
 
-READS=${NAME}.fq
 
 for ROUND in {01..04}; do
      echo "Running round ${ROUND} consensus"

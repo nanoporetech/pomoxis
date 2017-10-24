@@ -5,6 +5,7 @@ import shutil
 import sys
 
 from Bio import SeqIO
+import numpy as np
 from pysam import FastxFile
 
 
@@ -112,3 +113,38 @@ def fast_convert():
     else:
         SeqIO.convert(sys.stdin, in_fmt, sys.stdout, out_fmt)
 
+
+def extract_long_reads():
+    """Filter fastq to longest reads."""
+
+    parser = argparse.ArgumentParser(description='Extract longest reads from a fastq.')
+    parser.add_argument('input',
+        help='Input .fastq file.')
+    parser.add_argument('output',
+        help='Output .fastq file.')
+    parser.add_argument('longest', default=10, type=int,
+        help='Percentage of longest reads to partition.')
+    parser.add_argument('--others', default=None,
+        help='Write all other reads to file.')
+    args = parser.parse_args()
+
+    record_dict = SeqIO.index(args.input, "fastq")
+    ids = list(record_dict.keys())
+    lengths = np.fromiter(
+        (len(record_dict[i]) for i in ids),
+        dtype=int, count=len(ids)
+    )
+    max_reads = len(ids) * (args.longest / 100)
+    longest = np.argpartition(lengths, -max_reads)[-max_reads:]
+
+    SeqIO.write(
+        (record_dict[ids[i]] for i in longest),
+        args.output, 'fastq'
+    )
+
+    if args.others is not None:
+        longest = set(longest)
+        SeqIO.write(
+            (record_dict[ids[i]] for i in range(len(ids)) if i not in longest),
+            args.others, 'fastq'
+        )
