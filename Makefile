@@ -6,12 +6,10 @@ BINCACHEDIR=bincache
 $(BINCACHEDIR):
 	mkdir -p $(BINCACHEDIR)
 
-
 $(BINCACHEDIR)/minimap: | $(BINCACHEDIR)
 	@echo Making $(@F)
 	cd submodules/minimap && make
 	cp submodules/minimap/minimap $@
-
 
 $(BINCACHEDIR)/minimap2: | $(BINCACHEDIR)
 	@echo Making $(@F)
@@ -55,8 +53,10 @@ venv/bin/activate:
 	${IN_VENV} && pip install pip --upgrade
 	${IN_VENV} && pip install numpy==1.9.0 # needs to get done before other things
 
+# for porechop on travis (or other platform with older gcc)
+CXX         ?= g++
 install: venv | $(addprefix $(BINCACHEDIR)/, $(BINARIES))
-	${IN_VENV} && pip install -r requirements.txt && python setup.py install
+	${IN_VENV} && export CXX=${CXX} && pip install -r requirements.txt && python setup.py install
 
 
 # You can set these variables from the command line.
