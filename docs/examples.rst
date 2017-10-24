@@ -3,6 +3,7 @@ Pomoxis Examples
 Below you will find examples of some key tools and ways in which they may be
 usefully combined.
 
+
 Read Alignment with bwa
 -----------------------
 
@@ -26,6 +27,7 @@ streamlined manner with the `bwa_align` tool:
         -p  output file prefix (default: reads).
     -i and -r must be specified.
 
+
 Read Alignment with minimap2
 ----------------------------
 
@@ -47,18 +49,19 @@ Read Alignment with minimap2
         -p  output file prefix (default: reads).
     -i and -r must be specified.
 
-Fast de-novo assembly (or reference-guided consensus)
------------------------------------------------------
+
+Fast de-novo assembly
+---------------------
 
 From a .fastq file containing basecalls one can perform an assembly and
 consensus using the `mini_assemble` tool.
 
 .. code-block:: bash
 
-    mini_assemble [-h] -i <fastx>
-    
+    mini_assemble [-h] -i <fastq>
+
     Assemble fastq/fasta formatted reads and perform POA consensus.
-    
+
         -h  show this help text.
         -i  fastx input reads (required).
         -q  use qualities as is (default: false).
@@ -66,13 +69,19 @@ consensus using the `mini_assemble` tool.
         -o  output folder (default: assm).
         -p  output file prefix (default: reads).
         -t  number of minimap and racon threads (default: 1).
+        -c  trim adapters from reads prior to everything else.
+        -e  error correct longest e% of reads prior to assembly.
     -i must be specified.
 
 For E.coli on a computer with 16 CPUs this should take around 5 minutes for
 a 50-fold coverage dataset.
 
-When a reference fasta is provided, a reference-guided consensus is generated instead
-of a de novo assembly.
+When a reference fasta is provided, a reference-guided consensus is generated
+instead of a de novo assembly.
+
+The options `-c` and `-e` can be used to improve the assembly quality at the 
+expense of speed (particularly `-e`).
+
 
 Distributed basecalling
 -----------------------
