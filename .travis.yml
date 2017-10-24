@@ -12,9 +12,6 @@ cache:
 git:
   submodules: true
 
-before_install:
-  - if [ "$CXX" = "g++" ]; then export CXX="g++-4.9" CC="gcc-4.9"; fi
-
 addons:
   apt:
     sources:
@@ -36,6 +33,7 @@ addons:
 
 script:
   - echo $TRAVIS_PYTHON_VERSION
+  - if [ "$CXX" = "g++" ]; then export CXX="g++-4.9" CC="gcc-4.9"; fi
   - make install
   - if [[ "$TRAVIS_PYTHON_VERSION" == "3.4" ]]; then make docs; fi
 
