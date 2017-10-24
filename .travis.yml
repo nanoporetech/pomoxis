@@ -13,16 +13,15 @@ git:
   submodules: true
 
 before_install:
-  # 5.4 is what one gets on xenial
-  - if [ "$CXX" = "g++" ]; then export CXX="g++-5.4" CC="gcc-5.4"; fi
+  - if [ "$CXX" = "g++" ]; then export CXX="g++-4.9" CC="gcc-4.9"; fi
 
 addons:
   apt:
     sources:
       - ubuntu-toolchain-r-test
     packages:
-      - gcc-5.4
-      - g++-5.4
+      - gcc-4.9
+      - g++-4.9
       - zlib1g-dev
       - libncurses5-dev
       - python3-all-dev
