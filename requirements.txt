@@ -4,11 +4,11 @@ aiozmq
 biopython >= 1.63
 cffi
 fast5_research
+mappy
 msgpack-python
 numpy
 pandas
 pysam
 sphinx-argparse
 watchdog
-git+https://github.com/nanoporetech/nanonet@cd805595
 git+https://github.com/rrwick/Porechop

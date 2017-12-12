@@ -132,7 +132,14 @@ def extract_long_reads():
     args = parser.parse_args()
 
     sys.stderr.write('Loading reads...\n')
-    record_dict = SeqIO.index(args.input, "fastq")
+    fmt = 'fastq'
+    try:
+        record_dict = SeqIO.index(args.input, fmt)
+    except:
+        fmt = 'fasta'
+        record_dict = SeqIO.index(args.input, fmt)
+    sys.stderr.write('Format is {}.\n'.format(fmt))
+
     ids = list(record_dict.keys())
     lengths = np.fromiter(
         (len(record_dict[i]) for i in ids),
@@ -157,12 +164,12 @@ def extract_long_reads():
 
     SeqIO.write(
         (record_dict[ids[i]] for i in longest),
-        args.output, 'fastq'
+        args.output, fmt
     )
 
     if args.others is not None:
         longest = set(longest)
         SeqIO.write(
             (record_dict[ids[i]] for i in range(len(ids)) if i not in longest),
-            args.others, 'fastq'
+            args.others, fmt
         )

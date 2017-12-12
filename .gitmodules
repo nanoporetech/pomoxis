@@ -13,3 +13,6 @@
 [submodule "submodules/minimap2"]
 	path = submodules/minimap2
 	url = https://github.com/lh3/minimap2
+[submodule "submodules/bwapy"]
+	path = submodules/bwapy
+	url = https://github.com/nanoporetech/bwapy

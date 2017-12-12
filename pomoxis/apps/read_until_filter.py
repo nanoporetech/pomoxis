@@ -7,7 +7,10 @@ from timeit import default_timer as now
 from aiozmq import rpc
 import numpy as np
 
-from nanonet.eventdetection.filters import minknow_event_detect
+try:
+    from nanonet.eventdetection.filters import minknow_event_detect
+except ImportError:
+    raise RuntimeError("This example requires nanonet which can be installed from https://github.com/nanoporetech/nanonet@cd805595.")
 
 from pomoxis import set_wakeup
 from pomoxis.provider import replayfast5
