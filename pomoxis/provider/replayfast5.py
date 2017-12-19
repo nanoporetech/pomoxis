@@ -206,7 +206,7 @@ class ReplayChannel(rpc.AttrHandler):
             with BulkFast5(self.fast5) as fh:
                 events = fh.get_events(self.channel, event_indices=[start, end])
                 return Fast5Data(
-                    events, info=str(read['read_id']),
+                    events, info=read['read_id'].decode('utf-8'),
                     start=int(self.sample_offset + read['read_start']),
                     end=int(self.sample_offset + read['read_start'] + read['read_length'])
                 )
@@ -236,7 +236,7 @@ class ReplayChannel(rpc.AttrHandler):
             with BulkFast5(self.fast5) as fh:
                 raw = fh.get_raw(self.channel, raw_indices=[start, end])
                 return Fast5Data(
-                    raw, info=str(read['read_id']),
+                    raw, info=read['read_id'].decode('utf-8'),
                     start=int(self.sample_offset + read['read_start']),
                     end=int(self.sample_offset + read['read_start'] + read['read_length'])
                 )
@@ -250,7 +250,7 @@ class ReplayChannel(rpc.AttrHandler):
         :param read_end: expiration time for request, used only for logging.
         """
         cur_read = self.reads[self.current_read]
-        if str(cur_read['read_id']) == read_id:
+        if cur_read['read_id'].decode('utf-8') == read_id:
             next_read = self.reads[self.current_read + 1]
             jump = int(next_read['read_start'] - self.current_sample)
             self.sample_offset += jump
