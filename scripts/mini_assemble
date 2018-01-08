@@ -87,7 +87,7 @@ if $eflag; then
   echo "Extracting longest ${ERRCORR}% of reads..." 
   LONG_READS=long_${READS}
   OTHERS=other_${READS}
-  long_fastq ${READS} ${LONG_READS} ${ERRCORR} --others ${OTHERS}
+  long_fastq ${READS} ${LONG_READS} --longest ${ERRCORR} --others ${OTHERS}
 
   echo "Correcting long reads"
   LONG_PAF=long_corr.paf
