@@ -8,6 +8,8 @@ Align fastq/a formatted reads to a genome using minimap2.
     -r  reference, should be a fasta file. If correspondng bwa indices
         do not exist they will be created. (required).
     -i  fastq/a input reads (required).
+    -I  split index every ~NUM input bases (default: 16G, this is larger
+        than the usual minimap2 default).
     -a  aggresively extend gaps (sets -A1 -B2 -O2 -E1 for minimap2).
     -P  filter to only primary alignments (i.e. run samtools view -F 2308)
     -n  sort bam by read name.
@@ -19,6 +21,7 @@ Align fastq/a formatted reads to a genome using minimap2.
 OUTPUT="assm"
 PREFIX="reads"
 ALIGN_OPTS="-x map-ont"
+INDEX_SIZE="16G"
 THREADS=1
 FILTER=""
 SORT=""
@@ -30,6 +33,7 @@ while getopts ':hr:i:p:aPnc:t:' option; do
     h  ) echo "$usage" >&2; exit;;
     r  ) rflag=true; REFERENCE=$OPTARG;;
     i  ) iflag=true; INPUT=$OPTARG;;
+    I  ) INDEX_SIZE=$OPTARG;;
     P  ) FILTER="-F 2308";;
     n  ) SORT="-n";;
     p  ) PREFIX=$OPTARG;;
@@ -64,7 +68,7 @@ if [ "$missing" -eq 0 ]; then
   echo "Found minimap files." >&2
 elif [ "$missing" -eq "$num_minimap_exts" ]; then
   echo "Constructing minimap index." >&2
-  minimap2 ${ALIGN_OPTS} -d ${REFERENCE}.mmi ${REFERENCE}
+  minimap2 -I ${INDEX_SIZE} ${ALIGN_OPTS} -d ${REFERENCE}.mmi ${REFERENCE}
 else
   echo "Missing ${missing} index files. Clean up any files named
 ${REFERENCE}<EXT> where <EXT> is one of ${minimap_exts[*]}." >&2
