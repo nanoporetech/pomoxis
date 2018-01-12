@@ -122,20 +122,38 @@ def extract_long_reads():
         help='Input .fastq file.')
     parser.add_argument('output',
         help='Output .fastq file.')
-    parser.add_argument('longest', default=10, type=int,
+    filt = parser.add_mutually_exclusive_group(required=True)
+    filt.add_argument('--longest', default=10, type=int,
         help='Percentage of longest reads to partition.')
+    filt.add_argument('--bases', default=None, type=int,
+        help='Maximum number of bases (subject to at least one read.)')
     parser.add_argument('--others', default=None,
         help='Write all other reads to file.')
     args = parser.parse_args()
 
+    sys.stderr.write('Loading reads...\n')
     record_dict = SeqIO.index(args.input, "fastq")
     ids = list(record_dict.keys())
     lengths = np.fromiter(
         (len(record_dict[i]) for i in ids),
         dtype=int, count=len(ids)
     )
-    max_reads = len(ids) * (args.longest / 100)
-    longest = np.argpartition(lengths, -max_reads)[-max_reads:]
+    sys.stderr.write('Sorting reads...\n')
+    if args.bases is None:
+        # partial sort will do fine here
+        max_reads = int(len(ids) * (args.longest / 100))
+        longest = np.argpartition(lengths, -max_reads)[-max_reads:]
+    else:
+        # need a full sort
+        order = np.argsort(lengths)[::-1]
+        cumsum = 0
+        last = 1
+        for i, j in enumerate(np.argsort(lengths), 1):
+            cumsum += lengths[j]
+            if cumsum > args.bases:
+                break
+            last = i
+        longest = order[:last]
 
     SeqIO.write(
         (record_dict[ids[i]] for i in longest),
