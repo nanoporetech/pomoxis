@@ -81,7 +81,7 @@ if [ "$CHUNK" != "" ]; then
   INPUT=${INPUT}.chunks
 fi
 
-minimap2 -L ${ALIGN_OPTS} -t ${THREADS} -a ${REFERENCE}.mmi ${INPUT} |
+minimap2 ${ALIGN_OPTS} -t ${THREADS} -a ${REFERENCE}.mmi ${INPUT} |
   samtools view ${FILTER} -uS - |
   samtools calmd -b - ${REFERENCE} 2>/dev/null |
   samtools sort -@ ${THREADS} ${SORT} -l 9 -o ${PREFIX}.bam -
