@@ -82,6 +82,11 @@ else
   echo "Skipped adapter trimming."
 fi
 
+# Note, these could/should be made dependent on read correction
+RACONOPTS="-M 8 -X -1 -G -4 -E -1"
+OVLOPTS="-x ava-ont"
+ASMOPTS="-s 100 -e 3"
+
 if $eflag; then
   echo "Extracting longest ${ERRCORR}% of reads..." 
   LONG_READS=long_${READS}
@@ -91,8 +96,8 @@ if $eflag; then
   echo "Correcting long reads..."
   LONG_PAF=long_corr.paf
   LONG_READ_CORR=corr_${LONG_READS}
-  minimap2 -x ava-ont -t${THREADS} ${LONG_READS} ${READS} > ${LONG_PAF}
-  racon -M 8 -X -1 -G -4 -E -1 -t ${THREADS} --erc --bq -1 ${READS} ${LONG_PAF} ${LONG_READS} ${LONG_READ_CORR}
+  minimap2 ${OVLOPTS} -t${THREADS} ${LONG_READS} ${READS} > ${LONG_PAF}
+  racon ${RACONOPTS} -t ${THREADS} --erc --bq -1 ${READS} ${LONG_PAF} ${LONG_READS} ${LONG_READ_CORR}
 
   echo "Collating corrected long reads and remaining reads..."
   CORR_READS=${NAME}_corrected.fq
@@ -101,9 +106,6 @@ if $eflag; then
 else
   echo "Skipped pre-assembly correction." 
 fi
-
-OVLOPTS="-x ava-ont"
-ASMOPTS="-s 100 -e 3"
 
 if ! $rflag; then 
   echo "Overlapping reads..."
@@ -116,13 +118,12 @@ else
   DRAFT=${REF}
 fi
 
-
 for ROUND in {01..04}; do
   echo "Running round ${ROUND} consensus..."
   READS2TIGS=reads2contigs_${ROUND}.paf
   NEWDRAFT=racon_${ROUND}.fasta
   minimap2 -t${THREADS} ${DRAFT} ${READS} > ${READS2TIGS}
-  racon -M 8 -X -1 -G -4 -E -1 -t ${THREADS} --bq -1  ${READS} ${READS2TIGS} ${DRAFT} ${NEWDRAFT}
+  racon ${RACONOPTS} -t ${THREADS} --bq -1  ${READS} ${READS2TIGS} ${DRAFT} ${NEWDRAFT}
   DRAFT=${NEWDRAFT}
 done;
 
