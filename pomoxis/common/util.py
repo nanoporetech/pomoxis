@@ -63,7 +63,7 @@ def split_fastx(fname, output, chunksize=10000):
                 else:
                     for i, (s, q) in enumerate(zip(chunks(seq, chunksize), chunks(qual, chunksize))):
                         chunk_name = '{}_chunk{}'.format(name, i)
-                        fout.write('@{} {}\n{}\n+{}\n'.format(
+                        fout.write('@{} {}\n{}\n+\n{}\n'.format(
                             chunk_name, comment, ''.join(s), ''.join(q)))
 
 
@@ -75,7 +75,7 @@ def split_fastx_cmdline():
 
 def fast_convert():
     """Convert between fasta<->fastq."""
-    
+
     parser = argparse.ArgumentParser(description='fast_convert -- Convert between fasta<->fastq.')
     parser.add_argument('convert', choices=['qq', 'aa', 'aq', 'qa'],
         help='Conversion code: from->to.')
@@ -102,7 +102,7 @@ def fast_convert():
         pass # default
     else:
         raise ValueError("convert must be 'qq', 'aq', 'qa', or 'aa'\n")
-    
+
     if qflag:
         def fq_gen(io):
             for rec in SeqIO.parse(io, in_fmt):
