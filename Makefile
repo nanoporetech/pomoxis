@@ -4,15 +4,10 @@
 CXX         ?= g++
 
 # Builds a cache of binaries which can just be copied for CI
-BINARIES=minimap minimap2 miniasm bwa racon samtools
+BINARIES=minimap2 miniasm bwa racon samtools
 BINCACHEDIR=bincache
 $(BINCACHEDIR):
 	mkdir -p $(BINCACHEDIR)
-
-$(BINCACHEDIR)/minimap: | $(BINCACHEDIR)
-	@echo Making $(@F)
-	cd submodules/minimap && make
-	cp submodules/minimap/minimap $@
 
 $(BINCACHEDIR)/minimap2: | $(BINCACHEDIR)
 	@echo Making $(@F)
