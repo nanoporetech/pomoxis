@@ -42,7 +42,6 @@ The distribution bundles some common bioinformatics tools (some of which are not
 currently used by pomoxis itself):
 
 * miniasm
-* minimap (to be deprecated)
 * minimap2
 * racon
 * bwa
