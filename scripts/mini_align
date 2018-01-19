@@ -92,7 +92,7 @@ if ${mdflag}; then
     samtools sort -@ ${THREADS} ${SORT} -l 9 -o ${PREFIX}.bam -
 else
   echo "Not filling MD tag"
-  minimap2 -L ${ALIGN_OPTS} -t ${THREADS} -a ${REFERENCE}.mmi ${INPUT} |
+  minimap2 ${ALIGN_OPTS} -t ${THREADS} -a ${REFERENCE}.mmi ${INPUT} |
     samtools view -@ ${THREADS} -T ${REFERENCE} ${FILTER} -bS - |
     samtools sort -@ ${THREADS} ${SORT} -l 9 -o ${PREFIX}.bam -
 fi
