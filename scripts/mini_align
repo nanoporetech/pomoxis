@@ -8,29 +8,36 @@ Align fastq/a formatted reads to a genome using minimap2.
     -r  reference, should be a fasta file. If correspondng bwa indices
         do not exist they will be created. (required).
     -i  fastq/a input reads (required).
+    -I  split index every ~NUM input bases (default: 16G, this is larger
+        than the usual minimap2 default).
     -a  aggresively extend gaps (sets -A1 -B2 -O2 -E1 for minimap2).
     -P  filter to only primary alignments (i.e. run samtools view -F 2308)
     -n  sort bam by read name.
     -c  chunk size. Input reads/contigs will be broken into chunks
         prior to alignment.
     -t  alignment threads (default: 1).
-    -p  output file prefix (default: reads)."
+    -p  output file prefix (default: reads).
+    -m  pass bam through samtools calmd to fill MD tag."
 
 OUTPUT="assm"
 PREFIX="reads"
 ALIGN_OPTS="-x map-ont"
+INDEX_SIZE="16G"
 THREADS=1
 FILTER=""
 SORT=""
 CHUNK=""
 rflag=false
 iflag=false
-while getopts ':hr:i:p:aPnc:t:' option; do
+mdflag=false
+while getopts ':hr:i:p:aPmnc:t:' option; do
   case "$option" in
     h  ) echo "$usage" >&2; exit;;
     r  ) rflag=true; REFERENCE=$OPTARG;;
     i  ) iflag=true; INPUT=$OPTARG;;
+    I  ) INDEX_SIZE=$OPTARG;;
     P  ) FILTER="-F 2308";;
+    m  ) mdflag=true;;
     n  ) SORT="-n";;
     p  ) PREFIX=$OPTARG;;
     a  ) ALIGN_OPTS="${ALIGN_OPTS} -A1 -B2 -O2 -E1";;
@@ -64,7 +71,7 @@ if [ "$missing" -eq 0 ]; then
   echo "Found minimap files." >&2
 elif [ "$missing" -eq "$num_minimap_exts" ]; then
   echo "Constructing minimap index." >&2
-  minimap2 ${ALIGN_OPTS} -d ${REFERENCE}.mmi ${REFERENCE}
+  minimap2 -I ${INDEX_SIZE} ${ALIGN_OPTS} -d ${REFERENCE}.mmi ${REFERENCE}
 else
   echo "Missing ${missing} index files. Clean up any files named
 ${REFERENCE}<EXT> where <EXT> is one of ${minimap_exts[*]}." >&2
@@ -77,9 +84,16 @@ if [ "$CHUNK" != "" ]; then
   INPUT=${INPUT}.chunks
 fi
 
-minimap2 -L ${ALIGN_OPTS} -t ${THREADS} -a ${REFERENCE}.mmi ${INPUT} |
-  samtools view ${FILTER} -uS - |
-  samtools calmd -b - ${REFERENCE} 2>/dev/null |
-  samtools sort -@ ${THREADS} ${SORT} -l 9 -o ${PREFIX}.bam -
+if ${mdflag}; then
+  echo "Filling MD tag"
+  minimap2 ${ALIGN_OPTS} -t ${THREADS} -a ${REFERENCE}.mmi ${INPUT} |
+    samtools view ${FILTER} -uS - |
+    samtools calmd -b - ${REFERENCE} 2>/dev/null |
+    samtools sort -@ ${THREADS} ${SORT} -l 9 -o ${PREFIX}.bam -
+else
+  echo "Not filling MD tag"
+  minimap2 ${ALIGN_OPTS} -t ${THREADS} -a ${REFERENCE}.mmi ${INPUT} |
+    samtools view -@ ${THREADS} -T ${REFERENCE} ${FILTER} -bS - |
+    samtools sort -@ ${THREADS} ${SORT} -l 9 -o ${PREFIX}.bam -
+fi
 samtools index ${PREFIX}.bam ${PREFIX}.bam.bai
-

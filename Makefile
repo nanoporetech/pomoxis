@@ -4,15 +4,10 @@
 CXX         ?= g++
 
 # Builds a cache of binaries which can just be copied for CI
-BINARIES=minimap minimap2 miniasm bwa racon samtools
+BINARIES=minimap2 miniasm bwa racon samtools
 BINCACHEDIR=bincache
 $(BINCACHEDIR):
 	mkdir -p $(BINCACHEDIR)
-
-$(BINCACHEDIR)/minimap: | $(BINCACHEDIR)
-	@echo Making $(@F)
-	cd submodules/minimap && make
-	cp submodules/minimap/minimap $@
 
 $(BINCACHEDIR)/minimap2: | $(BINCACHEDIR)
 	@echo Making $(@F)
@@ -55,10 +50,11 @@ venv/bin/activate:
 	test -d venv || virtualenv venv --python=python3
 	${IN_VENV} && pip install pip --upgrade
 	${IN_VENV} && pip install numpy # needs to get done before other things
+	${IN_VENV} && pip install -r requirements.txt
 
 
 install: venv | $(addprefix $(BINCACHEDIR)/, $(BINARIES))
-	${IN_VENV} && pip install -r requirements.txt && python setup.py install
+	${IN_VENV} && python setup.py install
 
 
 # You can set these variables from the command line.
