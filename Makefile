@@ -50,10 +50,11 @@ venv/bin/activate:
 	test -d venv || virtualenv venv --python=python3
 	${IN_VENV} && pip install pip --upgrade
 	${IN_VENV} && pip install numpy==1.9.0 # needs to get done before other things
+	${IN_VENV} && pip install -r requirements.txt
 
 
 install: venv | $(addprefix $(BINCACHEDIR)/, $(BINARIES))
-	${IN_VENV} && pip install -r requirements.txt && python setup.py install
+	${IN_VENV} && python setup.py install
 
 
 # You can set these variables from the command line.
