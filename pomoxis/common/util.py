@@ -123,7 +123,7 @@ def extract_long_reads():
     parser.add_argument('output',
         help='Output .fastq file.')
     filt = parser.add_mutually_exclusive_group(required=True)
-    filt.add_argument('--longest', default=10, type=int,
+    filt.add_argument('--longest', default=None, type=int,
         help='Percentage of longest reads to partition.')
     filt.add_argument('--bases', default=None, type=int,
         help='Maximum number of bases (subject to at least one read.)')
