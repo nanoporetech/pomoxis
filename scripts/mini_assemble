@@ -76,7 +76,7 @@ READS=$(basename "$FASTQ")
 if $CHOP; then
   echo "Trimming reads..."
   TRIMMED=${NAME}_trimmed.fq
-  porechop -i ${READS} -o ${TRIMMED} --threads ${THREADS} --check_reads 1000
+  porechop -i ${READS} -o ${TRIMMED} --threads ${THREADS} --check_reads 1000 --discard_middle
   READS=${TRIMMED}
 else
   echo "Skipped adapter trimming."
