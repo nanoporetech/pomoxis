@@ -19,7 +19,6 @@ Align fastq/a formatted reads to a genome using minimap2.
     -p  output file prefix (default: reads).
     -m  pass bam through samtools calmd to fill MD tag."
 
-OUTPUT="assm"
 PREFIX="reads"
 ALIGN_OPTS="-x map-ont"
 INDEX_SIZE="16G"
@@ -55,8 +54,6 @@ if ! $iflag || ! $rflag; then
   exit 1;
 fi
 
-# bwa will fail is index is currupt, but lets provide a
-# little more help.
 minimap_exts=('.mmi')
 num_minimap_exts=${#minimap_exts[@]}
 missing=0

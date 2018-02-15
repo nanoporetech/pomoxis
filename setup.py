@@ -117,12 +117,14 @@ setup(
             'pomoxis_path = {}:show_prog_path'.format(__pkg_name__),
             'bwa_rpc = {}.align.bwa:main'.format(__pkg_name__),
             'stats_from_bam = {}.common.stats_from_bam:main'.format(__pkg_name__),
+            'summary_from_stats = {}.common.summary_from_stats:main'.format(__pkg_name__),
         ]
     },
     scripts=[
         'scripts/bwa_align',
         'scripts/mini_align',
         'scripts/mini_assemble',
+        'scripts/assess_assembly',
     ]
 )
 
