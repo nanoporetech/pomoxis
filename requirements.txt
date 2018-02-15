@@ -6,6 +6,7 @@ cffi
 fast5_research
 msgpack-python
 numpy
+pandas
 pysam
 sphinx-argparse
 watchdog

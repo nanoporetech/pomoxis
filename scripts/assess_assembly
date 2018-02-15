@@ -1,0 +1,50 @@
+#!/bin/bash
+
+usage="$(basename "$0") [-h] -r <reference> -i <fastq>
+
+Calculate accuracy statistics for an assembly. 
+
+    -h  show this help text.
+    -r  reference, should be a fasta file. If correspondng bwa indices
+        do not exist they will be created. (required).
+    -i  fastq/a input assembly (required).
+    -c  chunk size. Input reads/contigs will be broken into chunks
+        prior to alignment (default 100000).
+    -t  alignment threads (default: 1).
+    -p  output file prefix (default: assm)."
+
+PREFIX="assm"
+THREADS=1
+CHUNK="100000"
+rflag=false
+iflag=false
+while getopts ':hr:i:p:aPmnc:t:' option; do
+  case "$option" in
+    h  ) echo "$usage" >&2; exit;;
+    r  ) rflag=true; REFERENCE=$OPTARG;;
+    i  ) iflag=true; INPUT=$OPTARG;;
+    p  ) PREFIX=$OPTARG;;
+    c  ) CHUNK=$OPTARG;;
+    t  ) THREADS=$OPTARG;;
+    \? ) echo "Invalid option: -${OPTARG}." >&2; exit 1;;
+    :  ) echo "Option -$OPTARG requires an argument." >&2; exit 1;;
+  esac
+done
+shift $(($OPTIND - 1))
+
+if ! $iflag || ! $rflag; then
+  echo "$usage" >&2;
+  echo "-i and -r must be specified." >&2;
+  exit 1;
+fi
+
+mini_align -i $INPUT -r $REFERENCE -c $CHUNK -P -p $PREFIX -t $THREADS 
+
+stats_from_bam --bam ${PREFIX}.bam -o ${PREFIX}_stats.txt
+
+summary_from_stats -i ${PREFIX}_stats.txt -pr -o ${PREFIX}_summ.txt
+
+grep 'Percentage Errors' -A 7 -m 1 ${PREFIX}_summ.txt
+grep 'Q Scores' -A 7 -m 1 ${PREFIX}_summ.txt
+
+echo "All done, output written to ${PREFIX}_stats.txt and ${PREFIX}_summ.txt"
