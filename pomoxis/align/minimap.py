@@ -1,35 +1,31 @@
 import asyncio
+from collections import namedtuple
 
 from aiozmq import rpc
 
-from bwapy import BwaAligner
+import mappy
 
 import logging
 logger = logging.getLogger(__name__)
 
 
-class BwapyServe(rpc.AttrHandler):
+class MiniMapServe(rpc.AttrHandler):
 
-    def __init__(self, index, *args, map_opts={'x':'ont2d'}, **kwargs):
+    def __init__(self, index, *args, map_opts={'preset':'map-ont'}, **kwargs):
         """bwa mem alignment server implementation using python binding.
 
         :param index: bwa index base path, or list thereof.
-        :param map_opts: command line options for bwa mem as dictionary.
+        :param map_opts: command line options for minimap
 
         """
         super().__init__(*args, **kwargs)
-        self.logger = logging.getLogger('BwaServe')
+        self.logger = logging.getLogger('MiniMapServe')
         self.index = index
-
-        # expand map_opts to a string:
-        opts = []
-        for k, v in map_opts.items():
-            opts.append('-{} {}'.format(k, v))
-        self.bwa_opts = ' '.join(opts)
+        self.map_opts = map_opts
 
         self.aligner = None
-        self.aligner = BwaAligner(self.index, options=self.bwa_opts)
-        self.logger.info('bwa service started.')
+        self.aligner = mappy.Aligner(self.index, **map_opts)
+        self.logger.info('Minimap service started.')
 
     def _clean_index(self):
         self.logger.info('Cleaning alignment proxy.')
@@ -53,9 +49,17 @@ class BwapyServe(rpc.AttrHandler):
         :returns: the output of bwa mem call.
         """
         if self.aligner is None:
-            self.aligner = BwaAligner(self.index, options=self.bwa_opts)
+            self.aligner = mappy.Aligner(self.index, **map_opts)
         self.logger.debug("Aligning sequence of length {}.".format(len(sequence)))
-        results = self.aligner.align_seq(sequence)
+        # create named tuples from the results
+        results = []
+        for r in self.aligner.map(sequence):
+             results.append((
+                 r.q_st, r.q_en, '+' if r.strand > 0 else '-',
+                 r.ctg, r.ctg_len, r.r_st, r.r_en,
+                 r.mlen, r.blen, r.mapq, r.is_primary,
+                 r.cigar_str
+             ))
         self.logger.info("Aligned sequence of {} bases with {} hits.".format(
             len(sequence), len(results)
         ))

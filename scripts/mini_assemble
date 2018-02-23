@@ -55,23 +55,24 @@ fi
 # Simple test for fastq
 filename=$(basename "$INPUT")
 ext="${filename##*.}"
-FASTQ=${OUTPUT}/${NAME}.fq
-MOCKQ=10
 if [ "$ext" = 'fq' ] || [ "$ext" = 'fastq' ]; then
+  FASTX=${OUTPUT}/${NAME}.fq
+  MOCKQ=10
   if ${USEQUAL}; then
-    echo "Copying input to workspace: ${INPUT} > ${FASTQ}"
-    cp ${INPUT} ${FASTQ}
+    echo "Copying FASTQ input to workspace: ${INPUT} > ${FASTX}"
+    cp ${INPUT} ${FASTX}
   else
-    echo "Discarding quality values: ${INPUT} > ${FASTQ}"
-    cat ${INPUT} | fast_convert qq --discard_q --mock_q ${MOCKQ} > ${FASTQ}
+    echo "Discarding quality values: ${INPUT} > ${FASTX}"
+    cat ${INPUT} | fast_convert qq --discard_q --mock_q ${MOCKQ} > ${FASTX}
   fi
 else
-  echo "Mocking quality values: ${INPUT} > ${FASTQ}"
-  cat ${INPUT} | fast_convert aq --mock_q ${MOCKQ} > ${FASTQ}
+  FASTX=${OUTPUT}/${NAME}.fa
+  echo "Copying FASTA input to workspace: ${INPUT} > ${FASTX}"
+  cp ${INPUT} ${FASTX}
 fi
 
 cd ${OUTPUT}
-READS=$(basename "$FASTQ")
+READS=$(basename "$FASTX")
 
 if $CHOP; then
   echo "Trimming reads..."
@@ -91,7 +92,7 @@ if $eflag; then
   echo "Extracting longest ${ERRCORR}% of reads..." 
   LONG_READS=long_${READS}
   OTHERS=other_${READS}
-  long_fastq ${READS} ${LONG_READS} --longest ${ERRCORR} --others ${OTHERS}
+  long_fastx ${READS} ${LONG_READS} --longest ${ERRCORR} --others ${OTHERS}
 
   echo "Correcting long reads..."
   LONG_PAF=long_corr.paf

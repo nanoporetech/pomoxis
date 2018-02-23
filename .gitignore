@@ -14,3 +14,5 @@ tmp/
 *.gz
 *__pycache__*
 *.fna
+submodules/samtools-1.3.1*
+bincache

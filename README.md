@@ -5,6 +5,8 @@ Prototype real-time analysis components
 
 Pomoxis contains a set of services to perform analysis of squiggles as they are
 produced in real-time along with fast pipelines for generating draft assemblies.
+Many of these tools are used by the research data analysis group at
+Oxford Nanopore Technologies.
 
 Documentation can be found at https://nanoporetech.github.io/pomoxis/.
 
@@ -21,14 +23,24 @@ To setup the environment run:
 
     git clone --recursive https://github.com/nanoporetech/pomoxis
     cd pomoxis
-    # For porechop to be compiled on older systems set these, e.g.:
-    #    export CXX="g++-4.9" CC="gcc-4.9"
     make install
     . ./venv/bin/activate
+    
 
 The installation of porechop (https://github.com/rrwick/Porechop)
 requires a newer compiler than is a available on some systems. It may therefore
-be necessary to install a newer compiler and set variables as in the above.
+be necessary to install a newer compiler and set environment variables before
+the `make install` step:
+
+    # For porechop to be compiled on older systems set these, e.g.:
+    export CXX="g++-4.9" CC="gcc-4.9"
+
+Similarly on macOS, racon requires gcc rather than clang. It is therefore
+necessary to install gcc and again set some environment variables:
+
+    # For racon on macOS these may need to be set:
+    export GCC_MAC=/usr/local/bin/g++-4.9
+
 
 Running the above within a pre-exisiting virtual environnment may well fail;
 advanced may wish to simply run the `setup.py` file in the standard manner
@@ -39,10 +51,9 @@ Extras
 ------
 
 The distribution bundles some common bioinformatics tools (some of which are not
-currently used by pomoxis itself):
+currently used by pomoxis itself, but are used in the offline analysis scripts):
 
 * miniasm
-* minimap (to be deprecated)
 * minimap2
 * racon
 * bwa

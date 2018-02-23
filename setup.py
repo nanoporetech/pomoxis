@@ -37,60 +37,25 @@ with open(os.path.join(dir_path, 'requirements.txt')) as fh:
             req = req.split('/')[-1].split('@')[0]
         install_requires.append(req)
 
-extra_requires = {
-    'nanonet':'nanonet'
-}
 
-exes = ['minimap2', 'miniasm', 'racon', 'bwa', 'samtools']
-scrappie_path = os.path.join('submodules', 'scrappie', 'src')
+# Read these from Makefile in the event someone modified list there
+exes = []
+with open(os.path.join(dir_path, 'Makefile')) as fh:
+    for line in fh.readlines():
+        tokens = line.split('=')
+        if tokens[0] == 'BINARIES':
+            exes = tokens[1].split()
+            break
 
 extensions = []
-
-extensions.append(Extension(
-    'pyscrap',
-    sources=[os.path.join(__pkg_path__, 'pyscrap', 'pyscrap.c')] + [
-        os.path.join(scrappie_path, x) for x in ('decode.c', 'layers.c', 'networks.c', 'nnfeatures.c', 'util.c', 'scrappie_matrix.c')
-    ],
-    include_dirs=[scrappie_path],
-    extra_compile_args=['-pedantic', '-Wall', '-std=c99', '-march=native', '-ffast-math', '-DUSE_SSE2', '-DNDEBUG'],
-    libraries=['blas']
-))
-
-model_cmd_name = 'model'
-class CustomBasecallModel(Command):
-    description = 'Use a custom scrappie basecall model'
-    user_options = [
-        ('scrappie-model=', None, 'path to scrappie model header file'),
-    ]
-
-    def initialize_options(self):
-        self.scrappie_model = None
-
-    def finalize_options(self):
-        if self.scrappie_model is None:
-            raise ValueError('Command "{}" requires scrappie-model=<value> option.'.format(model_cmd_name))
-        else:
-            if not os.path.exists(self.scrappie_model):
-                raise ValueError('Model header {} does not exist.'.format(self.scrappie_model))
-
-    def run(self):
-        dst = os.path.join(__path__, 'submodules/scrappie/src/nanonet_events.h')
-        if not os.path.exists(dst):
-            raise RuntimeError("The model destination does not exists. Has scrappie renamed it's files (again)?")
-        self.announce('Copying {} to {}.'.format(self.scrappie_model, dst))
-        shutil.copyfile(self.scrappie_model, dst)
-
 
 setup(
     name=__pkg_name__,
     version=__version__,
-    cmdclass={
-        model_cmd_name:CustomBasecallModel
-    },
     url='https://github.com/nanoporetech/{}'.format(__pkg_name__),
     author='cwright',
     author_email='cwright@nanoporetech.com',
-    description='Real-time assembly.',
+    description='Real-time analysis components.',
     dependency_links=[],
     ext_modules=extensions,
     install_requires=install_requires,
@@ -110,12 +75,11 @@ setup(
         'console_scripts': [
             'split_fastx = {}.common.util:split_fastx_cmdline'.format(__pkg_name__),
             'fast_convert = {}.common.util:fast_convert'.format(__pkg_name__),
-            'long_fastq = {}.common.util:extract_long_reads'.format(__pkg_name__),
-            'pyscrap = {}.basecall.pyscrap.pyscrap:basecall_file'.format(__pkg_name__),
+            'long_fastx = {}.common.util:extract_long_reads'.format(__pkg_name__),
             'epi3me = {}.apps.epi3me:main'.format(__pkg_name__),
             'read_until_filter = {}.apps.read_until_filter:main'.format(__pkg_name__),
             'pomoxis_path = {}:show_prog_path'.format(__pkg_name__),
-            'bwa_rpc = {}.align.bwa:main'.format(__pkg_name__),
+            'align_serve = {}.align.common:main'.format(__pkg_name__),
             'stats_from_bam = {}.common.stats_from_bam:main'.format(__pkg_name__),
             'summary_from_stats = {}.common.summary_from_stats:main'.format(__pkg_name__),
         ]

@@ -1,10 +1,12 @@
-.PHONY: externals pip_submodules install docs
+.PHONY: scrappy install docs
+OS := $(shell uname)
 
 # for porechop on travis (or other platform with older gcc)
 CXX         ?= g++
 
 # Builds a cache of binaries which can just be copied for CI
 BINARIES=minimap2 miniasm bwa racon samtools
+
 BINCACHEDIR=bincache
 $(BINCACHEDIR):
 	mkdir -p $(BINCACHEDIR)
@@ -21,8 +23,13 @@ $(BINCACHEDIR)/miniasm: | $(BINCACHEDIR)
 
 $(BINCACHEDIR)/racon: | $(BINCACHEDIR)
 	@echo Making $(@F)
-	cd submodules/racon && make modules && make tools && make -j
-	cp submodules/racon/bin/racon $@
+	@echo GCC is $(GCC)
+	#cd submodules/racon && make modules && make -j $(RACONOS)
+	#cp submodules/racon/bin/racon$(RACONTAG) $@
+	cd submodules/racon && mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Release ..
+	cd submodules/racon/build && make
+	cp submodules/racon/build/bin/racon $@
+
 
 $(BINCACHEDIR)/bwa: | $(BINCACHEDIR)
 	@echo Making $(@F)
@@ -42,7 +49,6 @@ $(BINCACHEDIR)/samtools: | $(BINCACHEDIR)
 	cd submodules/samtools-${SAMVER} && make
 	cp submodules/samtools-${SAMVER}/samtools $@
 
-
 venv: venv/bin/activate
 IN_VENV=. ./venv/bin/activate
 
@@ -52,10 +58,17 @@ venv/bin/activate:
 	${IN_VENV} && pip install numpy # needs to get done before other things
 	${IN_VENV} && pip install -r requirements.txt
 
+# These next too could be streamlined with changes to their setup.pys
+scrappy: venv
+	cd submodules/scrappie/python && make lib/libscrappie.a
+	${IN_VENV} && cd submodules/scrappie/python && pip install -r requirements.txt && python setup.py install
 
-install: venv | $(addprefix $(BINCACHEDIR)/, $(BINARIES))
+bwapy: venv
+	cd submodules/bwapy && make bwa/libbwa.a 
+	${IN_VENV} && cd submodules/bwapy && python setup.py install
+
+install: venv bwapy scrappy | $(addprefix $(BINCACHEDIR)/, $(BINARIES))
 	${IN_VENV} && python setup.py install
-
 
 # You can set these variables from the command line.
 SPHINXOPTS    =
