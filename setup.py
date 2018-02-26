@@ -48,6 +48,7 @@ with open(os.path.join(dir_path, 'Makefile')) as fh:
             break
 
 extensions = []
+extra_requires={}
 
 setup(
     name=__pkg_name__,
