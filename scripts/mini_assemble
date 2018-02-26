@@ -84,7 +84,7 @@ else
 fi
 
 # Note, these could/should be made dependent on read correction
-RACONOPTS="-M 8 -X -1 -G -4 -E -1"
+RACONOPTS="-m 8 -x -1 -g -4"
 OVLOPTS="-x ava-ont"
 ASMOPTS="-s 100 -e 3"
 
@@ -98,7 +98,7 @@ if $eflag; then
   LONG_PAF=long_corr.paf
   LONG_READ_CORR=corr_${LONG_READS}
   minimap2 ${OVLOPTS} -t${THREADS} ${LONG_READS} ${READS} > ${LONG_PAF}
-  racon ${RACONOPTS} -t ${THREADS} --erc --bq -1 ${READS} ${LONG_PAF} ${LONG_READS} ${LONG_READ_CORR}
+  racon ${RACONOPTS} -t ${THREADS} -f -q -1 ${READS} ${LONG_PAF} ${LONG_READS} > ${LONG_READ_CORR}
 
   echo "Collating corrected long reads and remaining reads..."
   CORR_READS=${NAME}_corrected.fq
@@ -124,7 +124,7 @@ for ROUND in {01..04}; do
   READS2TIGS=reads2contigs_${ROUND}.paf
   NEWDRAFT=racon_${ROUND}.fasta
   minimap2 -t${THREADS} ${DRAFT} ${READS} > ${READS2TIGS}
-  racon ${RACONOPTS} -t ${THREADS} --bq -1  ${READS} ${READS2TIGS} ${DRAFT} ${NEWDRAFT}
+  racon ${RACONOPTS} -t ${THREADS} -q -1 ${READS} ${READS2TIGS} ${DRAFT} > ${NEWDRAFT}
   DRAFT=${NEWDRAFT}
 done;
 

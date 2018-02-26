@@ -1,3 +1,4 @@
+from __future__ import print_function
 import random
 import struct
 import sys
@@ -64,5 +65,5 @@ if __name__ == '__main__':
     port, seq = sys.argv[1:3]
     client = AlignClient(port)
     alignments = client.align(seq)
-    print alignments
+    print(alignments)
             
