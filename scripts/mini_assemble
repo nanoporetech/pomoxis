@@ -56,7 +56,7 @@ fi
 filename=$(basename "$INPUT")
 ext="${filename##*.}"
 if [ "$ext" = 'fq' ] || [ "$ext" = 'fastq' ]; then
-  FASTX=${OUTPUT}/${NAME}.fq
+  FASTX=${OUTPUT}/${NAME}.${ext}
   MOCKQ=10
   if ${USEQUAL}; then
     echo "Copying FASTQ input to workspace: ${INPUT} > ${FASTX}"
@@ -66,7 +66,7 @@ if [ "$ext" = 'fq' ] || [ "$ext" = 'fastq' ]; then
     cat ${INPUT} | fast_convert qq --discard_q --mock_q ${MOCKQ} > ${FASTX}
   fi
 else
-  FASTX=${OUTPUT}/${NAME}.fa
+  FASTX=${OUTPUT}/${NAME}.${ext}
   echo "Copying FASTA input to workspace: ${INPUT} > ${FASTX}"
   cp ${INPUT} ${FASTX}
 fi
@@ -76,7 +76,7 @@ READS=$(basename "$FASTX")
 
 if $CHOP; then
   echo "Trimming reads..."
-  TRIMMED=${NAME}_trimmed.fq
+  TRIMMED=${NAME}_trimmed.${ext}
   porechop -i ${READS} -o ${TRIMMED} --threads ${THREADS} --check_reads 1000 --discard_middle
   READS=${TRIMMED}
 else
