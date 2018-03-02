@@ -60,7 +60,7 @@ def shotgun_library(fasta_file, mu, sigma, direction=(1,-1)):
         seq_len = seq_lens[seq_i]
 
         start = np.random.randint(0, seq_len)
-        frag_length = int(np.random.normal(mu, sigma))
+        frag_length = int(np.random.lognormal(mu, sigma))
         move = np.random.choice(direction)
         end = max(0, start + move*frag_length)
         start, end = sorted([start, end])
