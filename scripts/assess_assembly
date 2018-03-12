@@ -10,6 +10,7 @@ Calculate accuracy statistics for an assembly.
     -i  fastq/a input assembly (required).
     -c  chunk size. Input reads/contigs will be broken into chunks
         prior to alignment (default 100000).
+    -C  catalogue errors. 
     -t  alignment threads (default: 1).
     -p  output file prefix (default: assm)."
 
@@ -18,13 +19,17 @@ THREADS=1
 CHUNK="100000"
 rflag=false
 iflag=false
-while getopts ':hr:i:p:aPmnc:t:' option; do
+catalogue_flag=false
+ALIGN_OPTS=""
+
+while getopts ':hr:i:p:c:Ct:' option; do
   case "$option" in
     h  ) echo "$usage" >&2; exit;;
     r  ) rflag=true; REFERENCE=$OPTARG;;
     i  ) iflag=true; INPUT=$OPTARG;;
     p  ) PREFIX=$OPTARG;;
     c  ) CHUNK=$OPTARG;;
+    C  ) catalogue_flag=true; ALIGN_OPTS="-m";;
     t  ) THREADS=$OPTARG;;
     \? ) echo "Invalid option: -${OPTARG}." >&2; exit 1;;
     :  ) echo "Option -$OPTARG requires an argument." >&2; exit 1;;
@@ -38,11 +43,17 @@ if ! $iflag || ! $rflag; then
   exit 1;
 fi
 
-mini_align -i $INPUT -r $REFERENCE -c $CHUNK -P -p $PREFIX -t $THREADS 
+mini_align -i $INPUT -r $REFERENCE -c $CHUNK -P -p $PREFIX -t $THREADS $ALIGN_OPTS 
 
 stats_from_bam --bam ${PREFIX}.bam -o ${PREFIX}_stats.txt
 
 summary_from_stats -i ${PREFIX}_stats.txt -pr -o ${PREFIX}_summ.txt
+
+if $catalogue_flag; then
+    OUTDIR=${PREFIX}_error_catalogue
+    echo "Running catalogue_errors, saving data to ${OUTDIR}"
+    catalogue_errors ${PREFIX}.bam -t $THREADS -o ${OUTDIR}
+fi
 
 grep 'Percentage Errors' -A 7 -m 1 ${PREFIX}_summ.txt
 grep 'Q Scores' -A 7 -m 1 ${PREFIX}_summ.txt

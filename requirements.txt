@@ -4,6 +4,7 @@ aiozmq
 biopython >= 1.63
 cffi
 fast5_research
+matplotlib
 mappy
 msgpack-python
 numpy
