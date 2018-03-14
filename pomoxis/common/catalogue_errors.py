@@ -655,6 +655,7 @@ def plot_summary(df, outdir, prefix):
     ax.set_title('Overall Q-scores after fixing all larger errors')
     fp = os.path.join(outdir, '{}_remaining_errors.png'.format(prefix))
     fig.savefig(fp)
+    plt.close()
 
 
 def get_aggr_counts(total_counts):
