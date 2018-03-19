@@ -527,7 +527,7 @@ def classify_error(context, indel_sizes=None):
             hp_kls = classify_hp_indel(p_i, 'del', errors, qb_runs, rb)
             kls = hp_kls if hp_kls is not None else kls
         if hp_kls is None:
-            kls = simple_klass(adjacent, ins, err_type, indel_sizes)
+            kls = simple_klass(adjacent, dels, err_type, indel_sizes)
             if adjacent:
                 i = errors['del'][0]
                 b = rb[i]
@@ -655,6 +655,7 @@ def plot_summary(df, outdir, prefix):
     ax.set_title('Overall Q-scores after fixing all larger errors')
     fp = os.path.join(outdir, '{}_remaining_errors.png'.format(prefix))
     fig.savefig(fp)
+    plt.close()
 
 
 def get_aggr_counts(total_counts):
@@ -1050,5 +1051,21 @@ class ClassifyErrorTest(unittest.TestCase):
         qb = 'A-GGGGGGGACTTGAA-CCCCACGTC'
         p_i = 16
         expected = 'complex RHP del <= 5'
+        found = classify_error(Context(p_i=p_i, qb=list(qb), rb=list(rb)))[-1]
+        self.assertEqual(found, expected)
+
+    def test_long_multi_del(self):
+        rb = 'ACCCACACACCACACCCACACACCACACCCACACCACACCCACACCACACCCACACACCACACCCACACCACACCCACACACCACACCCACACACCACACCCACACCACACCCACACCACACCCACACACCACACCACACCCACACACCCACACACCACACACTCTCTTACATCTACCTCTACTCTCGCTGTCACACCTTACCCGGCTTTCTGACCGAAATTAAAAAAAATGAAAATGAAATCCTCTTCTTTAGCCCTACAACACTTTTACATAGCCCTAAATAGCCCTAAATAGCCCTCATGTACGTCTCCTCCAAGCCCTATTGACTCTTACCCGGAGTTTCAGCTAAAGGCTATACTTACT'
+        qb = 'ACCCACACACCA---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------T'
+        p_i = 12
+        expected = 'multi del > 100'
+        found = classify_error(Context(p_i=p_i, qb=list(qb), rb=list(rb)))[-1]
+        self.assertEqual(found, expected)
+
+    def test_long_multi_ins(self):
+        rb = 'ACCCACACACCA---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------T'
+        qb = 'ACCCACACACCACACCCACACACCACACCCACACCACACCCACACCACACCCACACACCACACCCACACCACACCCACACACCACACCCACACACCACACCCACACCACACCCACACCACACCCACACACCACACCACACCCACACACCCACACACCACACACTCTCTTACATCTACCTCTACTCTCGCTGTCACACCTTACCCGGCTTTCTGACCGAAATTAAAAAAAATGAAAATGAAATCCTCTTCTTTAGCCCTACAACACTTTTACATAGCCCTAAATAGCCCTAAATAGCCCTCATGTACGTCTCCTCCAAGCCCTATTGACTCTTACCCGGAGTTTCAGCTAAAGGCTATACTTACT'
+        p_i = 12
+        expected = 'multi ins > 100'
         found = classify_error(Context(p_i=p_i, qb=list(qb), rb=list(rb)))[-1]
         self.assertEqual(found, expected)
