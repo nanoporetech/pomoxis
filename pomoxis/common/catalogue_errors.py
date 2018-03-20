@@ -741,13 +741,14 @@ def main():
                     multi_errs[key]['rp_end'] = helper(e.rp)
 
     total_counts = Counter()
+    aggr_by_ref = {}
     for ref_name, counts in error_count.items():
         df = analyze_counts(counts, total_ref_length[ref_name])
         fp = os.path.join(args.outdir, '{}_error_summary.txt'.format(ref_name))
         df.to_csv(fp, sep=_sep_, index=False)
 
-        aggregate_counts = get_aggr_counts(counts)
-        df = analyze_counts(aggregate_counts, total_ref_length[ref_name])
+        aggr_by_ref[ref_name] = get_aggr_counts(counts)
+        df = analyze_counts(aggr_by_ref[ref_name], total_ref_length[ref_name])
         fp = os.path.join(args.outdir, '{}_aggr_error_summary.txt'.format(ref_name))
         df.to_csv(fp, sep=_sep_, index=False)
         plot_summary(df, args.outdir, '{}_aggr'.format(ref_name))
@@ -775,8 +776,9 @@ def main():
     # save counts to yaml for any further analysis
     to_save = {'ref_lengths': total_ref_length,
                'counts': {'by_ref': error_count,
+                          'by_ref_aggr': aggr_by_ref,
                           'total': total_counts,
-                          'aggregated': aggregate_counts,
+                          'total_aggr': aggregate_counts,
                          }
                }
     with open(os.path.join(args.outdir, 'counts.yml'), 'w') as fh:
