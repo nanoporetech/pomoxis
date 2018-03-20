@@ -1,12 +1,17 @@
 import argparse
 import itertools
-import os
+import re
 import shutil
 import sys
 
 from Bio import SeqIO
+from collections import namedtuple
 import numpy as np
 from pysam import FastxFile
+
+
+_region_decoder_ = re.compile(r"(?P<ref_name>\w+):*(?P<start>(\d+-)*)(?P<end>\d*)")
+Region = namedtuple('Region', 'ref_name start end')
 
 
 def chunks(iterable, n):
@@ -173,3 +178,35 @@ def extract_long_reads():
             (record_dict[ids[i]] for i in range(len(ids)) if i not in longest),
             args.others, fmt
         )
+
+
+def parse_regions(regions, ref_lengths=None):
+    """Parse region strings into `Region` objects.
+
+    :param regions: iterable of str
+    :param ref_lengths: {str ref_names: int ref_lengths}, if provided Region.end
+        will default to the reference length instead of None.
+
+    >>> parse_regions(['Ecoli'])[0]
+    Region(ref_name='Ecoli', start=0, end=None)
+    >>> parse_regions(['Ecoli:1000-2000'])[0]
+    Region(ref_name='Ecoli', start=1000, end=2000)
+    >>> parse_regions(['Ecoli:1000'])[0]
+    Region(ref_name='Ecoli', start=0, end=1000)
+    >>> parse_regions(['Ecoli:500-'])[0]
+    Region(ref_name='Ecoli', start=500, end=None)
+    >>> parse_regions(['Ecoli'], ref_lengths={'Ecoli':4800000})[0]
+    Region(ref_name='Ecoli', start=0, end=4800000)
+
+    """
+    decoded = []
+    for region in regions:
+        d =  _region_decoder_.match(region).groupdict()
+        d['start'] = d['start'].replace('-', '')
+        for key in ['start', 'end']:
+            d[key] = None if d[key] == '' else int(d[key])
+        d['start'] = 0 if d['start'] is None else d['start']
+        if d['end'] is None and ref_lengths is not None:
+            d['end'] = ref_lengths[d['ref_name']]
+        decoded.append(Region(**d))
+    return tuple(decoded)
