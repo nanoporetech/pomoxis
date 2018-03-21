@@ -31,11 +31,11 @@ def main():
         bins = np.arange(region.start, region.end, args.stride)
         msg = 'Processing reference {}:{}-{}'
         logging.info(msg.format(region.ref_name, bins[0], bins[-1]))
-        coverage = np.zeros(len(bins))
+        coverage_by_is_rev = {True: np.zeros(len(bins)), False: np.zeros(len(bins))}
         for r_obj in bam.fetch(contig=region.ref_name, start=region.start, end=region.end):
             start_i = max((r_obj.reference_start - bins[0]) // args.stride, 0)
             end_i = min((r_obj.reference_end - bins[0]) // args.stride, len(bins))
-            coverage[start_i: end_i] += 1
+            coverage_by_is_rev[r_obj.is_reverse][start_i: end_i] += 1
 
         # write final depth
         prefix = args.prefix
@@ -44,7 +44,11 @@ def main():
 
         depth_fp = '{}_{}_{}_{}.depth.txt'.format(prefix, region.ref_name, region.start, region.end)
         pd.DataFrame({'pos': bins,
-                      'depth': coverage}).to_csv(depth_fp, sep='\t', index=False)
+                      'depth': coverage_by_is_rev[True] + coverage_by_is_rev[False],
+                      'depth_fwd': coverage_by_is_rev[False],
+                      'depth_rev': coverage_by_is_rev[True],
+                      }
+                     ).to_csv(depth_fp, sep='\t', index=False)
 
 
 if __name__ == '__main__':
