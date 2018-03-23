@@ -19,6 +19,21 @@ Pomoxis should be installed inside a virtual environment. A Makefile is
 provided to create a fresh environment, and to fetch, compile and install
 all direct dependencies into the environment.
 
+> Before installing pomoxis is may be required to install some prerequisite
+> packages, best installed by a package manager. On Ubuntu these are:
+> * gcc-4.9
+> * g++-4.9
+> * zlib1g-dev
+> * libncurses5-dev
+> * python3-all-dev
+> * libhdf5-dev
+> * libatlas-base-dev
+> * libopenblas-base
+> * libopenblas-dev
+> * libbz2-dev
+> * liblzma-dev
+> * libffi-dev
+
 To setup the environment run:
 
     git clone --recursive https://github.com/nanoporetech/pomoxis
