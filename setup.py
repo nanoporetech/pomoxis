@@ -85,6 +85,7 @@ setup(
             'summary_from_stats = {}.common.summary_from_stats:main'.format(__pkg_name__),
             'catalogue_errors = {}.common.catalogue_errors:main'.format(__pkg_name__),
             'coverage_from_bam = {}.common.coverage_from_bam:main'.format(__pkg_name__),
+            'subsample_bam = {}.common.subsample_bam:main'.format(__pkg_name__),
         ]
     },
     scripts=[
