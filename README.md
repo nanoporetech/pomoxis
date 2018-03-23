@@ -3,10 +3,11 @@ Prototype real-time analysis components
 
 [![Build Status](https://travis-ci.org/nanoporetech/pomoxis.svg?branch=master)](https://travis-ci.org/nanoporetech/pomoxis)
 
-Pomoxis contains a set of services to perform analysis of squiggles as they are
-produced in real-time along with fast pipelines for generating draft assemblies.
-Many of these tools are used by the research data analysis group at
-Oxford Nanopore Technologies.
+Pomoxis started life as a set of services to perform analysis of squiggles
+as they are produced in real-time. This functionality still exists
+although has been complemented with a number of offline analyses for
+generating and analysing draft assemblies. Many of these tools are used by
+the research data analysis group at Oxford Nanopore Technologies.
 
 Documentation can be found at https://nanoporetech.github.io/pomoxis/.
 
