@@ -86,6 +86,7 @@ setup(
             'catalogue_errors = {}.common.catalogue_errors:main'.format(__pkg_name__),
             'coverage_from_bam = {}.common.coverage_from_bam:main'.format(__pkg_name__),
             'subsample_bam = {}.common.subsample_bam:main'.format(__pkg_name__),
+            'trim_alignments = {}.common.trim_alignments:main'.format(__pkg_name__),
         ]
     },
     scripts=[
