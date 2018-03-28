@@ -32,6 +32,7 @@ def main():
     parser.add_argument('-c', '--chkpnt', default=100, type=int, help='Frequency at which to write depths and reads.')
     parser.add_argument('-r', '--regions', nargs='+', help='Only process given regions.')
     parser.add_argument('-s', '--stride', type=int, default=1, help='Stride in genomic coordinates.')
+    parser.add_argument('-D', '--direction', choices=['fwd', 'rev'], help='Sample only forward or reverse reads.')
 
     args = parser.parse_args()
 
@@ -44,6 +45,11 @@ def main():
     else:
         regions = [Region(ref_name=r, start=0, end=ref_lengths[r]) for r in bam.references]
 
+    _read_filter_ = {'fwd': lambda r: not r.is_reverse,
+                     'rev': lambda r: r.is_reverse,
+                      None: True,
+                     }
+
     for region in regions:
         reads_kept = set()
         bins = np.arange(region.start, region.end, args.stride)
@@ -53,6 +59,8 @@ def main():
         count = 0
         low_cov_sites = {}
         prefix = '{}_{}X'.format(args.output_prefix, args.depth)
+        if args.direction is not None:
+            prefix = '{}_{}'.format(prefix, args.direction)
         while True:
             bin_i = np.argmin(coverage)
             if coverage[bin_i] >= args.depth:
@@ -62,7 +70,8 @@ def main():
                 logging.info('Min depth {} at {} (Target depth {})'.format(coverage[bin_i], bins[bin_i], args.depth))
                 checkpoint(region.ref_name, bins, coverage, reads_kept, low_cov_sites, prefix)
             pos = bins[bin_i]
-            reads = [ r for r in bam.fetch(contig=region.ref_name, start=pos, end=pos+1)]
+            reads = [r for r in bam.fetch(contig=region.ref_name, start=pos, end=pos+1)
+                     if _read_filter_[args.direction](r)]
             reads_set = set((r.query_name for r in reads))
             reads_in_common = reads_kept.intersection(reads_set)
             reads_not_used = reads_set.difference(reads_in_common)
@@ -81,7 +90,6 @@ def main():
             for r_obj in r_objs:
                 start_i = max((r_obj.reference_start - bins[0]) // args.stride, 0)
                 end_i = min((r_obj.reference_end - bins[0]) // args.stride, len(bins))
-                coverage[start_i: end_i] += 1
                 coverage[start_i: end_i] += 1
 
         # write final depth and reads
