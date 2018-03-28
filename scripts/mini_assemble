@@ -130,5 +130,5 @@ done;
 
 
 FINAL=${NAME}_final.fa
-sed 's/Consensus_Consensus_Consensus_//' ${DRAFT} > ${FINAL}
+sed 's/_C:.\+$//' ${DRAFT} > ${FINAL}
 echo "Final assembly written to ${OUTPUT}/${FINAL}. Have a nice day."
