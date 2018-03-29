@@ -9,7 +9,7 @@ Calculate accuracy statistics for an assembly.
         do not exist they will be created. (required).
     -i  fastq/a input assembly (required).
     -c  chunk size. Input reads/contigs will be broken into chunks
-        prior to alignment (default 100000).
+        prior to alignment, 0 will not chunk (default 100000).
     -C  catalogue errors. 
     -t  alignment threads (default: 1).
     -p  output file prefix (default: assm)."
@@ -20,7 +20,7 @@ CHUNK="100000"
 rflag=false
 iflag=false
 catalogue_flag=false
-ALIGN_OPTS=""
+ALIGN_OPTS="-P"
 
 while getopts ':hr:i:p:c:Ct:' option; do
   case "$option" in
@@ -43,7 +43,11 @@ if ! $iflag || ! $rflag; then
   exit 1;
 fi
 
-mini_align -i $INPUT -r $REFERENCE -c $CHUNK -P -p $PREFIX -t $THREADS $ALIGN_OPTS 
+if (($CHUNK > 0)); then
+    ALIGN_OPTS="$ALIGN_OPTS -c $CHUNK"
+fi
+
+mini_align -i $INPUT -r $REFERENCE -p $PREFIX -t $THREADS $ALIGN_OPTS 
 
 stats_from_bam --bam ${PREFIX}.bam -o ${PREFIX}_stats.txt
 
