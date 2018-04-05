@@ -574,7 +574,7 @@ def _process_read(bam, read_num):
         gen = (r for r in bam_obj)
         for i in range(read_num + 1):
             rec = next(gen)
-        if rec.is_unmapped or rec.is_supplementary:
+        if rec.is_unmapped or rec.is_supplementary or rec.is_secondary:
             return
         seg = AlignSeg(rname=rec.reference_name, qname=rec.query_name,
                        pairs=list(get_trimmed_pairs(rec)), rlen=rec.reference_length
