@@ -51,7 +51,7 @@ $(BINCACHEDIR)/samtools: | $(BINCACHEDIR)
 BCFVER=1.7
 $(BINCACHEDIR)/bcftools: | $(BINCACHEDIR)
 	@echo Making $(@F)
-	if [ ! -e submodules/bcftools-${SAMVER}.tar.bz2 ]; then \
+	if [ ! -e submodules/bcftools-${BCFVER}.tar.bz2 ]; then \
 	  cd submodules; \
 	  wget https://github.com/samtools/bcftools/releases/download/${BCFVER}/bcftools-${BCFVER}.tar.bz2; \
 	fi
