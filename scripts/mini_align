@@ -17,7 +17,7 @@ Align fastq/a formatted reads to a genome using minimap2.
         prior to alignment.
     -t  alignment threads (default: 1).
     -p  output file prefix (default: reads).
-    -m  pass bam through samtools calmd to fill MD tag."
+    -m  fill MD tag."
 
 PREFIX="reads"
 ALIGN_OPTS="-x map-ont"
@@ -28,7 +28,6 @@ SORT=""
 CHUNK=""
 rflag=false
 iflag=false
-mdflag=false
 while getopts ':hr:i:p:aPmnc:t:' option; do
   case "$option" in
     h  ) echo "$usage" >&2; exit;;
@@ -36,7 +35,7 @@ while getopts ':hr:i:p:aPmnc:t:' option; do
     i  ) iflag=true; INPUT=$OPTARG;;
     I  ) INDEX_SIZE=$OPTARG;;
     P  ) FILTER="-F 2308";;
-    m  ) mdflag=true;;
+    m  ) ALIGN_OPTS="${ALIGN_OPTS} --MD";;
     n  ) SORT="-n";;
     p  ) PREFIX=$OPTARG;;
     a  ) ALIGN_OPTS="${ALIGN_OPTS} -A1 -B2 -O2 -E1";;
@@ -81,16 +80,7 @@ if [ "$CHUNK" != "" ]; then
   INPUT=${INPUT}.chunks
 fi
 
-if ${mdflag}; then
-  echo "Filling MD tag"
-  minimap2 ${ALIGN_OPTS} -t ${THREADS} -a ${REFERENCE}.mmi ${INPUT} |
-    samtools view ${FILTER} -uS - |
-    samtools calmd -b - ${REFERENCE} 2>/dev/null |
-    samtools sort -@ ${THREADS} ${SORT} -l 9 -o ${PREFIX}.bam -
-else
-  echo "Not filling MD tag"
-  minimap2 ${ALIGN_OPTS} -t ${THREADS} -a ${REFERENCE}.mmi ${INPUT} |
-    samtools view -@ ${THREADS} -T ${REFERENCE} ${FILTER} -bS - |
-    samtools sort -@ ${THREADS} ${SORT} -l 9 -o ${PREFIX}.bam -
-fi
+minimap2 ${ALIGN_OPTS} -t ${THREADS} -a ${REFERENCE}.mmi ${INPUT} |
+  samtools view -@ ${THREADS} -T ${REFERENCE} ${FILTER} -bS - |
+  samtools sort -@ ${THREADS} ${SORT} -l 9 -o ${PREFIX}.bam -
 samtools index ${PREFIX}.bam ${PREFIX}.bam.bai
