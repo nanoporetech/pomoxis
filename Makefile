@@ -5,7 +5,7 @@ OS := $(shell uname)
 CXX         ?= g++
 
 # Builds a cache of binaries which can just be copied for CI
-BINARIES=minimap2 miniasm bwa racon samtools
+BINARIES=minimap2 miniasm bwa racon samtools bcftools
 
 BINCACHEDIR=bincache
 $(BINCACHEDIR):
@@ -30,7 +30,6 @@ $(BINCACHEDIR)/racon: | $(BINCACHEDIR)
 	cd submodules/racon/build && make
 	cp submodules/racon/build/bin/racon $@
 
-
 $(BINCACHEDIR)/bwa: | $(BINCACHEDIR)
 	@echo Making $(@F)
 	cd submodules/bwa && make
@@ -48,6 +47,17 @@ $(BINCACHEDIR)/samtools: | $(BINCACHEDIR)
 	cd submodules && tar -xjf samtools-${SAMVER}.tar.bz2
 	cd submodules/samtools-${SAMVER} && make
 	cp submodules/samtools-${SAMVER}/samtools $@
+
+BCFVER=1.7
+$(BINCACHEDIR)/bcftools: | $(BINCACHEDIR)
+	@echo Making $(@F)
+	if [ ! -e submodules/bcftools-${BCFVER}.tar.bz2 ]; then \
+	  cd submodules; \
+	  wget https://github.com/samtools/bcftools/releases/download/${BCFVER}/bcftools-${BCFVER}.tar.bz2; \
+	fi
+	cd submodules && tar -xjf bcftools-${BCFVER}.tar.bz2
+	cd submodules/bcftools-${BCFVER} && make
+	cp submodules/bcftools-${BCFVER}/bcftools $@
 
 venv: venv/bin/activate
 IN_VENV=. ./venv/bin/activate
