@@ -57,11 +57,6 @@ venv/bin/activate:
 	${IN_VENV} && pip install pip --upgrade
 	${IN_VENV} && pip install -r requirements.txt
 
-# These next too could be streamlined with changes to their setup.pys
-scrappy: venv
-	cd submodules/scrappie/python && make lib/libscrappie.a
-	${IN_VENV} && cd submodules/scrappie/python && pip install -r requirements.txt && python setup.py install
-
 bwapy: venv
 	cd submodules/bwapy && make bwa/libbwa.a 
 	${IN_VENV} && cd submodules/bwapy && python setup.py install

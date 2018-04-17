@@ -10,6 +10,7 @@ msgpack-python
 numpy <= 1.13.3
 pandas
 pysam
+scrappie
 sphinx-argparse
 watchdog
 git+https://github.com/rrwick/Porechop
