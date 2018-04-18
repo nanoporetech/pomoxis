@@ -18,7 +18,7 @@ from operator import attrgetter
 
 AlignPos = namedtuple('AlignPos', ('qpos', 'qbase', 'rpos', 'rbase'))
 AlignSeg = namedtuple('AlignSeg', ('rname', 'qname', 'pairs', 'rlen'))
-Error = namedtuple('Error', ('rp', 'rname', 'qp', 'qname', 'ref', 'match', 'read', 'counts', 'klass'))
+Error = namedtuple('Error', ('rp', 'rname', 'qp', 'qname', 'ref', 'match', 'read', 'counts', 'klass', 'aggr_klass'))
 Context = namedtuple('Context', ('p_i', 'qb', 'rb'))
 
 _match_ = ' '
@@ -36,10 +36,10 @@ _error_groups_ = [
                   ('ins HP split', lambda x: 'ins HP split' in x),
                   ('sub HP join', lambda x: 'sub HP join' in x),
                   ('del HP join', lambda x: 'del HP join' in x),
-                  ('multi ins >', lambda x: bool(re.search('multi .+ins >', x))),
-                  ('multi ins <', lambda x: bool(re.search('multi .+ins <', x))),
-                  ('multi del >', lambda x: bool(re.search('multi .+del >', x))),
-                  ('multi del <', lambda x: bool(re.search('multi .+del <', x))),
+                  ('multi ins >', lambda x: bool(re.search('multi .*ins >', x))),
+                  ('multi ins <', lambda x: bool(re.search('multi .*ins <', x))),
+                  ('multi del >', lambda x: bool(re.search('multi .*del >', x))),
+                  ('multi del <', lambda x: bool(re.search('multi .*del <', x))),
                   ('HP del', lambda x: 'HP del' in x),
                   ('HP ins', lambda x: 'HP ins' in x),
                   ('HP sub', lambda x: 'HP sub' in x),
@@ -574,7 +574,7 @@ def _process_read(bam, read_num):
         gen = (r for r in bam_obj)
         for i in range(read_num + 1):
             rec = next(gen)
-        if rec.is_unmapped or rec.is_supplementary:
+        if rec.is_unmapped or rec.is_supplementary or rec.is_secondary:
             return
         seg = AlignSeg(rname=rec.reference_name, qname=rec.query_name,
                        pairs=list(get_trimmed_pairs(rec)), rlen=rec.reference_length
@@ -604,7 +604,8 @@ def _process_seg(seg):
         if qp is None:
             qp = "~{}".format(approx_pos[1])
         errors.append(Error(rp=rp, rname=seg.rname, qp=qp, qname=seg.qname, ref=ref,
-                            match=match, read=read, counts=counts, klass=klass))
+                            match=match, read=read, counts=counts, klass=klass,
+                            aggr_klass=get_aggr_klass(klass)))
         error_count[klass] += 1
 
     logging.debug('Done processing {} aligned to {}'.format(seg.qname, seg.rname))
@@ -663,14 +664,20 @@ def get_aggr_counts(total_counts):
     aggregate_counts = Counter()
     max_indel = max(_indel_sizes_)
     for key, val in total_counts.items():
-        for error_type, is_type in _error_groups_:
-            if is_type(key):
-                if '>' in error_type or '<' in error_type:
-                    aggregate_counts['{} {}'.format(error_type, max_indel)] += val
-                else:
-                    aggregate_counts[error_type] += val
-                break
+        aggregate_counts[get_aggr_klass(key)] += val
     return aggregate_counts
+
+
+def get_aggr_klass(klass):
+    max_indel = max(_indel_sizes_)
+    for error_type, is_type in _error_groups_:
+        if is_type(klass):
+            if '>' in error_type or '<' in error_type:
+                aggr_klass = '{} {}'.format(error_type, max_indel)
+            else:
+                aggr_klass = error_type
+            break
+    return aggr_klass
 
 
 def main():
@@ -704,6 +711,7 @@ def main():
                 ('query_pos', helper(attrgetter('qp'))),
                 ('query_context', attrgetter('read')),
                 ('class', attrgetter('klass')),
+                ('aggr_class', attrgetter('aggr_klass')),
                 ('n_ins', lambda e: len(e.counts['ins'])),
                 ('n_del', lambda e: len(e.counts['del'])),
                 ('n_sub', lambda e: len(e.counts['sub'])),
@@ -721,7 +729,7 @@ def main():
             total_ref_length[ref_name] += ref_length
             for e in errors:
                 db_fh.write(_sep_.join((str(h[1](e)) for h in headers)) + '\n')
-                txt_fh.write("Ref Pos: {}, {} Pos {}, {}\n".format(e.rp, e.qname, e.qp, e.klass))
+                txt_fh.write("Ref Pos: {}, {} Pos {}, {}, {}\n".format(e.rp, e.qname, e.qp, e.klass, e.aggr_klass))
                 txt_fh.write(e.ref + "\n")
                 txt_fh.write(e.match + "\n")
                 txt_fh.write(e.read + "\n")
