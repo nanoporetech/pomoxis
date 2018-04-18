@@ -84,7 +84,7 @@ else
 fi
 
 # Note, these could/should be made dependent on read correction
-RACONOPTS="-m 8 -x -1 -g -4"
+echo ${RACONOPTS:="-m 8 -x -6 -g -8"} > /dev/null
 OVLOPTS="-x ava-ont"
 ASMOPTS="-s 100 -e 3"
 
