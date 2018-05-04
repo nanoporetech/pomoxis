@@ -88,6 +88,7 @@ setup(
             'split_fastx = {}.common.util:split_fastx_cmdline'.format(__pkg_name__),
             'subsample_bam = {}.common.subsample_bam:main'.format(__pkg_name__),
             'trim_alignments = {}.common.trim_alignments:main'.format(__pkg_name__),
+            'common_errors_from_bam = {}.common.common_errors_from_bam:main'.format(__pkg_name__),
         ]
     },
     scripts=[
@@ -95,6 +96,7 @@ setup(
         'scripts/mini_align',
         'scripts/mini_assemble',
         'scripts/assess_assembly',
+        'scripts/intersect_assembly_errors',
     ]
 )
 
