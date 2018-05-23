@@ -1,4 +1,4 @@
-.PHONY: scrappy install docs
+.PHONY: install docs
 OS := $(shell uname)
 
 # for porechop on travis (or other platform with older gcc)
@@ -71,7 +71,7 @@ bwapy: venv
 	cd submodules/bwapy && make bwa/libbwa.a 
 	${IN_VENV} && cd submodules/bwapy && python setup.py install
 
-install: venv bwapy scrappy | $(addprefix $(BINCACHEDIR)/, $(BINARIES))
+install: venv bwapy | $(addprefix $(BINCACHEDIR)/, $(BINARIES))
 	${IN_VENV} && python setup.py install
 
 # You can set these variables from the command line.
