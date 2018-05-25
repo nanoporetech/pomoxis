@@ -763,7 +763,7 @@ def main():
 
         total_counts.update(counts)
 
-    df = analyze_counts(counts, sum(total_ref_length.values()))
+    df = analyze_counts(total_counts, sum(total_ref_length.values()))
     fp = os.path.join(args.outdir, '{}_error_summary.txt'.format('total'))
     df.to_csv(fp, sep=_sep_, index=False)
 
