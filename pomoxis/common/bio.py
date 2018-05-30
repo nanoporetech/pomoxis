@@ -49,10 +49,14 @@ def shotgun_library(fasta_file, mu, sigma, direction=(1,-1)):
             for x, n in zip(range(len(probs)), np.random.multinomial(size, probs)):
                 buf.extend([x]*n)
             np.random.shuffle(buf)
-            for x in buf: 
+            for x in buf:
                 yield x
     seq_chooser = random_buffer(seq_probs)
-
+   
+    # parameters for lognormal
+    mean = np.log(mu / np.sqrt(1 + sigma**2 / mu**2))
+    stdv = np.sqrt(np.log(1 + sigma**2 / mu**2))
+    
     while True:
         # choose a seq based on length
         seq_i = next(seq_chooser)
@@ -60,7 +64,7 @@ def shotgun_library(fasta_file, mu, sigma, direction=(1,-1)):
         seq_len = seq_lens[seq_i]
 
         start = np.random.randint(0, seq_len)
-        frag_length = int(np.random.lognormal(mu, sigma))
+        frag_length = int(np.random.lognormal(mean, stdv))
         move = np.random.choice(direction)
         end = max(0, start + move*frag_length)
         start, end = sorted([start, end])
@@ -73,4 +77,5 @@ def shotgun_library(fasta_file, mu, sigma, direction=(1,-1)):
         frag_seq = seq[start:end]
         if move == -1:
             frag_seq = reverse_complement(frag_seq)
-        yield frag_seq
+        yield frag_seq, refs[seq_i], start, end, '+' if move == 1 else '-'
+

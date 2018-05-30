@@ -1,0 +1,79 @@
+#!/bin/bash
+
+usage="$(basename "$0") [-h] -r <reference> -i <fasta>
+
+Assess errors which occur in the same reference position accross multiple assemblies. 
+
+    -h  show this help text.
+    -r  reference, should be a fasta file. If correspondng bwa indices
+        do not exist they will be created. (required).
+    -i  fasta input assemblies (required).
+    -t  alignment threads (default: 1).
+    -o  output directory (default: compare_assm)."
+
+OUTDIR="compare_assm"
+THREADS=1
+iflag=false
+rflag=false
+ALIGN_OPTS="-P"
+START=$PWD
+
+while getopts ':hr:i:o:t:f' option; do
+  case "$option" in
+    h  ) echo "$usage" >&2; exit;;
+    r  ) rflag=true; REFERENCE=$OPTARG;;
+    i  ) iflag=true; ASSMSPATH=$OPTARG;;
+    o  ) OUTDIR=$OPTARG;;
+    t  ) THREADS=$OPTARG;;
+    f  ) FREEBAYES_PATH=$OPTARG;;
+    \? ) echo "Invalid option: -${OPTARG}." >&2; exit 1;;
+    :  ) echo "Option -$OPTARG requires an argument." >&2; exit 1;;
+  esac
+done
+shift $(($OPTIND - 1))
+
+if ! $iflag || ! $rflag; then
+  echo "$usage" >&2;
+  echo "-i, and -r must be specified." >&2;
+  exit 1;
+fi
+
+if [[ -e ${OUTDIR} ]]; then
+  echo "Output directory $OUTDIR exists, remove it and try again"
+  exit 1
+fi
+
+mkdir $OUTDIR
+echo "Saving data to ${OUTDIR}"
+
+n_contigs=$(grep -c "^>" $ASSMSPATH) 
+if [ "$n_contigs" < '2' ]; then 
+	echo "$ASSMSPATH contains less than 2 contigs, exiting"
+	exit 1
+fi
+REFERENCE=$(readlink -f $REFERENCE)
+ASSMS=$(readlink -f $ASSMSPATH)
+
+cd $OUTDIR
+echo "Aligning assemblies"
+mini_align -i $ASSMS -r $REFERENCE -p assms_to_ref -P -t $THREADS
+
+PREFIX=trimmed
+echo "Trimming assemblies to common alignment window"
+trim_alignments assms_to_ref.bam -f $REFERENCE -o ${PREFIX}
+
+TRIMMED_ASSMS=${PREFIX}_queries.fasta
+TRIMMED_REF=${PREFIX}_reference.fasta
+
+echo "Aligning trimmed assemblies to reference"
+mini_align -i ${TRIMMED_ASSMS} -r ${TRIMMED_REF} -P -m -p $PREFIX
+
+echo "Calculating alignment stats"
+stats_from_bam --bam ${PREFIX}.bam -o ${PREFIX}_stats.txt
+
+common_errors_from_bam ${PREFIX}.bam ${TRIMMED_REF}
+
+cat common_errors.txt
+
+echo "All Done, output written to ${OUTDIR}"
+cd $START

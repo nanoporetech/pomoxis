@@ -35,7 +35,7 @@ $(BINCACHEDIR)/bwa: | $(BINCACHEDIR)
 	cd submodules/bwa && make
 	cp submodules/bwa/bwa $@
 
-SAMVER=1.3.1
+SAMVER=1.8
 $(BINCACHEDIR)/samtools: | $(BINCACHEDIR)
 	@echo Making $(@F)
 	# tar.bz is not a dependency, since that would cause it to be fetched
