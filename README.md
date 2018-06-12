@@ -11,7 +11,16 @@ the research data analysis group at Oxford Nanopore Technologies.
 
 Documentation can be found at https://nanoporetech.github.io/pomoxis/.
 
-Currently pomoxis supports only unix-like environments. 
+
+Compatibility
+-------------
+
+Pomoxis is developed on Ubuntu 16.04, other recent linuxes should be
+equally compatible (see build notes below. Pomoxis is known to work on
+at least some MacOS High Sierra configurations, though some components
+(notably scrappy) are known to not work on some MacOS configurations
+(combinations of OS and xcode versions).
+
 
 Build
 -----
