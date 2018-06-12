@@ -7,7 +7,7 @@ fast5_research
 matplotlib
 mappy
 msgpack-python
-numpy <= 1.13.3
+numpy
 pandas
 pysam
 scrappie
