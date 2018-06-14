@@ -12,26 +12,32 @@ Assemble fastq/fasta formatted reads and perform POA consensus.
     -o  output folder (default: assm).
     -p  output file prefix (default: reads).
     -t  number of minimap and racon threads (default: 1).
+    -m  number of racon rounds (default: 4).
+    -n  number of racon shuffles (default: 1).
     -c  trim adapters from reads prior to everything else.
     -e  error correct longest e% of reads prior to assembly."
 
 OUTPUT="assm"
 NAME="reads"
 THREADS=1
+ROUNDS=4
+SHUFFLES=1
 USEQUAL=false
 CHOP=false
 iflag=false
 rflag=false
 eflag=false
-while getopts ':hi:q:r:o:p:t:ce:' option; do
+while getopts ':hi:q:r:o:p:t:m:n:ce:' option; do
   case "$option" in
     h  ) echo "$usage" >&2; exit;;
     i  ) iflag=true; INPUT=$OPTARG;;
     q  ) USEQUAL=true;;
-    r  ) rflag=true; REF=$OPTARG;;
+    r  ) rflag=true; REF=$(cd "$(dirname "$OPTARG")"; pwd)/$(basename "$OPTARG");;
     o  ) OUTPUT=$OPTARG;;
     p  ) NAME=$OPTARG;;
     t  ) THREADS=$OPTARG;;
+    m  ) ROUNDS=$OPTARG;;
+    n  ) SHUFFLES=$OPTARG;;
     c  ) CHOP=true;;
     e  ) eflag=true; ERRCORR=$OPTARG;;
     \? ) echo "Invalid option: -${OPTARG}." >&2; exit 1;;
@@ -119,16 +125,47 @@ else
   DRAFT=${REF}
 fi
 
-for ROUND in {01..04}; do
-  echo "Running round ${ROUND} consensus..."
-  READS2TIGS=reads2contigs_${ROUND}.paf
-  NEWDRAFT=racon_${ROUND}.fasta
-  minimap2 -t${THREADS} ${DRAFT} ${READS} > ${READS2TIGS}
-  racon ${RACONOPTS} -t ${THREADS} -q -1 ${READS} ${READS2TIGS} ${DRAFT} > ${NEWDRAFT}
-  DRAFT=${NEWDRAFT}
-done;
+for SHUF in $(seq 1 ${SHUFFLES}); do
+  echo "Running racon read shuffle ${SHUF}..."
+  SCAFFOLD=${DRAFT}
+  if [ ${SHUF} -ne 1 ]; then
+    echo "Shuffling reads..."
+    SHUFREADS=shuffled_${SHUF}_${READS}
+    seqkit shuffle $READS > ${SHUFREADS}
+  else
+    SHUFREADS=${READS}
+    if [ ${SHUFFLES} -ne 1 ]; then
+      ln -s ${READS} shuffled_${SHUF}_${READS}
+    fi
+  fi
+
+  for ROUND in $(seq 1 ${ROUNDS}); do
+    echo "Running round ${ROUND} consensus..."
+    READS2TIGS=reads2contigs_${SHUF}_${ROUND}.paf
+    NEWSCAF=racon_${SHUF}_${ROUND}.fasta
+
+    minimap2 -t${THREADS} ${SCAFFOLD} ${SHUFREADS} > ${READS2TIGS}
+    racon ${RACONOPTS} -t ${THREADS} -q -1 ${SHUFREADS} ${READS2TIGS} ${SCAFFOLD} > ${NEWSCAF}
+    SCAFFOLD=${NEWSCAF}
+  done
+
+done
 
 
 FINAL=${NAME}_final.fa
-sed 's/_C:.\+$//' ${DRAFT} > ${FINAL}
+if [ ${SHUFFLES} -eq 1 ]; then
+  sed 's/_C:.\+$//' ${SCAFFOLD} > ${FINAL}
+else
+  # One last compilation step
+  echo "Combining consensus shuffles."
+  COMBINED=racon_combined_shuffles.fasta
+  for SHUF in $(seq 1 ${SHUFFLES}); do
+    sed "s/_C:.\+$/_shuffle_${SHUF}/" racon_${SHUF}_${ROUNDS}.fasta >> ${COMBINED}
+  done
+
+  READS2TIGS=combined2contigs.paf
+  minimap2 -t${THREADS} ${DRAFT} ${COMBINED} > ${READS2TIGS}
+  racon ${RACONOPTS} -t ${THREADS} -q -1 ${COMBINED} ${READS2TIGS} ${DRAFT} > ${FINAL}
+  sed -i 's/_C:.\+$//' ${FINAL}
+fi
 echo "Final assembly written to ${OUTPUT}/${FINAL}. Have a nice day."
