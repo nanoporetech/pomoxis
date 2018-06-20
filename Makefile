@@ -1,11 +1,11 @@
-.PHONY: scrappy install docs
-OS := $(shell uname)
+.PHONY: install docs
+OS := $(shell uname | tr '[:upper:]' '[:lower:]')
 
 # for porechop on travis (or other platform with older gcc)
 CXX         ?= g++
 
 # Builds a cache of binaries which can just be copied for CI
-BINARIES=minimap2 miniasm bwa racon samtools bcftools
+BINARIES=minimap2 miniasm bwa racon samtools bcftools seqkit
 
 BINCACHEDIR=bincache
 $(BINCACHEDIR):
@@ -59,6 +59,16 @@ $(BINCACHEDIR)/bcftools: | $(BINCACHEDIR)
 	cd submodules/bcftools-${BCFVER} && make
 	cp submodules/bcftools-${BCFVER}/bcftools $@
 
+SEQKITVER=0.8.0
+$(BINCACHEDIR)/seqkit: | $(BINCACHEDIR)
+	@echo Making $(@F)
+	if [ ! -e submodules/seqkit_${OS}_amd64.tar.gz ]; then \
+	  cd submodules; \
+	  wget https://github.com/shenwei356/seqkit/releases/download/v${SEQKITVER}/seqkit_${OS}_amd64.tar.gz; \
+	fi
+	cd submodules && tar -xzvf seqkit_${OS}_amd64.tar.gz
+	cp submodules/seqkit $@	
+
 venv: venv/bin/activate
 IN_VENV=. ./venv/bin/activate
 
@@ -71,7 +81,7 @@ bwapy: venv
 	cd submodules/bwapy && make bwa/libbwa.a 
 	${IN_VENV} && cd submodules/bwapy && python setup.py install
 
-install: venv bwapy scrappy | $(addprefix $(BINCACHEDIR)/, $(BINARIES))
+install: venv bwapy | $(addprefix $(BINCACHEDIR)/, $(BINARIES))
 	${IN_VENV} && python setup.py install
 
 # You can set these variables from the command line.

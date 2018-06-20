@@ -51,6 +51,9 @@ the `make install` step:
     # For porechop to be compiled on older systems set these, e.g.:
     export CXX="g++-4.9" CC="gcc-4.9"
 
+Note also that racon requires at least `gcc>=4.8.5` to
+[compile smoothly](https://github.com/isovic/racon/issues/57).
+
 Running the above within a pre-exisiting virtual environnment may well fail;
 advanced may wish to simply run the `setup.py` file in the standard manner
 after compiling the third party programs as in the `Makefile`.
