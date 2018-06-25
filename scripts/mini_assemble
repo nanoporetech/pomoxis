@@ -159,7 +159,7 @@ else
   # One last compilation step
   echo "Combining consensus shuffles."
   COMBINED=racon_combined_shuffles.fasta
-  for SHUF in $(seq 1 ${SHUFFLES}); do
+  for SHUF in $(seq -w 1 ${SHUFFLES}); do
       sed "s/\(>[^[:space:]]\+\)/\1_shuffle_${SHUF}/" racon_${SHUF}_${ROUNDS}.fasta >> ${COMBINED}
   done
 
