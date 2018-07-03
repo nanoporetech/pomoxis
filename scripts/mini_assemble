@@ -14,20 +14,24 @@ Assemble fastq/fasta formatted reads and perform POA consensus.
     -t  number of minimap and racon threads (default: 1).
     -m  number of racon rounds (default: 4).
     -n  number of racon shuffles (default: 1).
+    -w  racon window length (default: 500).
     -c  trim adapters from reads prior to everything else.
-    -e  error correct longest e% of reads prior to assembly."
+    -e  error correct longest e% of reads prior to assembly.
+    -x  log all commands before running."
 
 OUTPUT="assm"
 NAME="reads"
 THREADS=1
 ROUNDS=4
 SHUFFLES=1
+WINDOW_LEN=500
 USEQUAL=false
 CHOP=false
 iflag=false
 rflag=false
 eflag=false
-while getopts ':hi:q:r:o:p:t:m:n:ce:' option; do
+xflag=false
+while getopts ':hi:q:r:o:p:t:m:n:w:ce:x' option; do
   case "$option" in
     h  ) echo "$usage" >&2; exit;;
     i  ) iflag=true; INPUT=$OPTARG;;
@@ -38,8 +42,10 @@ while getopts ':hi:q:r:o:p:t:m:n:ce:' option; do
     t  ) THREADS=$OPTARG;;
     m  ) ROUNDS=$OPTARG;;
     n  ) SHUFFLES=$OPTARG;;
+    w  ) WINDOW_LEN=$OPTARG;;
     c  ) CHOP=true;;
     e  ) eflag=true; ERRCORR=$OPTARG;;
+    x  ) xflag=true;;
     \? ) echo "Invalid option: -${OPTARG}." >&2; exit 1;;
     :  ) echo "Option -$OPTARG requires an argument." >&2; exit 1;;
   esac
@@ -52,6 +58,10 @@ if ! $iflag; then
   exit 1;
 fi
 
+if $xflag; then
+  set -x;
+fi
+
 if [[ ! -e ${OUTPUT} ]]; then
   mkdir -p ${OUTPUT}
 else
@@ -62,14 +72,14 @@ fi
 filename=$(basename "$INPUT")
 ext="${filename##*.}"
 if [ "$ext" = 'fq' ] || [ "$ext" = 'fastq' ]; then
-  FASTX=${OUTPUT}/${NAME}.${ext}
-  MOCKQ=10
   if ${USEQUAL}; then
+    FASTX=${OUTPUT}/${NAME}.${ext}
     echo "Copying FASTQ input to workspace: ${INPUT} > ${FASTX}"
     cp ${INPUT} ${FASTX}
   else
+    FASTX=${OUTPUT}/${NAME}.fa
     echo "Discarding quality values: ${INPUT} > ${FASTX}"
-    cat ${INPUT} | fast_convert qq --discard_q --mock_q ${MOCKQ} > ${FASTX}
+    seqkit fq2fa ${INPUT} > ${FASTX}
   fi
 else
   FASTX=${OUTPUT}/${NAME}.${ext}
@@ -90,7 +100,7 @@ else
 fi
 
 # Note, these could/should be made dependent on read correction
-echo ${RACONOPTS:="-m 8 -x -6 -g -8"} > /dev/null
+BASERACONOPTS="-m 8 -x -6 -g -8"
 OVLOPTS="-x ava-ont"
 ASMOPTS="-s 100 -e 3"
 
@@ -104,7 +114,7 @@ if $eflag; then
   LONG_PAF=long_corr.paf
   LONG_READ_CORR=corr_${LONG_READS}
   minimap2 ${OVLOPTS} -t${THREADS} ${LONG_READS} ${READS} > ${LONG_PAF}
-  racon ${RACONOPTS} -t ${THREADS} -f -q -1 ${READS} ${LONG_PAF} ${LONG_READS} > ${LONG_READ_CORR}
+  racon ${BASERACONOPTS} -w ${WINDOW_LEN} -t ${THREADS} -f -q -1 ${READS} ${LONG_PAF} ${LONG_READS} > ${LONG_READ_CORR}
 
   echo "Collating corrected long reads and remaining reads..."
   CORR_READS=${NAME}_corrected.fq
@@ -125,17 +135,48 @@ else
   DRAFT=${REF}
 fi
 
+find_larger_prime(){
+  # find first prime larger than input
+  val=$1
+  while true; do
+    check=$(factor ${val} | awk '{print NF-1}')
+    if [[ $check -eq 1 ]]; then
+        echo $val
+        break
+    fi
+    val=$((val+1))
+  done
+}
+
+
 for SHUF in $(seq -w 1 ${SHUFFLES}); do
   echo "Running racon read shuffle ${SHUF}..."
-  SCAFFOLD=${DRAFT}
+
+  if [ ${SHUFFLES} -ne 1 ]; then
+    # dont allow racon to trim as this can interfere with our mischevous
+    #   trimming tricks below
+    ADDRACONOPTS="--include-unpolished"
+  fi
+  MOD_WINDOW_LEN=${WINDOW_LEN} 
+
   if [ ${SHUF} -ne 1 ]; then
     echo "Shuffling reads..."
+    MOD_WINDOW_LEN=$(find_larger_prime ${MOD_WINDOW_LEN})  # might explode at larger lengths...
     SHUFREADS=shuffled_${SHUF}_${READS}
-    seqkit shuffle $READS > ${SHUFREADS}
+    seqkit shuffle ${READS} > ${SHUFREADS}
+    # as well as shuffling reads we shift the backbone to force
+    #   racon to use different boundaries
+    SCAFFOLD=shuffled_${SHUF}_backbone.fasta
+    PADLEN=$(((SHUF-1)*(WINDOW_LEN/SHUFFLES)));
+    #PADLEN=$((20*(SHUF-1)))
+    echo "Trimming backbones by ${PADLEN}."
+    seqkit replace -p "^.{${PADLEN}}" -r "" -s ${DRAFT} > ${SCAFFOLD}
   else
     SHUFREADS=${READS}
+    SCAFFOLD=${DRAFT}
     if [ ${SHUFFLES} -ne 1 ]; then
       ln -s ${READS} shuffled_${SHUF}_${READS}
+      ln -s ${SCAFFOLD} shuffled_${SHUF}_backbone.fasta
     fi
   fi
 
@@ -145,7 +186,7 @@ for SHUF in $(seq -w 1 ${SHUFFLES}); do
     NEWSCAF=racon_${SHUF}_${ROUND}.fasta
 
     minimap2 -t${THREADS} ${SCAFFOLD} ${SHUFREADS} > ${READS2TIGS}
-    racon ${RACONOPTS} -t ${THREADS} -q -1 ${SHUFREADS} ${READS2TIGS} ${SCAFFOLD} > ${NEWSCAF}
+    racon ${BASERACONOPTS} ${ADDRACONOPTS} -w ${MOD_WINDOW_LEN} -t ${THREADS} -q -1 ${SHUFREADS} ${READS2TIGS} ${SCAFFOLD} > ${NEWSCAF}
     SCAFFOLD=${NEWSCAF}
   done
 
@@ -165,6 +206,7 @@ else
 
   READS2TIGS=combined2contigs.paf
   minimap2 -t${THREADS} ${DRAFT} ${COMBINED} > ${READS2TIGS}
-  racon ${RACONOPTS} -t ${THREADS} -q -1 ${COMBINED} ${READS2TIGS} ${DRAFT} > ${FINAL}
+  # use a slightly longer window here for good measure
+  racon ${RACONOPTS} -w $((3*WINDOW_LEN/2)) -t ${THREADS} -q -1 ${COMBINED} ${READS2TIGS} ${DRAFT} > ${FINAL}
 fi
 echo "Final assembly written to ${OUTPUT}/${FINAL}. Have a nice day."
