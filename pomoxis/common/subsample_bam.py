@@ -48,8 +48,8 @@ def main():
         # make interval tree of reads for querying
         tree = IntervalTree()
         for r in bam.fetch(region.ref_name, region.start, region.end):
-            if (r.is_reverse and args.direction == 'fwd') or \
-               (not r.is_reverse and args.direction == 'rev'):
+            if (r.is_reverse and args.orientation == 'fwd') or \
+               (not r.is_reverse and args.orientation == 'rev'):
                 continue
             # trim reads to region
             tree.add(Interval(
@@ -113,7 +113,7 @@ def _nearest_overlapping_point(src, point):
     """
     items = src.search(point)
     if len(items) == 0:
-        return None 
+        return None
     items = sorted(items, key=lambda x: x.end - x.begin, reverse=True)
     items.sort(key=lambda x: abs(x.begin - point))
     return items
