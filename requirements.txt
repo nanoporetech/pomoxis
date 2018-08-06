@@ -4,6 +4,7 @@ aiozmq
 biopython >= 1.63
 cffi
 fast5_research
+intervaltree
 matplotlib
 mappy
 msgpack-python
@@ -14,3 +15,4 @@ scrappie
 sphinx-argparse
 watchdog
 git+https://github.com/rrwick/Porechop
+
