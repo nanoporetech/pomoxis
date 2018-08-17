@@ -2,9 +2,9 @@ import argparse
 from concurrent.futures import ProcessPoolExecutor
 import functools
 import logging
+import multiprocessing
 import os
 
-from Bio import SeqIO
 from intervaltree import IntervalTree, Interval
 import numpy as np
 import pysam
@@ -32,19 +32,23 @@ def main():
         help='Stride in genomic coordinates for depth profile.')
     parser.add_argument('-O', '--orientation', choices=['fwd', 'rev'],
         help='Sample only forward or reverse reads.')
+    parser.add_argument('-t', '--threads', type=int, default=-1,
+        help='Number of threads to use.')
 
     args = parser.parse_args()
+    if args.threads == -1:
+        args.threads = multiprocessing.cpu_count()
 
     with pysam.AlignmentFile(args.bam) as bam:
         ref_lengths = dict(zip(bam.references, bam.lengths))
-  
+
         if args.regions is not None:
             regions = parse_regions(args.regions, ref_lengths=ref_lengths)
         else:
             regions = [Region(ref_name=r, start=0, end=ref_lengths[r]) for r in bam.references]
 
     worker = functools.partial(process_region, args=args)
-    with ProcessPoolExecutor() as executor:
+    with ProcessPoolExecutor(max_workers=args.threads) as executor:
         executor.map(worker, regions)
 
 
@@ -136,7 +140,7 @@ def _nearest_overlapping_point(src, point):
     """
     items = src.search(point)
     if len(items) == 0:
-        return None 
+        return None
     items = sorted(items, key=lambda x: x.end - x.begin, reverse=True)
     items.sort(key=lambda x: abs(x.begin - point))
     return items
