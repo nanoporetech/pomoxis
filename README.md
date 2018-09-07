@@ -43,6 +43,11 @@ all direct dependencies into the environment.
 > * libbz2-dev
 > * liblzma-dev
 > * libffi-dev
+> * make
+> * python-virtualenv
+> * cmake (for racon)
+> * wget (for fetching modules from github)
+> * bzip2 (for extracting those modules)
 
 To setup the environment run:
 
