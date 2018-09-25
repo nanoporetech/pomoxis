@@ -1,16 +1,13 @@
 import argparse
+from collections import namedtuple
 import itertools
-import re
 import shutil
 import sys
 
 from Bio import SeqIO
-from collections import namedtuple
 import numpy as np
 from pysam import FastxFile
 
-
-_region_decoder_ = re.compile(r"(?P<ref_name>\w+):*(?P<start>(\d+-)*)(?P<end>\d*)")
 Region = namedtuple('Region', 'ref_name start end')
 
 
@@ -37,7 +34,7 @@ def cat(files, output, chunks=1024*1024*10):
     :param output: output filenames.
     :param chunks: buffersize for filecopy.
     """
-    with open(output,'wb') as wfd:
+    with open(output, 'wb') as wfd:
         for f in files:
             with open(f, 'rb') as fd:
                 shutil.copyfileobj(fd, wfd, chunks)
@@ -191,22 +188,34 @@ def parse_regions(regions, ref_lengths=None):
     Region(ref_name='Ecoli', start=0, end=None)
     >>> parse_regions(['Ecoli:1000-2000'])[0]
     Region(ref_name='Ecoli', start=1000, end=2000)
-    >>> parse_regions(['Ecoli:1000'])[0]
+    >>> parse_regions(['Ecoli:-1000'])[0]
     Region(ref_name='Ecoli', start=0, end=1000)
     >>> parse_regions(['Ecoli:500-'])[0]
     Region(ref_name='Ecoli', start=500, end=None)
     >>> parse_regions(['Ecoli'], ref_lengths={'Ecoli':4800000})[0]
     Region(ref_name='Ecoli', start=0, end=4800000)
-
+    >>> parse_regions(['NC_000921.1:10000-20000'])[0]
+    Region(ref_name='NC_000921.1', start=10000, end=20000)
     """
+    def _get_end(end, ref_name):
+        return end if end is not None else (
+            ref_lengths[ref_name] if ref_lengths is not None else None
+        )
+
     decoded = []
     for region in regions:
-        d =  _region_decoder_.match(region).groupdict()
-        d['start'] = d['start'].replace('-', '')
-        for key in ['start', 'end']:
-            d[key] = None if d[key] == '' else int(d[key])
-        d['start'] = 0 if d['start'] is None else d['start']
-        if d['end'] is None and ref_lengths is not None:
-            d['end'] = ref_lengths[d['ref_name']]
-        decoded.append(Region(**d))
+        if ':' not in region:
+            ref_name, start, end = region, 0, None
+        else:
+            start, end = 0, None
+            ref_name, bounds = region.split(':')
+            if bounds[0] == '-':
+                start = 0
+                end = int(bounds[1:])
+            elif bounds[-1] == '-':
+                start = int(bounds[:-1])
+                end = None
+            else:
+                start, end = [int(b) for b in bounds.split('-')]
+        decoded.append(Region(ref_name, start, _get_end(end, ref_name)))
     return tuple(decoded)
