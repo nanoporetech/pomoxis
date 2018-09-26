@@ -103,6 +103,7 @@ fi
 BASERACONOPTS="-m 8 -x -6 -g -8"
 OVLOPTS="-x ava-ont"
 ASMOPTS="-s 100 -e 3"
+MOCKQ=10
 
 if $eflag; then
   echo "Extracting longest ${ERRCORR}% of reads..." 
@@ -117,8 +118,12 @@ if $eflag; then
   racon ${BASERACONOPTS} -w ${WINDOW_LEN} -t ${THREADS} -f -q -1 ${READS} ${LONG_PAF} ${LONG_READS} > ${LONG_READ_CORR}
 
   echo "Collating corrected long reads and remaining reads..."
-  CORR_READS=${NAME}_corrected.fq
-  cat ${LONG_READ_CORR} | fast_convert aq --mock_q ${MOCKQ} | cat - ${OTHERS} > ${CORR_READS}
+  CORR_READS=${NAME}_corrected.${ext}
+  if [ "$ext" = 'fq' ] || [ "$ext" = 'fastq' ]; then
+    cat ${LONG_READ_CORR} | fast_convert aq --mock_q ${MOCKQ} | cat - ${OTHERS} > ${CORR_READS}
+  else
+    cat ${LONG_READ_CORR} ${OTHERS} > ${CORR_READS}
+  fi
   READS=${CORR_READS}
 else
   echo "Skipped pre-assembly correction." 
