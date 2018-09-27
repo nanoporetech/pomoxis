@@ -71,21 +71,9 @@ fi
 # Simple test for fastq
 filename=$(basename "$INPUT")
 ext="${filename##*.}"
-if [ "$ext" = 'fq' ] || [ "$ext" = 'fastq' ]; then
-  if ${USEQUAL}; then
-    FASTX=${OUTPUT}/${NAME}.${ext}
-    echo "Copying FASTQ input to workspace: ${INPUT} > ${FASTX}"
-    cp ${INPUT} ${FASTX}
-  else
-    FASTX=${OUTPUT}/${NAME}.fa
-    echo "Discarding quality values: ${INPUT} > ${FASTX}"
-    seqkit fq2fa ${INPUT} > ${FASTX}
-  fi
-else
-  FASTX=${OUTPUT}/${NAME}.${ext}
-  echo "Copying FASTA input to workspace: ${INPUT} > ${FASTX}"
-  cp ${INPUT} ${FASTX}
-fi
+FASTX=${OUTPUT}/${NAME}.${ext}
+echo "Copying FASTX input to workspace: ${INPUT} > ${FASTX}"
+cp ${INPUT} ${FASTX}
 
 cd ${OUTPUT}
 READS=$(basename "$FASTX")
@@ -118,10 +106,12 @@ if $eflag; then
   racon ${BASERACONOPTS} -w ${WINDOW_LEN} -t ${THREADS} -f -q -1 ${READS} ${LONG_PAF} ${LONG_READS} > ${LONG_READ_CORR}
 
   echo "Collating corrected long reads and remaining reads..."
-  CORR_READS=${NAME}_corrected.${ext}
   if [ "$ext" = 'fq' ] || [ "$ext" = 'fastq' ]; then
-    cat ${LONG_READ_CORR} | fast_convert aq --mock_q ${MOCKQ} | cat - ${OTHERS} > ${CORR_READS}
+    ext=".fa"
+    CORR_READS=${NAME}_corrected.${ext}
+    seqkit fq2fa ${OTHERS} | cat ${LONG_READ_CORR} - > ${CORR_READS}
   else
+    CORR_READS=${NAME}_corrected.${ext}
     cat ${LONG_READ_CORR} ${OTHERS} > ${CORR_READS}
   fi
   READS=${CORR_READS}
