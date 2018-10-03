@@ -15,7 +15,7 @@ from pomoxis.common.util import parse_regions, Region
 
 def main():
     logging.basicConfig(format='[%(asctime)s - %(name)s] %(message)s', datefmt='%H:%M:%S', level=logging.INFO)
-    parser = argparse.ArgumentParser('subsample bam and fastx to create fastx with uniform depth')
+    parser = argparse.ArgumentParser('subsample bam to uniform depth')
     parser.add_argument('bam',
         help='input bam file.')
     parser.add_argument('depth', nargs='+', type=int,
