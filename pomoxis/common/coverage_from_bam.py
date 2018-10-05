@@ -13,7 +13,7 @@ def main():
     parser.add_argument('bam', help='.fasta/fastq file.')
     parser.add_argument('-r', '--regions', nargs='+', help='Only process given regions.')
     parser.add_argument('-p', '--prefix', help='Prefix for output, defaults to basename of bam.')
-    parser.add_argument('-s', '--stride', type=int, default=1, help='Stride in genomic coordinate.')
+    parser.add_argument('-s', '--stride', type=int, default=1000, help='Stride in genomic coordinate.')
 
     args = parser.parse_args()
 
@@ -26,6 +26,7 @@ def main():
     else:
         regions = [Region(ref_name=r, start=0, end=ref_lengths[r]) for r in bam.references]
 
+    summary = {}
     for region in regions:
         ref_len = ref_lengths[region.ref_name]
         bins = np.arange(region.start, region.end, args.stride)
@@ -42,13 +43,22 @@ def main():
         if prefix is None:
             prefix = os.path.splitext(os.path.basename(args.bam))[0]
 
-        depth_fp = '{}_{}_{}_{}.depth.txt'.format(prefix, region.ref_name, region.start, region.end)
-        pd.DataFrame({'pos': bins,
-                      'depth': coverage_by_is_rev[True] + coverage_by_is_rev[False],
-                      'depth_fwd': coverage_by_is_rev[False],
-                      'depth_rev': coverage_by_is_rev[True],
-                      }
-                     ).to_csv(depth_fp, sep='\t', index=False)
+        region_str = '{}_{}_{}'.format(region.ref_name, region.start, region.end)
+        depth_fp = '{}_{}.depth.txt'.format(prefix, region_str)
+        total_depth = coverage_by_is_rev[True] + coverage_by_is_rev[False]
+        df = pd.DataFrame({'pos': bins,
+                           'depth': total_depth,
+                           'depth_fwd': coverage_by_is_rev[False],
+                           'depth_rev': coverage_by_is_rev[True],
+                           }
+                          )
+        df.to_csv(depth_fp, sep='\t', index=False)
+
+        summary[region_str] = df['depth'].describe()
+
+    summary_fp = '{}_depth_summary.txt'.format(prefix)
+    summary_df = pd.DataFrame(summary).T.reset_index().rename(columns={'index': 'region'})
+    summary_df.to_csv(summary_fp, index=False, sep='\t')
 
 
 if __name__ == '__main__':
