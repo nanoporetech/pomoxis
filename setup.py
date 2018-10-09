@@ -1,14 +1,10 @@
-import os
-import sys
-import shutil
-import re
-import shutil
-import platform
 from glob import glob
-from setuptools import setup, find_packages, Extension
-from setuptools import Distribution, Command
+import os
+import re
+from setuptools import setup, find_packages
+from setuptools import Distribution
 from setuptools.command.install import install
-import pkg_resources
+import shutil
 
 __path__ = os.path.dirname(__file__)
 __pkg_name__ = 'pomoxis'
@@ -82,6 +78,7 @@ setup(
             'fast_convert = {}.common.util:fast_convert'.format(__pkg_name__),
             'long_fastx = {}.common.util:extract_long_reads'.format(__pkg_name__),
             'pomoxis_path = {}:show_prog_path'.format(__pkg_name__),
+            'qscores_from_summary = {}.common.qscores_from_summary:main'.format(__pkg_name__),
             'read_until_filter = {}.apps.read_until_filter:main'.format(__pkg_name__),
             'simulate_calls = {}.common.simulate_calls:main'.format(__pkg_name__),
             'split_fastx = {}.common.util:split_fastx_cmdline'.format(__pkg_name__),
