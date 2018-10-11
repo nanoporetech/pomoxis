@@ -13,7 +13,7 @@ Assemble fastq/fasta formatted reads and perform POA consensus.
     -p  output file prefix (default: reads).
     -t  number of minimap and racon threads (default: 1).
     -m  number of racon rounds (default: 4).
-    -n  number of racon shuffles (default: 1).
+    -n  number of racon shuffles (default: 1. If not 1, should be >10).
     -w  racon window length (default: 500).
     -c  trim adapters from reads prior to everything else.
     -e  error correct longest e% of reads prior to assembly.
@@ -24,6 +24,7 @@ NAME="reads"
 THREADS=1
 ROUNDS=4
 SHUFFLES=1
+MIN_SHUFFLES=10
 WINDOW_LEN=500
 USEQUAL=false
 CHOP=false
@@ -66,6 +67,10 @@ if [[ ! -e ${OUTPUT} ]]; then
   mkdir -p ${OUTPUT}
 else
   echo "Output ${OUTPUT} already exists." >&2; exit 1
+fi
+
+if [ "$SHUFFLES" -gt "1" ] && [ "$SHUFFLES" -lt "$MIN_SHUFFLES" ]; then
+    echo "Error: the number of shuffles n should be 1 or >=10, exiting." >&2; exit 1;
 fi
 
 # Simple test for fastq
@@ -127,6 +132,7 @@ if ! $rflag; then
   DRAFT=${NAME}.gfa.fasta
 else
   echo "Using supplied reference to perform reference-guided consensus."
+  echo "Warning: Parts of this reference might not be polished by racon and such parts will be present in the final consensus unmodified."
   DRAFT=${REF}
 fi
 
@@ -144,6 +150,7 @@ find_larger_prime(){
 }
 
 
+MOD_WINDOW_LEN=${WINDOW_LEN} 
 for SHUF in $(seq -w 1 ${SHUFFLES}); do
   echo "Running racon read shuffle ${SHUF}..."
 
@@ -152,7 +159,6 @@ for SHUF in $(seq -w 1 ${SHUFFLES}); do
     #   trimming tricks below
     ADDRACONOPTS="--include-unpolished"
   fi
-  MOD_WINDOW_LEN=${WINDOW_LEN} 
 
   if [ ${SHUF} -ne 1 ]; then
     echo "Shuffling reads..."
@@ -162,8 +168,7 @@ for SHUF in $(seq -w 1 ${SHUFFLES}); do
     # as well as shuffling reads we shift the backbone to force
     #   racon to use different boundaries
     SCAFFOLD=shuffled_${SHUF}_backbone.fasta
-    PADLEN=$(((SHUF-1)*(WINDOW_LEN/SHUFFLES)));
-    #PADLEN=$((20*(SHUF-1)))
+    PADLEN=$((((10#$SHUF)-1)*((10#$WINDOW_LEN)/(10#$SHUFFLES)))); 
     echo "Trimming backbones by ${PADLEN}."
     seqkit replace -p "^.{${PADLEN}}" -r "" -s ${DRAFT} > ${SCAFFOLD}
   else
@@ -200,8 +205,8 @@ else
   done
 
   READS2TIGS=combined2contigs.paf
-  minimap2 -t${THREADS} ${DRAFT} ${COMBINED} > ${READS2TIGS}
+  minimap2 -t${THREADS} ${SCAFFOLD} ${COMBINED} > ${READS2TIGS}
   # use a slightly longer window here for good measure
-  racon ${RACONOPTS} -w $((3*WINDOW_LEN/2)) -t ${THREADS} -q -1 ${COMBINED} ${READS2TIGS} ${DRAFT} > ${FINAL}
+  racon ${RACONOPTS} -w $((3*WINDOW_LEN/2)) -t ${THREADS} -q -1 ${COMBINED} ${READS2TIGS} ${SCAFFOLD} > ${FINAL}
 fi
 echo "Final assembly written to ${OUTPUT}/${FINAL}. Have a nice day."
