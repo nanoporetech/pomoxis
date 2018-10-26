@@ -12,7 +12,8 @@ Calculate accuracy statistics for an assembly.
         prior to alignment, 0 will not chunk (default 100000).
     -C  catalogue errors. 
     -t  alignment threads (default: 1).
-    -p  output file prefix (default: assm)."
+    -p  output file prefix (default: assm).
+    -T  trim consensus to primary alignments of truth to assembly."
 
 PREFIX="assm"
 THREADS=1
@@ -20,9 +21,10 @@ CHUNK="100000"
 rflag=false
 iflag=false
 catalogue_flag=false
+trim_flag=false
 ALIGN_OPTS="-P"
 
-while getopts ':hr:i:p:c:Ct:' option; do
+while getopts ':hr:i:p:c:CTt:' option; do
   case "$option" in
     h  ) echo "$usage" >&2; exit;;
     r  ) rflag=true; REFERENCE=$OPTARG;;
@@ -30,6 +32,7 @@ while getopts ':hr:i:p:c:Ct:' option; do
     p  ) PREFIX=$OPTARG;;
     c  ) CHUNK=$OPTARG;;
     C  ) catalogue_flag=true; ALIGN_OPTS="-m";;
+    T  ) trim_flag=true;;
     t  ) THREADS=$OPTARG;;
     \? ) echo "Invalid option: -${OPTARG}." >&2; exit 1;;
     :  ) echo "Option -$OPTARG requires an argument." >&2; exit 1;;
@@ -45,6 +48,12 @@ fi
 
 if (($CHUNK > 0)); then
     ALIGN_OPTS="$ALIGN_OPTS -c $CHUNK"
+fi
+
+if $trim_flag; then
+    mini_align -i $REFERENCE -r $INPUT -p ${PREFIX}_trim -P -t $THREADS $ALIGN_OPTS
+    ref_seqs_from_bam ${PREFIX}_trim.bam > ${PREFIX}_trim.fasta
+    INPUT=${PREFIX}_trim.fasta
 fi
 
 mini_align -i $INPUT -r $REFERENCE -p $PREFIX -t $THREADS $ALIGN_OPTS 
