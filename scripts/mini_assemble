@@ -16,7 +16,9 @@ Assemble fastq/fasta formatted reads and perform POA consensus.
     -n  number of racon shuffles (default: 1. If not 1, should be >10).
     -w  racon window length (default: 500).
     -c  trim adapters from reads prior to everything else.
-    -e  error correct longest e% of reads prior to assembly.
+    -e  error correct longest e% of reads prior to assembly, or an estimated coverage (e.g. 2x).
+        For an estimated coverage, the -l option must be a fastx or a length (e.g. 4.8mb).
+    -l  Reference length, either as a number (e.g. 4.8mb) or fastx from which length will be calculated.
     -x  log all commands before running."
 
 OUTPUT="assm"
@@ -31,8 +33,9 @@ CHOP=false
 iflag=false
 rflag=false
 eflag=false
+lflag=false
 xflag=false
-while getopts ':hi:q:r:o:p:t:m:n:w:ce:x' option; do
+while getopts ':hi:q:r:o:p:t:m:n:w:ce:l:x' option; do
   case "$option" in
     h  ) echo "$usage" >&2; exit;;
     i  ) iflag=true; INPUT=$OPTARG;;
@@ -46,6 +49,7 @@ while getopts ':hi:q:r:o:p:t:m:n:w:ce:x' option; do
     w  ) WINDOW_LEN=$OPTARG;;
     c  ) CHOP=true;;
     e  ) eflag=true; ERRCORR=$OPTARG;;
+    l  ) lflag=true; REFLEN=$OPTARG;;
     x  ) xflag=true;;
     \? ) echo "Invalid option: -${OPTARG}." >&2; exit 1;;
     :  ) echo "Option -$OPTARG requires an argument." >&2; exit 1;;
@@ -58,6 +62,18 @@ if ! $iflag; then
   echo "-i must be specified." >&2;
   exit 1;
 fi
+
+if $eflag && [[ $ERRCORR = *x ]]; then
+  if ! $lflag; then
+    echo "$usage" >&2;
+    echo "If -e is a coverage, -l must be specified." >&2;
+    exit 1;
+  fi
+  ERRCOV=$(echo "$ERRCORR" | sed 's/x//')
+  ERRCORR=$(coverage_from_fastx ${INPUT} ${REFLEN} --coverage $ERRCOV --longest | grep 'reads required' | awk '{print $NF}')
+  echo "Will error-correct the longest ${ERRCORR} % of reads (${ERRCOV}x)"
+fi
+
 
 if $xflag; then
   set -x;

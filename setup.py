@@ -87,6 +87,7 @@ setup(
             'summary_from_stats = {}.common.summary_from_stats:main'.format(__pkg_name__),
             'trim_alignments = {}.common.trim_alignments:main'.format(__pkg_name__),
             'ref_seqs_from_bam = {}.common.ref_seqs_from_bam:main'.format(__pkg_name__),
+            'coverage_from_fastx = {}.common.util:coverage_from_fastx'.format(__pkg_name__),
         ]
     },
     scripts=[
