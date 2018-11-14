@@ -94,7 +94,7 @@ def subsample_region_proportionally(region, args):
         n_reads = int(round(fraction * len(read_data), 0))
         target_reads = np.random.choice(read_data, n_reads, replace=False)
         prefix = '{}_{}X'.format(args.output_prefix, target)
-        _write_bam(args.bam, prefix, region, read_data['name'])
+        _write_bam(args.bam, prefix, region, target_reads['name'])
         coverage.fill(0.0)  # reset coverage for each target depth
         for read in target_reads:
             coverage[read['start'] - region.start:read['end'] - region.start] += 1
