@@ -12,6 +12,7 @@ import pysam
 
 from pomoxis.common.util import parse_regions, Region
 from pomoxis.common.coverage_from_bam import coverage_summary_of_region
+from pomoxis.common.stats_from_bam import stats_from_aligned_read
 
 
 def main():
@@ -34,6 +35,10 @@ def main():
         help='Number of threads to use.')
     parser.add_argument('-q', '--quality', type=float,
         help='Filter reads by mean qscore.')
+    parser.add_argument('-a', '--accuracy', type=float,
+        help='Filter reads by accuracy.')
+    parser.add_argument('-c', '--coverage', type=float,
+        help='Filter reads by coverage (what fraction of the read aligns).')
 
     uparser = parser.add_argument_group('Uniform sampling options')
     uparser.add_argument('-x', '--patience', default=5, type=int,
@@ -63,13 +68,16 @@ def main():
         worker = functools.partial(subsample_region_proportionally, args=args)
     else:
         worker = functools.partial(subsample_region_uniformly, args=args)
-    
+
     with ProcessPoolExecutor(max_workers=args.threads) as executor:
         for res in executor.map(worker, regions):
             pass
 
 
 def subsample_region_proportionally(region, args):
+    if args.quality is not None or args.coverage is not None or args.accuracy is not None:
+        raise NotImplemented('Read filtering is not currently supported for proportion subsampling')
+
     logger = logging.getLogger(region.ref_name)
     coverage_summary = coverage_summary_of_region(region, args.bam, args.stride)
     col = 'depth_{}'.format(args.orientation) if args.orientation is not None else 'depth'
@@ -77,19 +85,8 @@ def subsample_region_proportionally(region, args):
     with pysam.AlignmentFile(args.bam) as bam:
         def _read_iter():
             for r in bam.fetch(region.ref_name, region.start, region.end):
-                if (r.is_secondary or r.is_supplementary):
-                    continue
-                # filter orientation
-                if (r.is_reverse and args.orientation == 'fwd') or \
-                   (not r.is_reverse and args.orientation == 'rev'):
-                    continue
-                # filter quality
-                if args.quality is not None:
-                    mean_q = np.mean(r.query_qualities)
-                    if mean_q < args.quality:
-                        logger.debug("Filtering {} by quality ({:.2f}).".format(r.query_name, mean_q))
-                        continue
-                yield r
+                if not filter_read(r, bam, args, logger):
+                    yield r
 
         reads = _read_iter()
         # query names cannot be longer than 251
@@ -122,6 +119,38 @@ def subsample_region_proportionally(region, args):
         logger.info('Processed {}X: {} reads ({:.2f} %).'.format(target, n_reads, 100 * fraction))
 
 
+def filter_read(r, bam, args, logger):
+    """Decide whether a read should be filtered out, returning a bool"""
+
+    # primary alignments
+    if (r.is_secondary or r.is_supplementary):
+        return True
+
+    # filter orientation
+    if (r.is_reverse and args.orientation == 'fwd') or \
+        (not r.is_reverse and args.orientation == 'rev'):
+        return True
+
+    # filter quality
+    if args.quality is not None:
+        mean_q = np.mean(r.query_qualities)
+        if mean_q < args.quality:
+            logger.debug("Filtering {} by quality ({:.2f}).".format(r.query_name, mean_q))
+            return True
+
+    # filter accuracy or alignment coverage
+    if args.accuracy is not None or args.coverage is not None:
+        stats = stats_from_aligned_read(r, bam.references, bam.lengths)
+        if args.accuracy is not None and stats['acc'] < args.accuracy:
+            logger.info("Filtering {} by accuracy ({:.2f}).".format(r.query_name, stats['acc']))
+            return True
+        if args.coverage is not None and stats['coverage'] < args.coverage:
+            logger.info("Filtering {} by coverage ({:.2f}).".format(r.query_name, stats['coverage']))
+            return True
+    # don't filter
+    return False
+
+
 def subsample_region_uniformly(region, args):
     logger = logging.getLogger(region.ref_name)
     logger.info("Building interval tree.")
@@ -129,18 +158,8 @@ def subsample_region_uniformly(region, args):
     with pysam.AlignmentFile(args.bam) as bam:
         ref_lengths = dict(zip(bam.references, bam.lengths))
         for r in bam.fetch(region.ref_name, region.start, region.end):
-            if (r.is_secondary or r.is_supplementary):
+            if filter_read(r, bam, args, logger):
                 continue
-            # filter orientation
-            if (r.is_reverse and args.orientation == 'fwd') or \
-               (not r.is_reverse and args.orientation == 'rev'):
-                continue
-            # filter quality
-            if args.quality is not None:
-                mean_q = np.mean(r.query_qualities)
-                if mean_q < args.quality:
-                    logger.debug("Filtering {} by quality ({:.2f}).".format(r.query_name, mean_q))
-                    continue
             # trim reads to region
             tree.add(Interval(
                 max(r.reference_start, region.start), min(r.reference_end, region.end),
