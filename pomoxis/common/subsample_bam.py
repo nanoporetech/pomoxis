@@ -32,11 +32,15 @@ def main():
         help='Sample only forward or reverse reads.')
     parser.add_argument('-t', '--threads', type=int, default=-1,
         help='Number of threads to use.')
+    parser.add_argument('-q', '--quality', type=float,
+        help='Filter reads by mean qscore.')
+
     uparser = parser.add_argument_group('Uniform sampling options')
     uparser.add_argument('-x', '--patience', default=5, type=int,
         help='Maximum iterations with no change in median coverage before aborting.')
     uparser.add_argument('-s', '--stride', type=int, default=1000,
         help='Stride in genomic coordinates when searching for new reads. Smaller can lead to more compact pileup.')
+
     pparser = parser.add_argument_group('Proportional sampling options')
     pparser.add_argument('-P', '--proportional', default=False, action='store_true',
         help='Activate proportional sampling, thus keeping depth variations of the pileup.')
@@ -59,8 +63,10 @@ def main():
         worker = functools.partial(subsample_region_proportionally, args=args)
     else:
         worker = functools.partial(subsample_region_uniformly, args=args)
+    
     with ProcessPoolExecutor(max_workers=args.threads) as executor:
-        executor.map(worker, regions)
+        for res in executor.map(worker, regions):
+            pass
 
 
 def subsample_region_proportionally(region, args):
@@ -69,15 +75,29 @@ def subsample_region_proportionally(region, args):
     col = 'depth_{}'.format(args.orientation) if args.orientation is not None else 'depth'
     median_coverage = coverage_summary[col].T['50%']
     with pysam.AlignmentFile(args.bam) as bam:
-        reads = bam.fetch(region.ref_name, region.start, region.end)
-        if args.orientation == 'fwd':
-            reads = (r for r in reads if not r.is_reverse)
-        elif args.orientation == 'rev':
-            reads = (r for r in reads if r.is_reverse)
+        def _read_iter():
+            for r in bam.fetch(region.ref_name, region.start, region.end):
+                if (r.is_secondary or r.is_supplementary):
+                    continue
+                # filter orientation
+                if (r.is_reverse and args.orientation == 'fwd') or \
+                   (not r.is_reverse and args.orientation == 'rev'):
+                    continue
+                # filter quality
+                if args.quality is not None:
+                    mean_q = np.mean(r.query_qualities)
+                    if mean_q < args.quality:
+                        logger.debug("Filtering {} by quality ({:.2f}).".format(r.query_name, mean_q))
+                        continue
+                yield r
+
+        reads = _read_iter()
         # query names cannot be longer than 251
         dtype=[('name', 'U251'), ('start', int),('end',  int)]
-        read_data = np.fromiter(((r.query_name, r.reference_start, r.reference_end) for r in reads)
-                                , dtype=dtype)
+        read_data = np.fromiter(
+            ((r.query_name, r.reference_start, r.reference_end) for r in reads),
+            dtype=dtype
+        )
 
     targets = sorted(args.depth)
 
@@ -109,9 +129,18 @@ def subsample_region_uniformly(region, args):
     with pysam.AlignmentFile(args.bam) as bam:
         ref_lengths = dict(zip(bam.references, bam.lengths))
         for r in bam.fetch(region.ref_name, region.start, region.end):
+            if (r.is_secondary or r.is_supplementary):
+                continue
+            # filter orientation
             if (r.is_reverse and args.orientation == 'fwd') or \
                (not r.is_reverse and args.orientation == 'rev'):
                 continue
+            # filter quality
+            if args.quality is not None:
+                mean_q = np.mean(r.query_qualities)
+                if mean_q < args.quality:
+                    logger.debug("Filtering {} by quality ({:.2f}).".format(r.query_name, mean_q))
+                    continue
             # trim reads to region
             tree.add(Interval(
                 max(r.reference_start, region.start), min(r.reference_end, region.end),
