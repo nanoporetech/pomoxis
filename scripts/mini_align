@@ -5,12 +5,12 @@ usage="$(basename "$0") [-h] -r <reference> -i <fastq>
 Align fastq/a formatted reads to a genome using minimap2.
 
     -h  show this help text.
-    -r  reference, should be a fasta file. If correspondng bwa indices
+    -r  reference, should be a fasta file. If correspondng minimap indices
         do not exist they will be created. (required).
     -i  fastq/a input reads (required).
     -I  split index every ~NUM input bases (default: 16G, this is larger
         than the usual minimap2 default).
-    -a  aggresively extend gaps (sets -A1 -B2 -O2 -E1 for minimap2).
+    -a  aggressively extend gaps (sets -A1 -B2 -O2 -E1 for minimap2).
     -P  filter to only primary alignments (i.e. run samtools view -F 2308)
     -n  sort bam by read name.
     -c  chunk size. Input reads/contigs will be broken into chunks

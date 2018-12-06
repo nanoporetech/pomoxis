@@ -74,7 +74,6 @@ setup(
             'catalogue_errors = {}.common.catalogue_errors:main'.format(__pkg_name__),
             'common_errors_from_bam = {}.common.common_errors_from_bam:main'.format(__pkg_name__),
             'coverage_from_bam = {}.common.coverage_from_bam:main'.format(__pkg_name__),
-            'epi3me = {}.apps.epi3me:main'.format(__pkg_name__),
             'fast_convert = {}.common.util:fast_convert'.format(__pkg_name__),
             'long_fastx = {}.common.util:extract_long_reads'.format(__pkg_name__),
             'pomoxis_path = {}:show_prog_path'.format(__pkg_name__),

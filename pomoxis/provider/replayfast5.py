@@ -19,7 +19,6 @@ import msgpack
 from fast5_research.fast5_bulk import BulkFast5
 
 from pomoxis import set_wakeup
-from pomoxis.pyscrap import pyscrap
 
 import logging
 logger = logging.getLogger(__name__)
