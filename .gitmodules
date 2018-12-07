@@ -4,9 +4,6 @@
 [submodule "submodules/miniasm"]
 	path = submodules/miniasm
 	url = https://github.com/lh3/miniasm
-[submodule "submodules/racon"]
-	path = submodules/racon
-	url = https://github.com/isovic/racon
 [submodule "submodules/minimap2"]
 	path = submodules/minimap2
 	url = https://github.com/lh3/minimap2
