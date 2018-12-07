@@ -7,7 +7,6 @@ Assemble fastq/fasta formatted reads and perform POA consensus.
 
     -h  show this help text.
     -i  fastx input reads (required).
-    -q  use qualities as is (default: false).
     -r  reference fasta for reference-guided consensus (instead of de novo assembly)
     -o  output folder (default: assm).
     -p  output file prefix (default: reads).
@@ -15,6 +14,7 @@ Assemble fastq/fasta formatted reads and perform POA consensus.
     -m  number of racon rounds (default: 4).
     -n  number of racon shuffles (default: 1. If not 1, should be >10).
     -w  racon window length (default: 500).
+    -k  keep intermediate files (default: delete).
     -c  trim adapters from reads prior to everything else.
     -e  error correct longest e% of reads prior to assembly, or an estimated coverage (e.g. 2x).
         For an estimated coverage, the -l option must be a fastx or a length (e.g. 4.8mb).
@@ -28,18 +28,17 @@ ROUNDS=4
 SHUFFLES=1
 MIN_SHUFFLES=10
 WINDOW_LEN=500
-USEQUAL=false
 CHOP=false
 iflag=false
 rflag=false
 eflag=false
 lflag=false
 xflag=false
+kflag=false
 while getopts ':hi:q:r:o:p:t:m:n:w:ce:l:x' option; do
   case "$option" in
     h  ) echo "$usage" >&2; exit;;
     i  ) iflag=true; INPUT=$OPTARG;;
-    q  ) USEQUAL=true;;
     r  ) rflag=true; REF=$(cd "$(dirname "$OPTARG")"; pwd)/$(basename "$OPTARG");;
     o  ) OUTPUT=$OPTARG;;
     p  ) NAME=$OPTARG;;
@@ -47,6 +46,7 @@ while getopts ':hi:q:r:o:p:t:m:n:w:ce:l:x' option; do
     m  ) ROUNDS=$OPTARG;;
     n  ) SHUFFLES=$OPTARG;;
     w  ) WINDOW_LEN=$OPTARG;;
+    k  ) kflag=true;;
     c  ) CHOP=true;;
     e  ) eflag=true; ERRCORR=$OPTARG;;
     l  ) lflag=true; REFLEN=$OPTARG;;
@@ -91,18 +91,20 @@ fi
 
 # Simple test for fastq
 filename=$(basename "$INPUT")
-ext="${filename##*.}"
-FASTX=${OUTPUT}/${NAME}.${ext}
+FASTX=${OUTPUT}/${NAME}.fa.gz
 echo "Copying FASTX input to workspace: ${INPUT} > ${FASTX}"
-cp ${INPUT} ${FASTX}
+seqkit fq2fa ${INPUT} | gzip -1 > ${FASTX}
 
 cd ${OUTPUT}
 READS=$(basename "$FASTX")
 
 if $CHOP; then
   echo "Trimming reads..."
-  TRIMMED=${NAME}_trimmed.${ext}
-  porechop -i ${READS} -o ${TRIMMED} --threads ${THREADS} --check_reads 1000 --discard_middle
+  TRIMMED=${NAME}_trimmed.fa.gz
+  porechop -i ${READS} -o ${TRIMMED} --format fasta.gz --threads ${THREADS} --check_reads 1000 --discard_middle
+  if ! $kflag; then
+    rm ${READS} &
+  fi
   READS=${TRIMMED}
 else
   echo "Skipped adapter trimming."
@@ -115,25 +117,23 @@ ASMOPTS="-s 100 -e 3"
 MOCKQ=10
 
 if $eflag; then
-  echo "Extracting longest ${ERRCORR}% of reads..." 
-  LONG_READS=long_${READS}
-  OTHERS=other_${READS}
-  long_fastx ${READS} ${LONG_READS} --longest ${ERRCORR} --others ${OTHERS}
+  echo "Extracting longest ${ERRCORR}% of reads..."
+  # long_fastq doesn't support gz files
+  LONG_READS=long_${READS//.gz/}
+  OTHERS=other_${READS//.gz/}
+  gunzip ${READS}
+  long_fastx ${READS//.gz/} ${LONG_READS} --longest ${ERRCORR} --others ${OTHERS}
+  gzip -1 ${READS//.gz/} &
 
   echo "Correcting long reads..."
-  LONG_PAF=long_corr.paf
-  LONG_READ_CORR=corr_${LONG_READS}
-  minimap2 ${OVLOPTS} -t${THREADS} ${LONG_READS} ${READS} > ${LONG_PAF}
-  racon ${BASERACONOPTS} -w ${WINDOW_LEN} -t ${THREADS} -f -q -1 ${READS} ${LONG_PAF} ${LONG_READS} > ${LONG_READ_CORR}
+  LONG_PAF=long_corr.paf.gz
+  CORR_READS=${NAME}_corrected.fa.gz
+  minimap2 ${OVLOPTS} -t ${THREADS} ${LONG_READS} ${READS} | gzip -1 > ${LONG_PAF}
+  racon ${BASERACONOPTS} -w ${WINDOW_LEN} -t ${THREADS} -f -q -1 ${READS} ${LONG_PAF} ${LONG_READS} | \
+      cat - ${OTHERS} | gzip -1 > ${CORR_READS}
 
-  echo "Collating corrected long reads and remaining reads..."
-  if [ "$ext" = 'fq' ] || [ "$ext" = 'fastq' ]; then
-    ext=".fa"
-    CORR_READS=${NAME}_corrected.${ext}
-    seqkit fq2fa ${OTHERS} | cat ${LONG_READ_CORR} - > ${CORR_READS}
-  else
-    CORR_READS=${NAME}_corrected.${ext}
-    cat ${LONG_READ_CORR} ${OTHERS} > ${CORR_READS}
+  if ! $kflag; then
+    rm ${LONG_READS} ${OTHERS} ${LONG_PAF} ${READS} &
   fi
   READS=${CORR_READS}
 else
@@ -142,10 +142,14 @@ fi
 
 if ! $rflag; then 
   echo "Overlapping reads..."
-  minimap2 ${OVLOPTS} -t${THREADS} ${READS} ${READS}| gzip -1 > ${NAME}.paf.gz
+  READSPAF=${NAME}.paf.gz
+  minimap2 ${OVLOPTS} -t ${THREADS} ${READS} ${READS} | gzip -1 > ${READSPAF}
   echo "Assembling graph..."
-  miniasm ${ASMOPTS} -f ${READS} ${NAME}.paf.gz | tee ${NAME}.gfa | awk '/^S/{print ">"$2"\n"$3}' > ${NAME}.gfa.fasta
-  DRAFT=${NAME}.gfa.fasta
+  DRAFT=${NAME}.gfa.fa.gz
+  miniasm ${ASMOPTS} -f ${READS} ${READSPAF} | awk '/^S/{print ">"$2"\n"$3}' | gzip -1 > ${DRAFT}
+  if ! $kflag; then
+    rm ${READSPAF} &
+  fi
 else
   echo "Using supplied reference to perform reference-guided consensus."
   echo "Warning: Parts of this reference might not be polished by racon and such parts will be present in the final consensus unmodified."
@@ -180,49 +184,66 @@ for SHUF in $(seq -w 1 ${SHUFFLES}); do
     echo "Shuffling reads..."
     MOD_WINDOW_LEN=$(find_larger_prime ${MOD_WINDOW_LEN})  # might explode at larger lengths...
     SHUFREADS=shuffled_${SHUF}_${READS}
-    seqkit shuffle ${READS} > ${SHUFREADS}
+    seqkit shuffle ${READS} | gzip -1 > ${SHUFREADS}
     # as well as shuffling reads we shift the backbone to force
     #   racon to use different boundaries
-    SCAFFOLD=shuffled_${SHUF}_backbone.fasta
+    SCAFFOLD=shuffled_${SHUF}_backbone.fa.gz
     PADLEN=$((((10#$SHUF)-1)*((10#$WINDOW_LEN)/(10#$SHUFFLES)))); 
     echo "Trimming backbones by ${PADLEN}."
-    seqkit replace -p "^.{${PADLEN}}" -r "" -s ${DRAFT} > ${SCAFFOLD}
+    seqkit replace -p "^.{${PADLEN}}" -r "" -s ${DRAFT} | gzip -1 > ${SCAFFOLD}
   else
     SHUFREADS=${READS}
     SCAFFOLD=${DRAFT}
     if [ ${SHUFFLES} -ne 1 ]; then
       ln -s ${READS} shuffled_${SHUF}_${READS}
-      ln -s ${SCAFFOLD} shuffled_${SHUF}_backbone.fasta
+      ln -s ${SCAFFOLD} shuffled_${SHUF}_backbone.fa.gz
     fi
   fi
 
   for ROUND in $(seq -w 1 ${ROUNDS}); do
     echo "Running round ${ROUND} consensus..."
-    READS2TIGS=reads2contigs_${SHUF}_${ROUND}.paf
-    NEWSCAF=racon_${SHUF}_${ROUND}.fasta
+    READS2TIGS=reads2contigs_${SHUF}_${ROUND}.paf.gz
+    NEWSCAF=racon_${SHUF}_${ROUND}.fa.gz
 
-    minimap2 -t${THREADS} ${SCAFFOLD} ${SHUFREADS} > ${READS2TIGS}
-    racon ${BASERACONOPTS} ${ADDRACONOPTS} -w ${MOD_WINDOW_LEN} -t ${THREADS} -q -1 ${SHUFREADS} ${READS2TIGS} ${SCAFFOLD} > ${NEWSCAF}
+    minimap2 -t${THREADS} ${SCAFFOLD} ${SHUFREADS} | gzip -1 > ${READS2TIGS}
+    racon ${BASERACONOPTS} ${ADDRACONOPTS} -w ${MOD_WINDOW_LEN} -t ${THREADS} -q -1 ${SHUFREADS} ${READS2TIGS} ${SCAFFOLD} | gzip -1 > ${NEWSCAF}
+
+    if ! $kflag; then
+      rm ${READS2TIGS} &
+    fi
     SCAFFOLD=${NEWSCAF}
   done
 
 done
+if ! $kflag; then
+  rm ${READS} &
+fi
 
-
+# we elect to write uncompressed output
 FINAL=${NAME}_final.fa
 if [ ${SHUFFLES} -eq 1 ]; then
-  cp ${SCAFFOLD} ${FINAL}
+  gunzip -c ${SCAFFOLD} > ${FINAL}
 else
   # One last compilation step
   echo "Combining consensus shuffles."
-  COMBINED=racon_combined_shuffles.fasta
+  COMBINED=racon_combined_shuffles.fa.gz
   for SHUF in $(seq -w 1 ${SHUFFLES}); do
-      sed "s/\(>[^[:space:]]\+\)/\1_shuffle_${SHUF}/" racon_${SHUF}_${ROUNDS}.fasta >> ${COMBINED}
+      gunzip -c racon_${SHUF}_${ROUNDS}.fa.gz | sed "s/\(>[^[:space:]]\+\)/\1_shuffle_${SHUF}/" | gzip -1 >> ${COMBINED}
   done
 
-  READS2TIGS=combined2contigs.paf
-  minimap2 -t${THREADS} ${SCAFFOLD} ${COMBINED} > ${READS2TIGS}
+  READS2TIGS=combined2contigs.paf.gz
+  minimap2 -t${THREADS} ${SCAFFOLD} ${COMBINED} | gzip -1 > ${READS2TIGS}
   # use a slightly longer window here for good measure
   racon ${RACONOPTS} -w $((3*WINDOW_LEN/2)) -t ${THREADS} -q -1 ${COMBINED} ${READS2TIGS} ${SCAFFOLD} > ${FINAL}
+  if ! $kflag; then
+    rm ${READS2TIGS} &
+  fi
 fi
+
+if ! $kflag; then
+  #TODO: move these earlier?
+  rm racon_*_*.fa.gz shuffled* *paf* *gfa* &
+fi
+echo "Waiting for cleanup."
+wait
 echo "Final assembly written to ${OUTPUT}/${FINAL}. Have a nice day."
