@@ -94,7 +94,6 @@ setup(
     },
     scripts=[
         'scripts/assess_assembly',
-        'scripts/bwa_align',
         'scripts/intersect_assembly_errors',
         'scripts/mini_align',
         'scripts/mini_assemble',

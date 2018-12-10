@@ -132,14 +132,13 @@ Third party binaries
 
 The distribution bundles some common bioinformatics tools:
 
-* miniasm
-* minimap2
-* racon
-* bwa
-* samtools
-* bcftools
-* seqkit
-* porechop
+ * miniasm
+ * minimap2
+ * racon
+ * samtools
+ * bcftools
+ * seqkit
+ * porechop
 
 
 

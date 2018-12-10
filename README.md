@@ -134,7 +134,6 @@ The distribution bundles some common bioinformatics tools:
 * miniasm
 * minimap2
 * racon
-* bwa
 * samtools
 * bcftools
 * seqkit
