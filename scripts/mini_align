@@ -11,7 +11,9 @@ Align fastq/a formatted reads to a genome using minimap2.
     -I  split index every ~NUM input bases (default: 16G, this is larger
         than the usual minimap2 default).
     -a  aggressively extend gaps (sets -A1 -B2 -O2 -E1 for minimap2).
-    -P  filter to only primary alignments (i.e. run samtools view -F 2308)
+    -P  filter to only primary alignments (i.e. run samtools view -F 2308.
+        Deprecated: this filter is now default and can be disabled with -A.)
+    -A  do not filter alignments to primary alignments, output all.
     -n  sort bam by read name.
     -c  chunk size. Input reads/contigs will be broken into chunks
         prior to alignment.
@@ -23,7 +25,7 @@ PREFIX="reads"
 ALIGN_OPTS="-x map-ont"
 INDEX_SIZE="16G"
 THREADS=1
-FILTER=""
+FILTER="-F 2308"
 SORT=""
 CHUNK=""
 rflag=false
@@ -35,6 +37,7 @@ while getopts ':hr:i:p:aPmnc:t:' option; do
     i  ) iflag=true; INPUT=$OPTARG;;
     I  ) INDEX_SIZE=$OPTARG;;
     P  ) FILTER="-F 2308";;
+    A  ) FILTER="";;
     m  ) ALIGN_OPTS="${ALIGN_OPTS} --MD";;
     n  ) SORT="-n";;
     p  ) PREFIX=$OPTARG;;
