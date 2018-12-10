@@ -12,7 +12,6 @@ numpy
 pandas
 pysam
 scrappie
-sphinx-argparse
 watchdog
 git+https://github.com/rrwick/Porechop
 

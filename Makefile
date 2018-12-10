@@ -1,8 +1,11 @@
 .PHONY: install docs
+SHELL=/bin/bash
 OS := $(shell uname | tr '[:upper:]' '[:lower:]')
 
 # for porechop on travis (or other platform with older gcc)
 CXX         ?= g++
+
+CONDA?=~/miniconda3/
 
 # Builds a cache of binaries which can just be copied for CI
 BINARIES=minimap2 miniasm bwa racon samtools bcftools seqkit
@@ -72,8 +75,9 @@ $(BINCACHEDIR)/seqkit: | $(BINCACHEDIR)
 venv: venv/bin/activate
 IN_VENV=. ./venv/bin/activate
 
+PYVER=3.6
 venv/bin/activate:
-	test -d venv || virtualenv venv --prompt '(pomoxis) ' --python=python3
+	test -d venv || virtualenv venv --prompt '(pomoxis) ' --python=python${PYVER}
 	${IN_VENV} && pip install pip --upgrade
 	${IN_VENV} && pip install -r requirements.txt
 
@@ -82,7 +86,20 @@ bwapy: venv
 	${IN_VENV} && cd submodules/bwapy && python setup.py install
 
 install: venv bwapy | $(addprefix $(BINCACHEDIR)/, $(BINARIES))
-	${IN_VENV} && python setup.py install
+	${IN_VENV} && POMO_BINARIES=1 python setup.py install
+
+IN_CONDA=. ${CONDA}/etc/profile.d/conda.sh
+conda:
+	${IN_CONDA} && conda remove -n pomoxis --all
+	${IN_CONDA} && conda create -y -n pomoxis -c bioconda -c conda-forge porechop \
+		samtools=${SAMVER} bcftools=${BCFVER} seqkit=${SEQKITVER} \
+		miniasm=${ASMVER} minimap2=${MAPVER} racon=${RACONVER} \
+		python=${PYVER}
+	grep -v Porechop requirements.txt > conda_reqs.txt
+	${IN_CONDA} && conda activate pomoxis && pip install -r conda_reqs.txt
+	${IN_CONDA} && conda activate pomoxis && python setup.py install \
+		--single-version-externally-managed --record=conda_install.out
+	rm conda_reqs.txt
 
 # You can set these variables from the command line.
 SPHINXOPTS    =

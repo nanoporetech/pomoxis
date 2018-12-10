@@ -18,6 +18,7 @@ Features
  * Wraps third party tools with known good default parameters
    and methods of use.
  * Creates an isolated environment with all third-party tools.
+ * Can be installed with conda.
  * Streamlines common short analysis chains.
  * Includes a nanopore read simulator.
  * Server/client components for minimap2 and bwa.
@@ -39,9 +40,34 @@ notably scrappy, are known to not work on some MacOS configurations
 Installation
 ------------
 
-Pomoxis will install itself into a an isolated virtual environment. The
-installation will fetch, compile, and install all direct dependencies into the
-environment.
+Much of pomoxis's functionality is dependent on thirty party tools. These
+can be provided by the user, or can be installed with the help of the
+provided `Makefile`
+
+**Installation with conda**
+
+Pomoxis can be installed using the [conda](https://conda.io/docs/) package
+manager. Many users will prefer this method. If `make` is installed on the
+system, the following will create a conda environment and install pomoxis
+and its third party dependencies into the environment:
+
+    git clone --recursive https://github.com/nanoporetech/pomoxis
+    cd pomoxis
+    CONDA=<path to conda install> make conda
+
+On the final line, use for example:
+
+    CONDA=~/miniconda3/ make install
+
+A conda package is planned in the future.
+
+
+**Installation from source**
+
+With this method pomoxis will install itself into a an isolated virtual
+environment. The installation will fetch, compile, and install all direct
+dependencies into the environment. Use this method if you do not wish to
+use conda, but will not be providing the third-party binaries.
 
 > Before installing pomoxis is may be required to install some prerequisite
 > packages, best installed by a package manager. On Ubuntu these are:
@@ -83,18 +109,25 @@ Note also that racon requires at least `gcc>=4.8.5` to
 [compile smoothly](https://github.com/isovic/racon/issues/57).
 
 
-**Alternative Installation Methods**
+**Installation without compiling third-party binaries**
 
-Running the above within a pre-exisiting virtual environnment may well fail;
-advanced may wish to simply run the `setup.py` file in the standard manner
-after compiling the third party programs as in the `Makefile`.
-[thomcuddihy](https://github.com/thomcuddihy) has
-[sketched](https://github.com/nanoporetech/pomoxis/issues/19#issuecomment-433255390)
-how to use pomoxis within a conda enviroment.
+Running the above within a pre-exisiting (virtual) environnment may well fail;
+advanced may wish to simply run
+
+    python setup.py install
+
+in the standard manner after compiling the third party programs listed below
+and ensuring they are present on the `PATH`. The `setup.py` script can copy
+the binaries into the python interpreter path if they are placed within a
+directory named `bincache` alongside `setup.py`. To make use of this facility
+run:
+
+    pip install -r requirements.txt
+    POMO_BINARIES=1 python setup.py install
 
 
-Extras
-------
+Third party binaries
+--------------------
 
 The distribution bundles some common bioinformatics tools:
 
@@ -103,6 +136,7 @@ The distribution bundles some common bioinformatics tools:
 * racon
 * bwa
 * samtools
+* bcftools
+* seqkit
 * porechop
 
-These will be compiled and installed into the virtual environment created as above.
