@@ -30,14 +30,15 @@ SORT=""
 CHUNK=""
 rflag=false
 iflag=false
-while getopts ':hr:i:p:aPmnc:t:' option; do
+filter_set=0
+while getopts ':hr:i:p:aPAmnc:t:' option; do
   case "$option" in
     h  ) echo "$usage" >&2; exit;;
     r  ) rflag=true; REFERENCE=$OPTARG;;
     i  ) iflag=true; INPUT=$OPTARG;;
     I  ) INDEX_SIZE=$OPTARG;;
-    P  ) FILTER="-F 2308";;
-    A  ) FILTER="";;
+    P  ) ((filter_set++)); echo "-P option is deprecated";;
+    A  ) ((filter_set++)); FILTER="";;
     m  ) ALIGN_OPTS="${ALIGN_OPTS} --MD";;
     n  ) SORT="-n";;
     p  ) PREFIX=$OPTARG;;
@@ -49,6 +50,12 @@ while getopts ':hr:i:p:aPmnc:t:' option; do
   esac
 done
 shift $(($OPTIND - 1))
+
+if [ "$filter_set" -gt 1 ]; then
+    echo "$usage" >&2;
+    echo "Both -A and -P were specified (-P is deprecated)." >&2;
+    exit 1;
+fi
 
 if ! $iflag || ! $rflag; then
   echo "$usage" >&2;
