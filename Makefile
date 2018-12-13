@@ -21,16 +21,12 @@ $(BINCACHEDIR)/miniasm: | $(BINCACHEDIR)
 	cd submodules/miniasm && make
 	cp submodules/miniasm/miniasm $@
 
-RACONVER=1.3.1
 $(BINCACHEDIR)/racon: | $(BINCACHEDIR)
 	@echo Making $(@F)
 	@echo GCC is $(GCC)
-	if [ ! -e submodules/racon-v${RACONVER}.tar.gz ]; then \
-	  cd submodules; \
-	  wget https://github.com/isovic/racon/releases/download/${RACONVER}/racon-v${RACONVER}.tar.gz; \
-	fi
-	cd submodules && tar -xzf racon-v${RACONVER}.tar.gz
-	cd submodules/racon-v${RACONVER} && mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Release ..
+	#cd submodules/racon && make modules && make -j $(RACONOS)
+	#cp submodules/racon/bin/racon$(RACONTAG) $@
+	cd submodules/racon && mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Release ..
 	cd submodules/racon/build && make
 	cp submodules/racon/build/bin/racon $@
 
