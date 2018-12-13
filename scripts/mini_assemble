@@ -89,11 +89,9 @@ if [ "$SHUFFLES" -gt "1" ] && [ "$SHUFFLES" -lt "$MIN_SHUFFLES" ]; then
     echo "Error: the number of shuffles n should be 1 or >=10, exiting." >&2; exit 1;
 fi
 
-# Simple test for fastq
-filename=$(basename "$INPUT")
 FASTX=${OUTPUT}/${NAME}.fa.gz
 echo "Copying FASTX input to workspace: ${INPUT} > ${FASTX}"
-seqkit fq2fa ${INPUT} | gzip -1 > ${FASTX}
+seqkit fq2fa ${INPUT} | gzip -1 > ${FASTX}  # this works fine for fasta input
 
 cd ${OUTPUT}
 READS=$(basename "$FASTX")
@@ -123,7 +121,7 @@ if $eflag; then
   OTHERS=other_${READS//.gz/}
   gunzip ${READS}
   long_fastx ${READS//.gz/} ${LONG_READS} --longest ${ERRCORR} --others ${OTHERS}
-  gzip -1 ${READS//.gz/} &
+  gzip -1 ${READS//.gz/}
 
   echo "Correcting long reads..."
   LONG_PAF=long_corr.paf.gz
