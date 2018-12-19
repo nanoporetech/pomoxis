@@ -12,6 +12,8 @@ group at Oxford Nanopore Technologies.
 
 Documentation can be found at https://nanoporetech.github.io/pomoxis/.
 
+© 2018 Oxford Nanopore Technologies Ltd.
+
 Features
 --------
 
@@ -139,3 +141,23 @@ The distribution bundles some common bioinformatics tools:
 * seqkit
 * porechop
 
+Help
+----
+
+**Licence and Copyright**
+
+© 2018 Oxford Nanopore Technologies Ltd.
+
+`pomoxis` is distributed under the terms of the Mozilla Public License 2.0.
+
+**Research Release**
+
+Research releases are provided as technology demonstrators to provide early
+access to features or stimulate Community development of tools. Support for
+this software will be minimal and is only provided directly by the developers.
+Feature requests, improvements, and discussions are welcome and can be
+implemented by forking and pull requests. However much as we would
+like to rectify every issue and piece of feedback users may have, the 
+developers may have limited resource for support of this software. Research
+releases may be unstable and subject to rapid iteration by Oxford Nanopore
+Technologies.

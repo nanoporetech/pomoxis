@@ -2,6 +2,8 @@
 Pomoxis - bioinformatics tools for nanopore research 
 ====================================================
 
+© 2018 Oxford Nanopore Technologies Ltd.
+
 Pomoxis comprises a set of basic bioinformatic tools tailored to nanopore
 sequencing. Notably tools are included for generating and analysing draft
 assemblies. Many of these tools are used by the research data analysis
@@ -23,6 +25,18 @@ Features
    for performing more complex analysis pipelines.
  * Open source (Mozilla Public License 2.0).
 
+
+.. admonition:: Research Release
+
+    Research releases are provided as technology demonstrators to provide early
+    access to features or stimulate Community development of tools. Support for
+    this software will be minimal and is only provided directly by the developers.
+    Feature requests, improvements, and discussions are welcome and can be
+    implemented by forking and pull requests. However much as we would
+    like to rectify every issue and piece of feedback users may have, the 
+    developers may have limited resource for support of this software. Research
+    releases may be unstable and subject to rapid iteration by Oxford Nanopore
+    Technologies.
 
 Compatibility
 -------------
