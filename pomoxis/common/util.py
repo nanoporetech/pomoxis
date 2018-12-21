@@ -125,7 +125,7 @@ def extract_long_reads():
     parser.add_argument('output',
         help='Output .fastq file.')
     filt = parser.add_mutually_exclusive_group(required=True)
-    filt.add_argument('--longest', default=None, type=int,
+    filt.add_argument('--longest', default=None, type=float,
         help='Percentage of longest reads to partition.')
     filt.add_argument('--bases', default=None, type=int,
         help='Maximum number of bases (subject to at least one read.)')
@@ -219,3 +219,64 @@ def parse_regions(regions, ref_lengths=None):
                 start, end = [int(b) for b in bounds.split('-')]
         decoded.append(Region(ref_name, start, _get_end(end, ref_name)))
     return tuple(decoded)
+
+
+class SeqLen(argparse.Action):
+    """Parse a sequence length from str such as 4.8mb or from fastx."""
+    def __call__(self, parser, namespace, values, option_string=None):
+        seq_len = None
+        try:
+            seq_len = int(values)
+        except:
+            suffixes = {
+                'kb': 10 ** 3,
+                'mb': 10 ** 6,
+                'gb': 10 ** 9,
+            }
+            for suffix, multiplier in suffixes.items():
+                if suffix in values.lower():
+                    seq_len = int(multiplier * float(values.lower().replace(suffix, '')))
+                    break
+            if seq_len is None:
+                try:
+                    seq_len = sum(get_seq_lens(values))
+                except:
+                    raise ValueError('Could not get sequence length from {}.'.format(values))
+
+        setattr(namespace, self.dest, seq_len)
+
+
+def get_seq_lens(fastx):
+    """Get sequence lengths from fastx file"""
+    return [len(r.sequence) for r in FastxFile(fastx)]
+
+
+def coverage_from_fastx():
+    parser = argparse.ArgumentParser('Estimate coverage from summed basecall and reference lengths')
+    parser.add_argument('basecalls', help='input fastx file.')
+    parser.add_argument('ref_len', action=SeqLen,
+                        help='reference length (e.g. 4.8kb/mb/gb) or reference fastx from which to calculate length.')
+    parser.add_argument('--coverage', type=int, help='Calculate fraction of reads required for this coverage.')
+    parser.add_argument('--longest', action='store_true', default=False,
+                        help='Use the longest reads when calculating fraction reads required for a given coverage.')
+
+    args = parser.parse_args()
+
+    basecall_lens = get_seq_lens(args.basecalls)
+    total_basecalls_len = sum(basecall_lens)
+
+    print('Total length of basecalls: {}'.format(total_basecalls_len))
+    print('Total ref length: {}'.format(args.ref_len))
+    print('Estimated coverage: {:.2f}'.format(total_basecalls_len / args.ref_len))
+
+    if args.coverage is not None:
+        if args.longest:
+            basecall_lens.sort(reverse=True)
+            cum_len = np.cumsum(basecall_lens)
+            required_len = args.coverage * args.ref_len
+            n_required = np.searchsorted(cum_len, required_len, side='right')
+            msg = '% of longest reads required to achieve {}X coverage: {}'
+            print(msg.format(args.coverage, 100 * n_required / len(cum_len)))
+        else:
+            msg = '% of randomly-selected reads required to achieve {}X coverage: {}'
+            print(msg.format(args.coverage, 100 * args.coverage  * args.ref_len / total_basecalls_len))

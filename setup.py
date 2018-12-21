@@ -33,18 +33,26 @@ with open(os.path.join(dir_path, 'requirements.txt')) as fh:
             req = req.split('/')[-1].split('@')[0]
         install_requires.append(req)
 
+data_files = []
+extensions = []
+extra_requires={}
 
 # Read these from Makefile in the event someone modified list there
 exes = []
-with open(os.path.join(dir_path, 'Makefile')) as fh:
-    for line in fh.readlines():
-        tokens = line.split('=')
-        if tokens[0] == 'BINARIES':
-            exes = tokens[1].split()
-            break
+if os.environ.get("POMO_BINARIES") is not None:
+    with open(os.path.join(dir_path, 'Makefile')) as fh:
+        for line in fh.readlines():
+            tokens = line.split('=')
+            if tokens[0] == 'BINARIES':
+                exes = tokens[1].split()
+                break
+    #place binaries as package data, below we'll copy them to standard path in dist
+    data_files.append(
+        ('exes', [
+            'bincache/{}'.format(x, x) for x in exes
+        ])
+    )
 
-extensions = []
-extra_requires={}
 
 setup(
     name=__pkg_name__,
@@ -62,19 +70,13 @@ setup(
     package_data={},
     zip_safe=False,
     test_suite='discover_tests',
-    #place binaries as package data, below we'll copy them to standard path in dist
-    data_files=[
-        ('exes', [
-            'bincache/{}'.format(x, x) for x in exes
-        ])
-    ],
+    data_files=data_files,
     entry_points={
         'console_scripts': [
             'align_serve = {}.align.common:main'.format(__pkg_name__),
             'catalogue_errors = {}.common.catalogue_errors:main'.format(__pkg_name__),
             'common_errors_from_bam = {}.common.common_errors_from_bam:main'.format(__pkg_name__),
             'coverage_from_bam = {}.common.coverage_from_bam:main'.format(__pkg_name__),
-            'epi3me = {}.apps.epi3me:main'.format(__pkg_name__),
             'fast_convert = {}.common.util:fast_convert'.format(__pkg_name__),
             'long_fastx = {}.common.util:extract_long_reads'.format(__pkg_name__),
             'pomoxis_path = {}:show_prog_path'.format(__pkg_name__),
@@ -87,11 +89,11 @@ setup(
             'summary_from_stats = {}.common.summary_from_stats:main'.format(__pkg_name__),
             'trim_alignments = {}.common.trim_alignments:main'.format(__pkg_name__),
             'ref_seqs_from_bam = {}.common.ref_seqs_from_bam:main'.format(__pkg_name__),
+            'coverage_from_fastx = {}.common.util:coverage_from_fastx'.format(__pkg_name__),
         ]
     },
     scripts=[
         'scripts/assess_assembly',
-        'scripts/bwa_align',
         'scripts/intersect_assembly_errors',
         'scripts/mini_align',
         'scripts/mini_assemble',
@@ -100,7 +102,6 @@ setup(
 
 
 # Nasty hack to get binaries into bin path
-print("\nCopying utility binaries to your path.")
 class GetPaths(install):
     def run(self):
         self.distribution.install_scripts = self.install_scripts
@@ -121,5 +122,7 @@ def get_setuptools_script_dir():
         shutil.copy(exe, dist.install_scripts)
     return dist.install_libbase, dist.install_scripts
 
-get_setuptools_script_dir()
+if os.environ.get("POMO_BINARIES") is not None:
+    print("\nCopying utility binaries to your path.")
+    get_setuptools_script_dir()
 

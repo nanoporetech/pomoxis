@@ -5,13 +5,15 @@ usage="$(basename "$0") [-h] -r <reference> -i <fastq>
 Align fastq/a formatted reads to a genome using minimap2.
 
     -h  show this help text.
-    -r  reference, should be a fasta file. If correspondng bwa indices
+    -r  reference, should be a fasta file. If correspondng minimap indices
         do not exist they will be created. (required).
     -i  fastq/a input reads (required).
     -I  split index every ~NUM input bases (default: 16G, this is larger
         than the usual minimap2 default).
-    -a  aggresively extend gaps (sets -A1 -B2 -O2 -E1 for minimap2).
-    -P  filter to only primary alignments (i.e. run samtools view -F 2308)
+    -a  aggressively extend gaps (sets -A1 -B2 -O2 -E1 for minimap2).
+    -P  filter to only primary alignments (i.e. run samtools view -F 2308.
+        Deprecated: this filter is now default and can be disabled with -A.)
+    -A  do not filter alignments to primary alignments, output all.
     -n  sort bam by read name.
     -c  chunk size. Input reads/contigs will be broken into chunks
         prior to alignment.
@@ -23,18 +25,20 @@ PREFIX="reads"
 ALIGN_OPTS="-x map-ont"
 INDEX_SIZE="16G"
 THREADS=1
-FILTER=""
+FILTER="-F 2308"
 SORT=""
 CHUNK=""
 rflag=false
 iflag=false
-while getopts ':hr:i:p:aPmnc:t:' option; do
+filter_set=0
+while getopts ':hr:i:p:aPAmnc:t:' option; do
   case "$option" in
     h  ) echo "$usage" >&2; exit;;
     r  ) rflag=true; REFERENCE=$OPTARG;;
     i  ) iflag=true; INPUT=$OPTARG;;
     I  ) INDEX_SIZE=$OPTARG;;
-    P  ) FILTER="-F 2308";;
+    P  ) ((filter_set++)); echo "-P option is deprecated";;
+    A  ) ((filter_set++)); FILTER="";;
     m  ) ALIGN_OPTS="${ALIGN_OPTS} --MD";;
     n  ) SORT="-n";;
     p  ) PREFIX=$OPTARG;;
@@ -46,6 +50,12 @@ while getopts ':hr:i:p:aPmnc:t:' option; do
   esac
 done
 shift $(($OPTIND - 1))
+
+if [ "$filter_set" -gt 1 ]; then
+    echo "$usage" >&2;
+    echo "Both -A and -P were specified (-P is deprecated)." >&2;
+    exit 1;
+fi
 
 if ! $iflag || ! $rflag; then
   echo "$usage" >&2;

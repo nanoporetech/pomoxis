@@ -1,39 +1,53 @@
 .PHONY: install docs
+SHELL=/bin/bash
 OS := $(shell uname | tr '[:upper:]' '[:lower:]')
 
 # for porechop on travis (or other platform with older gcc)
 CXX         ?= g++
 
+CONDA?=~/miniconda3/
+
 # Builds a cache of binaries which can just be copied for CI
-BINARIES=minimap2 miniasm bwa racon samtools bcftools seqkit
+BINARIES=minimap2 miniasm racon samtools bcftools seqkit
 
 BINCACHEDIR=bincache
 $(BINCACHEDIR):
 	mkdir -p $(BINCACHEDIR)
 
+MAPVER=2.14
 $(BINCACHEDIR)/minimap2: | $(BINCACHEDIR)
 	@echo Making $(@F)
-	cd submodules/minimap2 && make
-	cp submodules/minimap2/minimap2 $@
+	if [ ! -e submodules/minimap2-${MAPVER}.tar.bz2 ]; then \
+	  cd submodules; \
+	  wget https://github.com/lh3/minimap2/releases/download/v${MAPVER}/minimap2-${MAPVER}.tar.bz2; \
+	  tar -xjf minimap2-${MAPVER}.tar.bz2; \
+	fi
+	cd submodules/minimap2-${MAPVER} && make
+	cp submodules/minimap2-${MAPVER}/minimap2 $@
 
+ASMVER=0.3
 $(BINCACHEDIR)/miniasm: | $(BINCACHEDIR)
 	@echo Making $(@F)
-	cd submodules/miniasm && make
-	cp submodules/miniasm/miniasm $@
+	if [ ! -e submodules/miniasm-v${ASMVER}.tar.gz ]; then \
+	  cd submodules; \
+	  wget -O miniasm-v${ASMVER}.tar.gz https://github.com/lh3/miniasm/archive/v${ASMVER}.tar.gz; \
+	  tar -xzf miniasm-v${ASMVER}.tar.gz; \
+	fi
+	cd submodules/miniasm-${ASMVER} && make
+	cp submodules/miniasm-${ASMVER}/miniasm $@
 
+RACONVER=1.3.1
 $(BINCACHEDIR)/racon: | $(BINCACHEDIR)
 	@echo Making $(@F)
 	@echo GCC is $(GCC)
-	#cd submodules/racon && make modules && make -j $(RACONOS)
-	#cp submodules/racon/bin/racon$(RACONTAG) $@
-	cd submodules/racon && mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Release ..
-	cd submodules/racon/build && make
-	cp submodules/racon/build/bin/racon $@
-
-$(BINCACHEDIR)/bwa: | $(BINCACHEDIR)
-	@echo Making $(@F)
-	cd submodules/bwa && make
-	cp submodules/bwa/bwa $@
+	if [ ! -e submodules/racon-v${RACONVER}.tar.gz ]; then \
+	  cd submodules; \
+	  wget https://github.com/isovic/racon/releases/download/${RACONVER}/racon-v${RACONVER}.tar.gz; \
+	  tar -xzf racon-v${RACONVER}.tar.gz; \
+	fi
+	cd submodules/racon-v${RACONVER} && mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Release ..
+	cd submodules/racon-v${RACONVER}/build && make
+	cp submodules/racon-v${RACONVER}/build/bin/racon $@
 
 SAMVER=1.8
 $(BINCACHEDIR)/samtools: | $(BINCACHEDIR)
@@ -43,8 +57,8 @@ $(BINCACHEDIR)/samtools: | $(BINCACHEDIR)
 	if [ ! -e submodules/samtools-${SAMVER}.tar.bz2 ]; then \
 	  cd submodules; \
 	  wget https://github.com/samtools/samtools/releases/download/${SAMVER}/samtools-${SAMVER}.tar.bz2; \
+	  tar -xjf samtools-${SAMVER}.tar.bz2; \
 	fi
-	cd submodules && tar -xjf samtools-${SAMVER}.tar.bz2
 	cd submodules/samtools-${SAMVER} && make
 	cp submodules/samtools-${SAMVER}/samtools $@
 
@@ -54,8 +68,8 @@ $(BINCACHEDIR)/bcftools: | $(BINCACHEDIR)
 	if [ ! -e submodules/bcftools-${BCFVER}.tar.bz2 ]; then \
 	  cd submodules; \
 	  wget https://github.com/samtools/bcftools/releases/download/${BCFVER}/bcftools-${BCFVER}.tar.bz2; \
+	  tar -xjf bcftools-${BCFVER}.tar.bz2; \
 	fi
-	cd submodules && tar -xjf bcftools-${BCFVER}.tar.bz2
 	cd submodules/bcftools-${BCFVER} && make
 	cp submodules/bcftools-${BCFVER}/bcftools $@
 
@@ -65,15 +79,16 @@ $(BINCACHEDIR)/seqkit: | $(BINCACHEDIR)
 	if [ ! -e submodules/seqkit_${OS}_amd64.tar.gz ]; then \
 	  cd submodules; \
 	  wget https://github.com/shenwei356/seqkit/releases/download/v${SEQKITVER}/seqkit_${OS}_amd64.tar.gz; \
+	  tar -xzvf seqkit_${OS}_amd64.tar.gz; \
 	fi
-	cd submodules && tar -xzvf seqkit_${OS}_amd64.tar.gz
 	cp submodules/seqkit $@	
 
 venv: venv/bin/activate
 IN_VENV=. ./venv/bin/activate
 
+PYVER=3.6
 venv/bin/activate:
-	test -d venv || virtualenv venv --prompt '(pomoxis) ' --python=python3
+	test -d venv || virtualenv venv --prompt '(pomoxis) ' --python=python${PYVER}
 	${IN_VENV} && pip install pip --upgrade
 	${IN_VENV} && pip install -r requirements.txt
 
@@ -82,7 +97,20 @@ bwapy: venv
 	${IN_VENV} && cd submodules/bwapy && python setup.py install
 
 install: venv bwapy | $(addprefix $(BINCACHEDIR)/, $(BINARIES))
-	${IN_VENV} && python setup.py install
+	${IN_VENV} && POMO_BINARIES=1 python setup.py install
+
+IN_CONDA=. ${CONDA}/etc/profile.d/conda.sh
+conda:
+	${IN_CONDA} && conda remove -n pomoxis --all
+	${IN_CONDA} && conda create -y -n pomoxis -c bioconda -c conda-forge porechop \
+		samtools=${SAMVER} bcftools=${BCFVER} seqkit=${SEQKITVER} \
+		miniasm=${ASMVER} minimap2=${MAPVER} racon=${RACONVER} \
+		python=${PYVER}
+	grep -v Porechop requirements.txt > conda_reqs.txt
+	${IN_CONDA} && conda activate pomoxis && pip install -r conda_reqs.txt
+	${IN_CONDA} && conda activate pomoxis && python setup.py install \
+		--single-version-externally-managed --record=conda_install.out
+	rm conda_reqs.txt
 
 # You can set these variables from the command line.
 SPHINXOPTS    =

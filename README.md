@@ -1,33 +1,75 @@
-Prototype real-time analysis components
-=======================================
+![Oxford Nanopore Technologies logo](images/ONT_logo_590x106.png)
+
+Pomoxis - bioinformatics tools for nanopore research 
+====================================================
 
 [![Build Status](https://travis-ci.org/nanoporetech/pomoxis.svg?branch=master)](https://travis-ci.org/nanoporetech/pomoxis)
 
-Pomoxis started life as a set of services to perform analysis of squiggles
-as they are produced in real-time. This functionality still exists
-although has been complemented with a number of offline analyses for
-generating and analysing draft assemblies. Many of these tools are used by
-the research data analysis group at Oxford Nanopore Technologies.
+Pomoxis comprises a set of basic bioinformatic tools tailored to nanopore
+sequencing. Notably tools are included for generating and analysing draft
+assemblies. Many of these tools are used by the research data analysis
+group at Oxford Nanopore Technologies.
 
 Documentation can be found at https://nanoporetech.github.io/pomoxis/.
+
+© 2018 Oxford Nanopore Technologies Ltd.
+
+Features
+--------
+
+ * Wraps third party tools with known good default parameters
+   and methods of use.
+ * Creates an isolated environment with all third-party tools.
+ * Can be installed with conda.
+ * Streamlines common short analysis chains.
+ * Includes a nanopore read simulator.
+ * Server/client components for minimap2 and bwa.
+ * Integrates into [katuali](https://github.com/nanoporetech/katuali)
+   for performing more complex analysis pipelines.
+ * Open source (Mozilla Public License 2.0).
 
 
 Compatibility
 -------------
 
 Pomoxis is developed on Ubuntu 16.04, other recent linuxes should be
-equally compatible (see build notes below. Pomoxis is known to work on
-at least some MacOS High Sierra configurations, though some components
-(notably scrappy) are known to not work on some MacOS configurations
+equally compatible (see build notes below). Pomoxis is known to work on
+at least some MacOS High Sierra configurations, though some components,
+notably scrappy, are known to not work on some MacOS configurations
 (combinations of OS and xcode versions).
 
 
-Build
------
+Installation
+------------
 
-Pomoxis should be installed inside a virtual environment. A Makefile is
-provided to create a fresh environment, and to fetch, compile and install
-all direct dependencies into the environment.
+Much of pomoxis's functionality is dependent on thirty party tools. These
+can be provided by the user, or can be installed with the help of the
+provided `Makefile`
+
+**Installation with conda**
+
+Pomoxis can be installed using the [conda](https://conda.io/docs/) package
+manager. Many users will prefer this method. If `make` is installed on the
+system, the following will create a conda environment and install pomoxis
+and its third party dependencies into the environment:
+
+    git clone --recursive https://github.com/nanoporetech/pomoxis
+    cd pomoxis
+    CONDA=<path to conda install> make conda
+
+On the final line, use for example:
+
+    CONDA=~/miniconda3/ make install
+
+A conda package is planned in the future.
+
+
+**Installation from source**
+
+With this method pomoxis will install itself into a an isolated virtual
+environment. The installation will fetch, compile, and install all direct
+dependencies into the environment. Use this method if you do not wish to
+use conda, but will not be providing the third-party binaries.
 
 > Before installing pomoxis is may be required to install some prerequisite
 > packages, best installed by a package manager. On Ubuntu these are:
@@ -68,22 +110,54 @@ the `make install` step:
 Note also that racon requires at least `gcc>=4.8.5` to
 [compile smoothly](https://github.com/isovic/racon/issues/57).
 
-Running the above within a pre-exisiting virtual environnment may well fail;
-advanced may wish to simply run the `setup.py` file in the standard manner
-after compiling the third party programs as in the `Makefile`.
+
+**Installation without compiling third-party binaries**
+
+Running the above within a pre-exisiting (virtual) environnment may well fail;
+advanced may wish to simply run
+
+    python setup.py install
+
+in the standard manner after compiling the third party programs listed below
+and ensuring they are present on the `PATH`. The `setup.py` script can copy
+the binaries into the python interpreter path if they are placed within a
+directory named `bincache` alongside `setup.py`. To make use of this facility
+run:
+
+    pip install -r requirements.txt
+    POMO_BINARIES=1 python setup.py install
 
 
-Extras
-------
+Third party binaries
+--------------------
 
-The distribution bundles some common bioinformatics tools (some of which are not
-currently used by pomoxis itself, but are used in the offline analysis scripts):
+The distribution bundles some common bioinformatics tools:
 
 * miniasm
 * minimap2
 * racon
-* bwa
 * samtools
+* bcftools
+* seqkit
 * porechop
 
-These will be compiled and installed into the virtual environment created as above.
+Help
+----
+
+**Licence and Copyright**
+
+© 2018 Oxford Nanopore Technologies Ltd.
+
+`pomoxis` is distributed under the terms of the Mozilla Public License 2.0.
+
+**Research Release**
+
+Research releases are provided as technology demonstrators to provide early
+access to features or stimulate Community development of tools. Support for
+this software will be minimal and is only provided directly by the developers.
+Feature requests, improvements, and discussions are welcome and can be
+implemented by forking and pull requests. However much as we would
+like to rectify every issue and piece of feedback users may have, the 
+developers may have limited resource for support of this software. Research
+releases may be unstable and subject to rapid iteration by Oxford Nanopore
+Technologies.
