@@ -33,18 +33,26 @@ with open(os.path.join(dir_path, 'requirements.txt')) as fh:
             req = req.split('/')[-1].split('@')[0]
         install_requires.append(req)
 
+data_files = []
+extensions = []
+extra_requires={}
 
 # Read these from Makefile in the event someone modified list there
 exes = []
-with open(os.path.join(dir_path, 'Makefile')) as fh:
-    for line in fh.readlines():
-        tokens = line.split('=')
-        if tokens[0] == 'BINARIES':
-            exes = tokens[1].split()
-            break
+if os.environ.get("POMO_BINARIES") is not None:
+    with open(os.path.join(dir_path, 'Makefile')) as fh:
+        for line in fh.readlines():
+            tokens = line.split('=')
+            if tokens[0] == 'BINARIES':
+                exes = tokens[1].split()
+                break
+    #place binaries as package data, below we'll copy them to standard path in dist
+    data_files.append(
+        ('exes', [
+            'bincache/{}'.format(x, x) for x in exes
+        ])
+    )
 
-extensions = []
-extra_requires={}
 
 setup(
     name=__pkg_name__,
@@ -62,12 +70,7 @@ setup(
     package_data={},
     zip_safe=False,
     test_suite='discover_tests',
-    #place binaries as package data, below we'll copy them to standard path in dist
-    data_files=[
-        ('exes', [
-            'bincache/{}'.format(x, x) for x in exes
-        ])
-    ],
+    data_files=data_files,
     entry_points={
         'console_scripts': [
             'align_serve = {}.align.common:main'.format(__pkg_name__),
@@ -91,7 +94,6 @@ setup(
     },
     scripts=[
         'scripts/assess_assembly',
-        'scripts/bwa_align',
         'scripts/intersect_assembly_errors',
         'scripts/mini_align',
         'scripts/mini_assemble',
@@ -100,7 +102,6 @@ setup(
 
 
 # Nasty hack to get binaries into bin path
-print("\nCopying utility binaries to your path.")
 class GetPaths(install):
     def run(self):
         self.distribution.install_scripts = self.install_scripts
@@ -121,5 +122,7 @@ def get_setuptools_script_dir():
         shutil.copy(exe, dist.install_scripts)
     return dist.install_libbase, dist.install_scripts
 
-get_setuptools_script_dir()
+if os.environ.get("POMO_BINARIES") is not None:
+    print("\nCopying utility binaries to your path.")
+    get_setuptools_script_dir()
 
