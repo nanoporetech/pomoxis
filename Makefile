@@ -88,7 +88,7 @@ IN_VENV=. ./venv/bin/activate
 
 PYVER=3.6
 venv/bin/activate:
-	test -d venv || virtualenv venv --prompt '(pomoxis) ' --python=python${PYVER}
+	test -d venv || virtualenv venv --prompt '(pomoxis) ' --python=python3
 	${IN_VENV} && pip install pip --upgrade
 	${IN_VENV} && pip install -r requirements.txt
 
