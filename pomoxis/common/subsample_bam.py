@@ -40,6 +40,12 @@ def main():
     parser.add_argument('-c', '--coverage', type=float,
         help='Filter reads by coverage (what fraction of the read aligns).')
 
+    eparser = parser.add_mutually_exclusive_group()
+    eparser.add_argument('--any_fail', action='store_true',
+        help='Exit with an error if any region has insufficient coverage.')
+    eparser.add_argument('--all_fail', action='store_true',
+        help='Exit with an error if all regions have insufficient coverage.')
+
     uparser = parser.add_argument_group('Uniform sampling options')
     uparser.add_argument('-x', '--patience', default=5, type=int,
         help='Maximum iterations with no change in median coverage before aborting.')
@@ -69,9 +75,15 @@ def main():
     else:
         worker = functools.partial(subsample_region_uniformly, args=args)
 
+    enough_depth = []
     with ProcessPoolExecutor(max_workers=args.threads) as executor:
         for res in executor.map(worker, regions):
-            pass
+            enough_depth.append(res)
+
+    if args.any_fail and not all(enough_depth):
+        raise RuntimeError('Insufficient read coverage for one or more requested regions.')
+    if args.all_fail and all([not x for x in enough_depth]):
+        raise RuntimeError('Insufficient read coverage for all requested regions.')
 
 
 def subsample_region_proportionally(region, args):
@@ -97,6 +109,7 @@ def subsample_region_proportionally(region, args):
         )
 
     targets = sorted(args.depth)
+    found_enough_depth = True
 
     coverage = np.zeros(region.end - region.start, dtype=np.uint16)
     if args.seed is not None:
@@ -106,6 +119,7 @@ def subsample_region_proportionally(region, args):
         if target > median_coverage:
             msg = 'Target depth {} exceeds median coverage {}, skipping this depth and higher depths.'
             logger.info(msg.format(target, median_coverage))
+            found_enough_depth = False
             break
         fraction = target / median_coverage
         n_reads = int(round(fraction * len(read_data), 0))
@@ -117,6 +131,8 @@ def subsample_region_proportionally(region, args):
             coverage[read['start'] - region.start:read['end'] - region.start] += 1
         _write_coverage(prefix, region, coverage, args.profile)
         logger.info('Processed {}X: {} reads ({:.2f} %).'.format(target, n_reads, 100 * fraction))
+
+    return found_enough_depth
 
 
 def filter_read(r, bam, args, logger):
@@ -174,6 +190,7 @@ def subsample_region_uniformly(region, args):
     last_depth = 0
     targets = iter(sorted(args.depth))
     target = next(targets)
+    found_enough_depth = True
     while True:
         cursor = 0
         while cursor < ref_lengths[region.ref_name]:
@@ -212,6 +229,7 @@ def subsample_region_uniformly(region, args):
         # exit if nothing happened this iteration
         if n_reads == len(reads):
             logger.warn("No reads added, finishing pileup.")
+            found_enough_depth = False
             break
         n_reads = len(reads)
         # or if no change in depth
@@ -221,10 +239,12 @@ def subsample_region_uniformly(region, args):
                 logging.warn("Coverage not increased for {} iterations, finishing pileup.".format(
                     args.patience
                 ))
+                found_enough_depth = False
                 break
         else:
             it_no_change == 0
         last_depth = median_depth
+    return found_enough_depth
 
 
 def _nearest_overlapping_point(src, point):
