@@ -4,7 +4,7 @@ aiozmq
 biopython >= 1.63
 cffi
 fast5_research
-intervaltree
+intervaltree<3  # It looks like the 3.x release removed the search method.
 matplotlib
 mappy
 msgpack-python
