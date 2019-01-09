@@ -59,7 +59,7 @@ and its third party dependencies into the environment:
 
 On the final line, use for example:
 
-    CONDA=~/miniconda3/ make install
+    CONDA=~/miniconda3/ make conda
 
 A conda package is planned in the future.
 
