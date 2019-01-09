@@ -74,7 +74,7 @@ On the final line, use for example:
 
 .. code-block:: bash
 
-    CONDA=~/miniconda3/ make install
+    CONDA=~/miniconda3/ make conda
 
 A conda package is planned in the future.
 
