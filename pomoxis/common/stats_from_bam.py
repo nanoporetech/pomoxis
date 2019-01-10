@@ -103,14 +103,17 @@ def masked_stats_from_aligned_read(read, references, lengths, bed_file):
     correct, delt, ins, sub, aligned_ref_len, masked = 0, 0, 0, 0, 0, 0
     pairs = read.get_aligned_pairs(with_seq=True)
     qseq = read.query_sequence
-    ref_pos_is_none = lambda x: (x[1] is None)
+    pos_is_none = lambda x: (x[1] is None or x[0] is None)
     pos = None
     insertions = []
-    for qp, rp, rb in itertools.dropwhile(ref_pos_is_none, pairs):
+    # TODO: refactor to use get_trimmed_pairs (as in catalogue_errors)?
+    for qp, rp, rb in itertools.dropwhile(pos_is_none, pairs):
         if rp == read.reference_end:
             break
         pos = rp if rp is not None else pos
-        if not tree.overlaps(pos):
+        if not tree.overlaps(pos) or (rp is None and not tree.overlaps(pos + 1)):
+            # if rp is None, we are in an insertion, check if pos + 1 overlaps
+            # (ref position of ins is arbitrary)
             # print('Skipping ref {}:{}'.format(read.reference_name, pos))
             masked += 1
             continue
@@ -187,7 +190,7 @@ def main(arguments=None):
     if not isinstance(args.bam, list):
         args.bam = ('-',)
 
-    # TODO: multiprocessing
+    # TODO: multiprocessing over alignments (as in catalogue_errors)
     for samfile in (pysam.AlignmentFile(x) for x in args.bam):
         for read in samfile:
             if read.is_unmapped:
