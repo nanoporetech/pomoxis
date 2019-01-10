@@ -11,6 +11,7 @@ import intervaltree
 import pybedtools
 import pysam
 
+from pomoxis.common.util import intervaltree_from_bed
 
 parser = argparse.ArgumentParser(
         description="""Parse a bamfile (from a stream) and output summary stats for each read.""",
@@ -92,10 +93,7 @@ def masked_stats_from_aligned_read(read, references, lengths, bed_file):
     except:
         raise IOError("Read is missing required 'MD' tag. Try running 'samtools callmd - ref.fa'.")
 
-    tree = intervaltree.IntervalTree()
-    for j in (i for i in pybedtools.BedTool(bed_file) if i.chrom == read.reference_name):
-        tree.add(intervaltree.Interval(begin=j.start, end=j.stop))
-
+    tree = intervaltree_from_bed(bed_file, read.reference_name)
     if not tree.overlaps(read.reference_start, read.reference_end):
         sys.stderr.write('read {} does not overlap with any regions in bedfile\n'.format(read.query_name))
         return None
@@ -108,7 +106,7 @@ def masked_stats_from_aligned_read(read, references, lengths, bed_file):
     insertions = []
     # TODO: refactor to use get_trimmed_pairs (as in catalogue_errors)?
     for qp, rp, rb in itertools.dropwhile(pos_is_none, pairs):
-        if rp == read.reference_end:
+        if rp == read.reference_end or (qp == read.query_alignment_end):
             break
         pos = rp if rp is not None else pos
         if not tree.overlaps(pos) or (rp is None and not tree.overlaps(pos + 1)):
@@ -126,8 +124,6 @@ def masked_stats_from_aligned_read(read, references, lengths, bed_file):
                     correct += 1
                 elif qseq[qp] != rb:  # sub
                     sub += 1
-            elif qp == read.query_alignment_end:
-                break
             else:  # we have an insertion
                 ins += 1
 

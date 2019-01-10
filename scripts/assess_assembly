@@ -68,13 +68,9 @@ stats_from_bam --bam ${PREFIX}.bam -o ${PREFIX}_stats.txt ${BED}
 summary_from_stats -i ${PREFIX}_stats.txt -pr -o ${PREFIX}_summ.txt
 
 if $catalogue_flag; then
-    if $bed_flag; then
-        echo "error catalogue with .bed file is not yet implemented"
-        exit 1
-    fi
     OUTDIR=${PREFIX}_error_catalogue
     echo "Running catalogue_errors, saving data to ${OUTDIR}"
-    catalogue_errors ${PREFIX}.bam -t $THREADS -o ${OUTDIR}
+    catalogue_errors ${PREFIX}.bam -t $THREADS -o ${OUTDIR} ${BED}
 fi
 
 grep 'Percentage Errors' -A 7 -m 1 ${PREFIX}_summ.txt
