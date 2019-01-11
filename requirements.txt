@@ -10,6 +10,7 @@ mappy
 msgpack-python
 numpy
 pandas
+pybedtools
 pysam
 scrappie
 watchdog

@@ -5,10 +5,13 @@ import shutil
 import sys
 
 from Bio import SeqIO
+import intervaltree
 import numpy as np
+import pybedtools
 from pysam import FastxFile
 
 Region = namedtuple('Region', 'ref_name start end')
+AlignPos = namedtuple('AlignPos', ('qpos', 'qbase', 'rpos', 'rbase'))
 
 
 def chunks(iterable, n):
@@ -280,3 +283,47 @@ def coverage_from_fastx():
         else:
             msg = '% of randomly-selected reads required to achieve {}X coverage: {}'
             print(msg.format(args.coverage, 100 * args.coverage  * args.ref_len / total_basecalls_len))
+
+
+def get_pairs(aln):
+    """Return generator of pairs.
+
+    :param aln: `pysam.AlignedSegment` object.
+    :returns: generator of `AlignPos` objects.
+    """
+    seq = aln.query_sequence
+    pairs = (AlignPos(qpos=qp,
+                      qbase=seq[qp] if qp is not None else '-',
+                      rpos=rp,
+                      rbase=rb if rp is not None else '-'
+                      )
+             for qp, rp, rb in aln.get_aligned_pairs(with_seq=True)
+             )
+    return pairs
+
+
+def get_trimmed_pairs(aln):
+    """Trim aligned pairs to the alignment.
+
+    :param aln: `pysam.AlignedSegment` object
+    :yields pairs:
+    """
+
+    pairs = get_pairs(aln)
+    for pair in itertools.dropwhile(lambda x: x.rpos is None or x.qpos is None, pairs):
+        if (pair.rpos == aln.reference_end or pair.qpos == aln.query_alignment_end):
+            break
+        yield pair
+
+
+def intervaltree_from_bed(path_to_bed, chrom):
+    """Created intervaltree from a .bed file for the given chromosome.
+
+    :param path_to_bed: str, path to .bed file.
+    :param chrom: str, chromosome name.
+    :returns: `intervaltree.IntervalTree` obj.
+    """
+    tree = intervaltree.IntervalTree()
+    for j in (i for i in pybedtools.BedTool(path_to_bed) if i.chrom == chrom):
+        tree.add(intervaltree.Interval(begin=j.start, end=j.stop))
+    return tree
