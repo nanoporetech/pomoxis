@@ -86,9 +86,8 @@ $(BINCACHEDIR)/seqkit: | $(BINCACHEDIR)
 venv: venv/bin/activate
 IN_VENV=. ./venv/bin/activate
 
-PYVER=3.6
 venv/bin/activate:
-	test -d venv || virtualenv venv --prompt '(pomoxis) ' --python=python${PYVER}
+	test -d venv || virtualenv venv --prompt '(pomoxis) ' --python=python3
 	${IN_VENV} && pip install pip --upgrade
 	${IN_VENV} && pip install -r requirements.txt
 
@@ -99,6 +98,7 @@ bwapy: venv
 install: venv bwapy | $(addprefix $(BINCACHEDIR)/, $(BINARIES))
 	${IN_VENV} && POMO_BINARIES=1 python setup.py install
 
+PYVER=3.6
 IN_CONDA=. ${CONDA}/etc/profile.d/conda.sh
 conda:
 	${IN_CONDA} && conda remove -n pomoxis --all
