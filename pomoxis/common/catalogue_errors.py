@@ -16,7 +16,8 @@ from functools import partial
 from matplotlib import pyplot as plt
 from operator import attrgetter
 
-AlignPos = namedtuple('AlignPos', ('qpos', 'qbase', 'rpos', 'rbase'))
+from pomoxis.common.util import get_trimmed_pairs, intervaltree_from_bed
+
 AlignSeg = namedtuple('AlignSeg', ('rname', 'qname', 'pairs', 'rlen'))
 Error = namedtuple('Error', ('rp', 'rname', 'qp', 'qname', 'ref', 'match', 'read', 'counts', 'klass', 'aggr_klass'))
 Context = namedtuple('Context', ('p_i', 'qb', 'rb'))
@@ -52,23 +53,38 @@ _error_groups_ = [
                   ('sub', lambda x: 'sub' in x),
 ]
 
-def get_errors(aln):
+def get_errors(aln, tree=None):
     """Find positions of errors in an aligment.
 
     :param aln: iterable of `AlignPos` objects.
-    :returns: [(ri, qi, 'error_type', (last_ri, last_qi)]
+    :param bed_file: path to .bed file of regions to include in analysis.
+    :param tree: `intervaltree.IntervalTree` object of regions to analyse.
+    :returns: ( [(ri, qi, 'error_type', last_ri, last_qi)], aligned_ref_len)
         ri, qi: ref and query positions
         error_type: 'D', 'I' or 'S'
         last_ri, last_qi: ref and query positions of the last match
+        aligned_ref_len: total aligned reference length (taking account of masking tree)
     """
 
     err = []
     last_qi = None
     last_ri = None
+    pos = None
+    n_masked = 0
+    aligned_ref_len = 0
     for (qi, qb, ri, rb) in aln:
+        if tree is not None:
+            pos = ri if ri is not None else pos
+            if not tree.overlaps(pos) or (ri is None and not tree.overlaps(pos + 1)):
+                # if ri is None, we are in an insertion, check if pos + 1 overlaps
+                # (ref position of ins is arbitrary)
+                # print('Skipping ref {}:{}'.format(read.reference_name, pos))
+                n_masked += 1
+                continue
         if qi is None:  # deletion
             last_ri = ri  # ri will not be None
             err.append((ri, qi, 'D', (last_ri, last_qi)))
+            aligned_ref_len += 1
         elif ri is None:
             last_qi = qi  # qi will not be None
             err.append((ri, qi, 'I', (last_ri, last_qi)))
@@ -77,38 +93,8 @@ def get_errors(aln):
             last_ri = ri
             if qb != rb:
                 err.append((ri, qi, 'S', (last_ri, last_qi)))
-    return err
-
-
-def get_pairs(aln):
-    """Return generator of pairs.
-
-    :param aln: `pysam.AlignedSegment` object.
-    :returns: generator of `AlignPos` objects.
-    """
-    seq = aln.query_sequence
-    pairs = (AlignPos(qpos=qp,
-                      qbase=seq[qp] if qp is not None else '-',
-                      rpos=rp,
-                      rbase=rb if rp is not None else '-'
-                      )
-             for qp, rp, rb in aln.get_aligned_pairs(with_seq=True)
-             )
-    return pairs
-
-
-def get_trimmed_pairs(aln):
-    """Trim aligned pairs to the alignment.
-
-    :param aln: `pysam.AlignedSegment` object
-    :yields pairs:
-    """
-
-    pairs = get_pairs(aln)
-    for pair in itertools.dropwhile(lambda x: x.rpos is None or x.qpos is None, pairs):
-        if (pair.rpos == aln.reference_end or pair.qpos == aln.query_alignment_end):
-            break
-        yield pair
+            aligned_ref_len += 1
+    return err, aligned_ref_len, n_masked
 
 
 def rle(it):
@@ -562,11 +548,12 @@ def _get_size(n, sizes):
     return size
 
 
-def _process_read(bam, read_num):
+def _process_read(bam, read_num, bed_file=None):
     """Load an alignment from bam and return result of `_process_seg`.
 
     :param bam: str, bam file.
     :param read_num: int, index of alignment to process.
+    :param bed_file: path to .bed file of regions to include in analysis.
     :returns: result of `_process_seg`.
     """
 
@@ -576,27 +563,41 @@ def _process_read(bam, read_num):
             rec = next(gen)
         if rec.is_unmapped or rec.is_supplementary or rec.is_secondary:
             return
+
+        if bed_file is not None:
+            tree = intervaltree_from_bed(bed_file, rec.reference_name)
+
+            if not tree.overlaps(rec.reference_start, rec.reference_end):
+                #sys.stderr.write('read {} does not overlap with any regions in bedfile\n'.format(rec.query_name))
+                return
+        else:
+            tree = None
+
         seg = AlignSeg(rname=rec.reference_name, qname=rec.query_name,
                        pairs=list(get_trimmed_pairs(rec)), rlen=rec.reference_length
                       )
         logging.debug('Loaded query {}'.format(seg.qname))
-        return _process_seg(seg)
+        return _process_seg(seg, tree)
 
 
-def _process_seg(seg):
+def _process_seg(seg, tree=None):
     """Classify and count errors within an `AlignSeg` object.
 
     :param seg: `AlignSeg` object.
-    :returns: (seg.rname, seg.rlen, error_count, errors)
+    :param tree: `intervaltree.IntervalTree` object of regions to analyse.
+    :returns: (seg.rname, aligned_ref_len, error_count, errors, n_masked)
         error_count: `Counter` of error classes
         errors: list of `Error` objects
+        n_masked: number of reference positions excluded by tree.
     """
     error_count = Counter()
     errors = []
-    for ri, qi, error, approx_pos in get_errors(seg.pairs):
+    pos_and_errors, aligned_ref_len, n_masked = get_errors(seg.pairs, tree)
+    for ri, qi, error, approx_pos in pos_and_errors:
         ref, match, read, counts, klass = classify_error(preprocess_error(
             ri if ri is not None else qi, seg.pairs, search_by_q=(ri is None)
         ))
+
         rp = ri
         qp = qi
         if rp is None:
@@ -608,8 +609,11 @@ def _process_seg(seg):
                             aggr_klass=get_aggr_klass(klass)))
         error_count[klass] += 1
 
+    if tree is None:
+        assert seg.rlen == aligned_ref_len
+
     logging.debug('Done processing {} aligned to {}'.format(seg.qname, seg.rname))
-    return seg.rname, seg.rlen, error_count, errors
+    return seg.rname, aligned_ref_len, error_count, errors, n_masked
 
 
 def qscore(d):
@@ -684,6 +688,7 @@ def main():
     logging.basicConfig(format='[%(asctime)s - %(name)s] %(message)s', datefmt='%H:%M:%S', level=logging.INFO)
     parser = argparse.ArgumentParser('catalogue_errors')
     parser.add_argument('bam', help='Input alignments (aligned to ref).')
+    parser.add_argument('--bed', default=None, help='.bed file of reference regions to include.')
     parser.add_argument('-t', '--threads', type=int, default=1, help='Number of threads for parallel execution.')
     parser.add_argument('-o', '--outdir', default='error_catalogue', help='Output directory.')
 
@@ -694,8 +699,9 @@ def main():
         n_reads = bam.count()
 
     total_ref_length = defaultdict(int)
+    total_n_ref_sites_masked = defaultdict(int)
     error_count = defaultdict(Counter)
-    f = partial(_process_read, args.bam)
+    f = partial(_process_read, args.bam, bed_file=args.bed)
 
     # record draft start position of each long multi indel
     multi_errs = {}
@@ -724,9 +730,10 @@ def main():
             if returned is None:
                 continue
             else:
-                ref_name, ref_length, counts, errors = returned
+                ref_name, ref_length, counts, errors, n_masked = returned
             error_count[ref_name].update(counts)
             total_ref_length[ref_name] += ref_length
+            total_n_ref_sites_masked[ref_name] += n_masked
             for e in errors:
                 db_fh.write(_sep_.join((str(h[1](e)) for h in headers)) + '\n')
                 txt_fh.write("Ref Pos: {}, {} Pos {}, {}, {}\n".format(e.rp, e.qname, e.qp, e.klass, e.aggr_klass))
@@ -783,6 +790,7 @@ def main():
 
     # save counts to yaml for any further analysis
     to_save = {'ref_lengths': total_ref_length,
+               'n_ref_sites_masked': total_n_ref_sites_masked,
                'counts': {'by_ref': error_count,
                           'by_ref_aggr': aggr_by_ref,
                           'total': total_counts,

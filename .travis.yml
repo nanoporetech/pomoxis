@@ -42,7 +42,7 @@ script:
 
 
 before_deploy:
-  - if [[ "$TRAVIS_PYTHON_VERSION" == "3.4" ]]; then make docs; fi
+  - if [[ "$TRAVIS_PYTHON_VERSION" == "3.6" ]]; then make docs; fi
 
 deploy:
   provider: pages
@@ -52,4 +52,4 @@ deploy:
   target_branch: gh-pages
   on:
     branch: master
-    python: "3.4"
+    python: "3.6"

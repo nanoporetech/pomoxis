@@ -13,18 +13,22 @@ Calculate accuracy statistics for an assembly.
     -C  catalogue errors. 
     -t  alignment threads (default: 1).
     -p  output file prefix (default: assm).
-    -T  trim consensus to primary alignments of truth to assembly."
+    -T  trim consensus to primary alignments of truth to assembly.
+    -b  .bed file of reference regions to assess."
 
 PREFIX="assm"
 THREADS=1
 CHUNK="100000"
 rflag=false
 iflag=false
+bed_flag=false
 catalogue_flag=false
 trim_flag=false
-ALIGN_OPTS="-P"
+ALIGN_OPTS=""
+BED=""
 
-while getopts ':hr:i:p:c:CTt:' option; do
+
+while getopts ':hr:i:p:c:CTt:b:' option; do
   case "$option" in
     h  ) echo "$usage" >&2; exit;;
     r  ) rflag=true; REFERENCE=$OPTARG;;
@@ -34,6 +38,7 @@ while getopts ':hr:i:p:c:CTt:' option; do
     C  ) catalogue_flag=true; ALIGN_OPTS="-m";;
     T  ) trim_flag=true;;
     t  ) THREADS=$OPTARG;;
+    b  ) bed_flag=true; BED="--bed $OPTARG"; ALIGN_OPTS="-m";;
     \? ) echo "Invalid option: -${OPTARG}." >&2; exit 1;;
     :  ) echo "Option -$OPTARG requires an argument." >&2; exit 1;;
   esac
@@ -51,21 +56,21 @@ if (($CHUNK > 0)); then
 fi
 
 if $trim_flag; then
-    mini_align -i $REFERENCE -r $INPUT -p ${PREFIX}_trim -P -t $THREADS $ALIGN_OPTS
+    mini_align -i $REFERENCE -r $INPUT -p ${PREFIX}_trim -t $THREADS $ALIGN_OPTS
     ref_seqs_from_bam ${PREFIX}_trim.bam > ${PREFIX}_trim.fasta
     INPUT=${PREFIX}_trim.fasta
 fi
 
 mini_align -i $INPUT -r $REFERENCE -p $PREFIX -t $THREADS $ALIGN_OPTS 
 
-stats_from_bam --bam ${PREFIX}.bam -o ${PREFIX}_stats.txt
+stats_from_bam --bam ${PREFIX}.bam -o ${PREFIX}_stats.txt ${BED} 
 
 summary_from_stats -i ${PREFIX}_stats.txt -pr -o ${PREFIX}_summ.txt
 
 if $catalogue_flag; then
     OUTDIR=${PREFIX}_error_catalogue
     echo "Running catalogue_errors, saving data to ${OUTDIR}"
-    catalogue_errors ${PREFIX}.bam -t $THREADS -o ${OUTDIR}
+    catalogue_errors ${PREFIX}.bam -t $THREADS -o ${OUTDIR} ${BED}
 fi
 
 grep 'Percentage Errors' -A 7 -m 1 ${PREFIX}_summ.txt
