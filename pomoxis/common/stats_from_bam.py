@@ -3,23 +3,22 @@ Tabulate some simple alignment stats from sam.
 """
 
 import argparse
+from collections import Counter
+from concurrent.futures import ProcessPoolExecutor
 import functools
 import itertools
+from math import ceil
 import sys
 
-import intervaltree
-import pybedtools
 import pysam
 
-from pomoxis.common.util import intervaltree_from_bed
+from pomoxis.common.util import intervaltrees_from_bed
 
 parser = argparse.ArgumentParser(
         description="""Parse a bamfile (from a stream) and output summary stats for each read.""",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-# TODO (aw): Ideally we would use argparse.FileType to allow parsing from stream or file, but this will
-#     only be supported in an upcoming release of pysam (https://github.com/pysam-developers/pysam/pull/137)
-parser.add_argument('--bam', type=argparse.FileType('r'), default=sys.stdin, nargs='+')
+parser.add_argument('bam', type=str, help='Path to bam file.')
 parser.add_argument('--bed', default=None, help='.bed file of reference regions to include.')
 parser.add_argument('-m', '--min_length', type=int, default=None)
 parser.add_argument('-a', '--all_alignments', action='store_true',
@@ -28,6 +27,8 @@ parser.add_argument('-o', '--output', type=argparse.FileType('w'), default=sys.s
                     help='Output alignment stats to file instead of stdout.')
 parser.add_argument('-s', '--summary', type=argparse.FileType('w'), default=sys.stderr,
                     help='Output summary to file instead of stderr.')
+parser.add_argument('-t', '--threads', type=int, default=1,
+                    help='Number of threads for parallel processing.')
 
 
 def stats_from_aligned_read(read, references, lengths):
@@ -81,7 +82,7 @@ def stats_from_aligned_read(read, references, lengths):
     return results
 
 
-def masked_stats_from_aligned_read(read, references, lengths, bed_file):
+def masked_stats_from_aligned_read(read, references, lengths, tree):
     """Create summary information for an aligned read over regions in bed file.
 
     :param read: :class:`pysam.AlignedSegment` object
@@ -92,11 +93,6 @@ def masked_stats_from_aligned_read(read, references, lengths, bed_file):
         tags.get('MD')
     except:
         raise IOError("Read is missing required 'MD' tag. Try running 'samtools callmd - ref.fa'.")
-
-    tree = intervaltree_from_bed(bed_file, read.reference_name)
-    if not tree.overlaps(read.reference_start, read.reference_end):
-        sys.stderr.write('read {} does not overlap with any regions in bedfile\n'.format(read.query_name))
-        return None
 
     correct, delt, ins, sub, aligned_ref_len, masked = 0, 0, 0, 0, 0, 0
     pairs = read.get_aligned_pairs(with_seq=True)
@@ -162,13 +158,54 @@ def masked_stats_from_aligned_read(read, references, lengths, bed_file):
     return results
 
 
+def _process_reads(bam_fp, start_stop, all_alignments=False, min_length=None, bed_file=None):
+    start, stop = start_stop
+    counts = Counter()
+    results = []
+    with pysam.AlignmentFile(bam_fp, 'rb') as bam:
+        if bed_file is not None:
+            trees = intervaltrees_from_bed(bed_file)
+        for i, read in enumerate(bam):
+            if i < start:
+                continue
+            elif i == stop:
+                break
+            if read.is_unmapped:
+                counts['unmapped'] += 1
+                continue
+            if not all_alignments and (read.is_secondary or read.is_supplementary):
+                continue
+
+            if bed_file is not None:
+                if not trees[read.reference_name].overlaps(read.reference_start, read.reference_end):
+                    sys.stderr.write('read {} does not overlap with any regions in bedfile\n'.format(read.query_name))
+                    counts['masked'] += 1
+                    continue
+                else:
+                    result = masked_stats_from_aligned_read(read, bam.references, bam.lengths, trees[read.reference_name])
+            else:
+                result = stats_from_aligned_read(read, bam.references, bam.lengths)
+
+            if min_length is not None and result['length'] < min_length:
+                counts['short'] += 1
+                continue
+
+            results.append(result)
+
+    return counts, results
+
+
 def main(arguments=None):
     args = parser.parse_args(arguments)
 
-    count = 0
-    n_unmapped = 0
-    n_short = 0
-    n_masked = 0
+    if args.threads > 1 and args.bed is not None:
+        pool = ProcessPoolExecutor(args.threads)
+        mapper = pool.map
+    else:
+        pool = None
+        mapper = map
+        args.threads = 1
+
     headers = ['name', 'ref', 'coverage', 'ref_coverage', 'qstart', 'qend',
                'rstart', 'rend', 'aligned_ref_len', 'direction', 'length',
                'read_length', 'match', 'ins', 'del', 'sub', 'iden', 'acc']
@@ -176,42 +213,38 @@ def main(arguments=None):
     masked_headers = ['masked']
     if args.bed is not None:
         headers.extend(masked_headers)
-        func = functools.partial(masked_stats_from_aligned_read, bed_file=args.bed)
-    else:
-        func = stats_from_aligned_read
 
     args.output.write('\t'.join(headers))
     args.output.write('\n')
 
-    if not isinstance(args.bam, list):
-        args.bam = ('-',)
+    # create a slice of reads to process in each thread to avoid looping through
+    # bam n read times and reduce mp overhead
+    with pysam.AlignmentFile(args.bam) as bam:
+        n_reads = bam.count()
+    n_reads_per_proc = ceil(n_reads / args.threads)
+    ranges = [(start, min(start + n_reads_per_proc, n_reads))
+               for start in range(0, n_reads, n_reads_per_proc)]
 
-    # TODO: multiprocessing over alignments (as in catalogue_errors)
-    for samfile in (pysam.AlignmentFile(x) for x in args.bam):
-        for read in samfile:
-            if read.is_unmapped:
-                n_unmapped += 1
-                continue
-            if not args.all_alignments and (read.is_secondary or read.is_supplementary):
-                continue
-            results = func(read, samfile.references, samfile.lengths)
-            if results is None:
-                n_masked += 1
-                continue
-            if args.min_length is not None and results['length'] < args.min_length:
-                n_short += 1
-                continue
+    func = functools.partial(_process_reads, args.bam,
+                             all_alignments=args.all_alignments,
+                             min_length=args.min_length, bed_file=args.bed)
 
-            count += 1
-            out_row = (str(results[x]) for x in headers)
+    counts = Counter()
+    for batch_counts, results in mapper(func, ranges):
+        counts.update(batch_counts)
+        counts['total'] += len(results)
+        for result in results:
+            out_row = (str(result[x]) for x in headers)
             args.output.write('\t'.join(out_row))
             args.output.write('\n')
-        samfile.close()
+    if pool is not None:
+        pool.shutdown(wait=True)
 
-    if count == 0:
+    if counts['total'] == 0:
         raise ValueError('No alignments processed. Check your bam and filtering options.')
 
-    args.summary.write('Mapped/Unmapped/Short/Masked: {}/{}/{}\n'.format(count, n_unmapped, n_short, n_masked))
+    args.summary.write('Mapped/Unmapped/Short/Masked: {total}/{unmapped}/{short}/{masked}\n'.format(**counts))
+
 
 if __name__ == '__main__':
     main()
