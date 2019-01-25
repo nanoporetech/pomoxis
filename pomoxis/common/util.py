@@ -1,5 +1,5 @@
 import argparse
-from collections import namedtuple
+from collections import namedtuple, defaultdict
 import itertools
 import shutil
 import sys
@@ -7,7 +7,6 @@ import sys
 from Bio import SeqIO
 import intervaltree
 import numpy as np
-import pybedtools
 from pysam import FastxFile
 
 Region = namedtuple('Region', 'ref_name start end')
@@ -316,14 +315,26 @@ def get_trimmed_pairs(aln):
         yield pair
 
 
-def intervaltree_from_bed(path_to_bed, chrom):
-    """Created intervaltree from a .bed file for the given chromosome.
+def yield_from_bed(bedfile):
+    with open(bedfile) as fh:
+        for line in fh:
+            split_line = line.split()
+            if split_line[0] in {'browser', 'track'} or len(split_line) < 3:
+                continue
+            chrom = split_line[0]
+            start = int(split_line[1])
+            stop = int(split_line[2])
+            yield chrom, start, stop
+
+
+def intervaltrees_from_bed(path_to_bed):
+    """Created dict of intervaltrees from a .bed file, indexed by chrom.
 
     :param path_to_bed: str, path to .bed file.
     :param chrom: str, chromosome name.
-    :returns: `intervaltree.IntervalTree` obj.
+    :returns: { str chrom: `intervaltree.IntervalTree` obj }.
     """
-    tree = intervaltree.IntervalTree()
-    for j in (i for i in pybedtools.BedTool(path_to_bed) if i.chrom == chrom):
-        tree.add(intervaltree.Interval(begin=j.start, end=j.stop))
-    return tree
+    trees = defaultdict(intervaltree.IntervalTree)
+    for chrom, start, stop in yield_from_bed(path_to_bed):
+        trees[chrom].add(intervaltree.Interval(begin=start, end=stop))
+    return trees
