@@ -194,23 +194,14 @@ def subsample_region_uniformly(region, args):
     while True:
         cursor = 0
         while cursor < ref_lengths[region.ref_name]:
-            hits = _nearest_overlapping_point(tree, cursor)
-            if hits is None:
+            read = _nearest_overlapping_point(tree, cursor)
+            if read is None:
                 cursor += args.stride
             else:
-                found = False
-                for read in hits:
-                    # one would like to simply remove read from the tree
-                    #   but there seems to be a bug in the removal
-                    if read.data in reads:
-                        continue
-                    reads.add(read.data)
-                    cursor = read.end
-                    found = True
-                    coverage[read.begin - region.start:read.end - region.start] += 1
-                    break
-                if not found:
-                    cursor += args.stride
+                reads.add(read.data)
+                cursor = read.end
+                coverage[read.begin - region.start:read.end - region.start] += 1
+                tree.remove(read)
         iteration += 1
         median_depth = np.median(coverage)
         stdv_depth = np.std(coverage)
@@ -256,12 +247,12 @@ def _nearest_overlapping_point(src, point):
     :returns: Interval instance of interval with closest start.
 
     """
-    items = src.search(point)
+    items = src.at(point)
     if len(items) == 0:
         return None
     items = sorted(items, key=lambda x: x.end - x.begin, reverse=True)
     items.sort(key=lambda x: abs(x.begin - point))
-    return items
+    return items[0]
 
 
 def _write_bam(bam, prefix, region, sequences):
