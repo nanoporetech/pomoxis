@@ -16,7 +16,7 @@ from functools import partial
 from matplotlib import pyplot as plt
 from operator import attrgetter
 
-from pomoxis.common.util import get_trimmed_pairs, intervaltree_from_bed
+from pomoxis.common.util import get_trimmed_pairs, intervaltrees_from_bed
 
 AlignSeg = namedtuple('AlignSeg', ('rname', 'qname', 'pairs', 'rlen'))
 Error = namedtuple('Error', ('rp', 'rname', 'qp', 'qname', 'ref', 'match', 'read', 'counts', 'klass', 'aggr_klass'))
@@ -565,7 +565,7 @@ def _process_read(bam, read_num, bed_file=None):
             return
 
         if bed_file is not None:
-            tree = intervaltree_from_bed(bed_file, rec.reference_name)
+            tree = intervaltrees_from_bed(bed_file, rec.reference_name)
 
             if not tree.overlaps(rec.reference_start, rec.reference_end):
                 #sys.stderr.write('read {} does not overlap with any regions in bedfile\n'.format(rec.query_name))
