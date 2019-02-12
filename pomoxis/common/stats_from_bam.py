@@ -243,7 +243,7 @@ def main(arguments=None):
     if counts['total'] == 0:
         raise ValueError('No alignments processed. Check your bam and filtering options.')
 
-    args.summary.write('Mapped/Unmapped/Short/Masked: {total}/{unmapped}/{short}/{masked}\n'.format(**counts))
+    args.summary.write('Mapped/Unmapped/Short/Masked: {total}/{unmapped}/{short}/{masked}\n'.format_map(counts))
 
 
 if __name__ == '__main__':
