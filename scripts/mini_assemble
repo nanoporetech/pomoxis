@@ -15,6 +15,7 @@ Assemble fastq/fasta formatted reads and perform POA consensus.
     -n  number of racon shuffles (default: 1. If not 1, should be >10).
     -w  racon window length (default: 500).
     -k  keep intermediate files (default: delete).
+    -K  minimap's -K option (default: 500M).
     -c  trim adapters from reads prior to everything else.
     -e  error correct longest e% of reads prior to assembly, or an estimated coverage (e.g. 2x).
         For an estimated coverage, the -l option must be a fastx or a length (e.g. 4.8mb).
@@ -28,6 +29,7 @@ ROUNDS=4
 SHUFFLES=1
 MIN_SHUFFLES=10
 WINDOW_LEN=500
+MINIMAP_K="500M"
 CHOP=false
 iflag=false
 rflag=false
@@ -35,7 +37,7 @@ eflag=false
 lflag=false
 xflag=false
 kflag=false
-while getopts ':hi:q:r:o:p:t:m:n:w:ce:l:x' option; do
+while getopts ':hi:q:r:o:p:t:m:n:w:K:ce:l:x' option; do
   case "$option" in
     h  ) echo "$usage" >&2; exit;;
     i  ) iflag=true; INPUT=$OPTARG;;
@@ -46,6 +48,7 @@ while getopts ':hi:q:r:o:p:t:m:n:w:ce:l:x' option; do
     m  ) ROUNDS=$OPTARG;;
     n  ) SHUFFLES=$OPTARG;;
     w  ) WINDOW_LEN=$OPTARG;;
+    K  ) MINIMAP_K=$OPTARG;;
     k  ) kflag=true;;
     c  ) CHOP=true;;
     e  ) eflag=true; ERRCORR=$OPTARG;;
@@ -110,7 +113,7 @@ fi
 
 # Note, these could/should be made dependent on read correction
 BASERACONOPTS="-m 8 -x -6 -g -8"
-OVLOPTS="-x ava-ont"
+OVLOPTS="-x ava-ont -K ${MINIMAP_K}"
 ASMOPTS="-s 100 -e 3"
 MOCKQ=10
 
@@ -203,7 +206,7 @@ for SHUF in $(seq -w 1 ${SHUFFLES}); do
     READS2TIGS=reads2contigs_${SHUF}_${ROUND}.paf.gz
     NEWSCAF=racon_${SHUF}_${ROUND}.fa.gz
 
-    minimap2 -t${THREADS} ${SCAFFOLD} ${SHUFREADS} | gzip -1 > ${READS2TIGS}
+    minimap2 -K ${MINIMAP_K} -t ${THREADS} ${SCAFFOLD} ${SHUFREADS} | gzip -1 > ${READS2TIGS}
     racon ${BASERACONOPTS} ${ADDRACONOPTS} -w ${MOD_WINDOW_LEN} -t ${THREADS} -q -1 ${SHUFREADS} ${READS2TIGS} ${SCAFFOLD} | gzip -1 > ${NEWSCAF}
 
     if ! $kflag; then
@@ -230,7 +233,7 @@ else
   done
 
   READS2TIGS=combined2contigs.paf.gz
-  minimap2 -t${THREADS} ${SCAFFOLD} ${COMBINED} | gzip -1 > ${READS2TIGS}
+  minimap2 -K ${MINIMAP_K} -t ${THREADS} ${SCAFFOLD} ${COMBINED} | gzip -1 > ${READS2TIGS}
   # use a slightly longer window here for good measure
   racon ${RACONOPTS} -w $((3*WINDOW_LEN/2)) -t ${THREADS} -q -1 ${COMBINED} ${READS2TIGS} ${SCAFFOLD} > ${FINAL}
   if ! $kflag; then
