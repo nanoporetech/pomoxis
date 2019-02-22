@@ -14,74 +14,78 @@ BINCACHEDIR=bincache
 $(BINCACHEDIR):
 	mkdir -p $(BINCACHEDIR)
 
+BINBUILDDIR=binbuild
+$(BINBUILDDIR):
+	mkdir -p $(BINBUILDDIR)
+
 MAPVER=2.14
-$(BINCACHEDIR)/minimap2: | $(BINCACHEDIR)
+$(BINCACHEDIR)/minimap2: | $(BINCACHEDIR) $(BINBUILDDIR)
 	@echo Making $(@F)
-	if [ ! -e submodules/minimap2-${MAPVER}.tar.bz2 ]; then \
-	  cd submodules; \
+	if [ ! -e ${BINBUILDDIR}/minimap2-${MAPVER}.tar.bz2 ]; then \
+	  cd ${BINBUILDDIR}; \
 	  wget https://github.com/lh3/minimap2/releases/download/v${MAPVER}/minimap2-${MAPVER}.tar.bz2; \
 	  tar -xjf minimap2-${MAPVER}.tar.bz2; \
 	fi
-	cd submodules/minimap2-${MAPVER} && make
-	cp submodules/minimap2-${MAPVER}/minimap2 $@
+	cd ${BINBUILDDIR}/minimap2-${MAPVER} && make
+	cp ${BINBUILDDIR}/minimap2-${MAPVER}/minimap2 $@
 
 ASMVER=0.3
-$(BINCACHEDIR)/miniasm: | $(BINCACHEDIR)
+$(BINCACHEDIR)/miniasm: | $(BINCACHEDIR) $(BINBUILDDIR)
 	@echo Making $(@F)
-	if [ ! -e submodules/miniasm-v${ASMVER}.tar.gz ]; then \
-	  cd submodules; \
+	if [ ! -e ${BINBUILDDIR}/miniasm-v${ASMVER}.tar.gz ]; then \
+	  cd ${BINBUILDDIR}; \
 	  wget -O miniasm-v${ASMVER}.tar.gz https://github.com/lh3/miniasm/archive/v${ASMVER}.tar.gz; \
 	  tar -xzf miniasm-v${ASMVER}.tar.gz; \
 	fi
-	cd submodules/miniasm-${ASMVER} && make
-	cp submodules/miniasm-${ASMVER}/miniasm $@
+	cd ${BINBUILDDIR}/miniasm-${ASMVER} && make
+	cp ${BINBUILDDIR}/miniasm-${ASMVER}/miniasm $@
 
 RACONVER=1.3.1
-$(BINCACHEDIR)/racon: | $(BINCACHEDIR)
+$(BINCACHEDIR)/racon: | $(BINCACHEDIR) $(BINBUILDDIR)
 	@echo Making $(@F)
 	@echo GCC is $(GCC)
-	if [ ! -e submodules/racon-v${RACONVER}.tar.gz ]; then \
-	  cd submodules; \
+	if [ ! -e ${BINBUILDDIR}/racon-v${RACONVER}.tar.gz ]; then \
+	  cd ${BINBUILDDIR}; \
 	  wget https://github.com/isovic/racon/releases/download/${RACONVER}/racon-v${RACONVER}.tar.gz; \
 	  tar -xzf racon-v${RACONVER}.tar.gz; \
 	fi
-	cd submodules/racon-v${RACONVER} && mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Release ..
-	cd submodules/racon-v${RACONVER}/build && make
-	cp submodules/racon-v${RACONVER}/build/bin/racon $@
+	cd ${BINBUILDDIR}/racon-v${RACONVER} && mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Release ..
+	cd ${BINBUILDDIR}/racon-v${RACONVER}/build && make
+	cp ${BINBUILDDIR}/racon-v${RACONVER}/build/bin/racon $@
 
 SAMVER=1.8
-$(BINCACHEDIR)/samtools: | $(BINCACHEDIR)
+$(BINCACHEDIR)/samtools: | $(BINCACHEDIR) $(BINBUILDDIR)
 	@echo Making $(@F)
 	# tar.bz is not a dependency, since that would cause it to be fetched
 	#   even when installing from $(BINCACHEDIR)
-	if [ ! -e submodules/samtools-${SAMVER}.tar.bz2 ]; then \
-	  cd submodules; \
+	if [ ! -e ${BINBUILDDIR}/samtools-${SAMVER}.tar.bz2 ]; then \
+	  cd ${BINBUILDDIR}; \
 	  wget https://github.com/samtools/samtools/releases/download/${SAMVER}/samtools-${SAMVER}.tar.bz2; \
 	  tar -xjf samtools-${SAMVER}.tar.bz2; \
 	fi
-	cd submodules/samtools-${SAMVER} && make
-	cp submodules/samtools-${SAMVER}/samtools $@
+	cd ${BINBUILDDIR}/samtools-${SAMVER} && make
+	cp ${BINBUILDDIR}/samtools-${SAMVER}/samtools $@
 
 BCFVER=1.7
-$(BINCACHEDIR)/bcftools: | $(BINCACHEDIR)
+$(BINCACHEDIR)/bcftools: | $(BINCACHEDIR) $(BINBUILDDIR)
 	@echo Making $(@F)
-	if [ ! -e submodules/bcftools-${BCFVER}.tar.bz2 ]; then \
-	  cd submodules; \
+	if [ ! -e ${BINBUILDDIR}/bcftools-${BCFVER}.tar.bz2 ]; then \
+	  cd ${BINBUILDDIR}; \
 	  wget https://github.com/samtools/bcftools/releases/download/${BCFVER}/bcftools-${BCFVER}.tar.bz2; \
 	  tar -xjf bcftools-${BCFVER}.tar.bz2; \
 	fi
-	cd submodules/bcftools-${BCFVER} && make
-	cp submodules/bcftools-${BCFVER}/bcftools $@
+	cd ${BINBUILDDIR}/bcftools-${BCFVER} && make
+	cp ${BINBUILDDIR}/bcftools-${BCFVER}/bcftools $@
 
 SEQKITVER=0.8.0
-$(BINCACHEDIR)/seqkit: | $(BINCACHEDIR)
+$(BINCACHEDIR)/seqkit: | $(BINCACHEDIR) $(BINBUILDDIR)
 	@echo Making $(@F)
-	if [ ! -e submodules/seqkit_${OS}_amd64.tar.gz ]; then \
-	  cd submodules; \
+	if [ ! -e ${BINBUILDDIR}/seqkit_${OS}_amd64.tar.gz ]; then \
+	  cd ${BINBUILDDIR}; \
 	  wget https://github.com/shenwei356/seqkit/releases/download/v${SEQKITVER}/seqkit_${OS}_amd64.tar.gz; \
 	  tar -xzvf seqkit_${OS}_amd64.tar.gz; \
 	fi
-	cp submodules/seqkit $@	
+	cp ${BINBUILDDIR}/seqkit $@	
 
 venv: venv/bin/activate
 IN_VENV=. ./venv/bin/activate
