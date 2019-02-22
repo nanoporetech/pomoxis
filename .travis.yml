@@ -1,62 +1,53 @@
 language: python
 python:
-    - "3.5"
-    - "3.6"
+- '3.5'
+- '3.6'
 dist: trusty
 sudo: required
-
 cache:
   directories:
   - bincache
-
 git:
   submodules: true
-
 addons:
   apt:
     sources:
-      - ubuntu-toolchain-r-test
+    - ubuntu-toolchain-r-test
     packages:
-      - gcc-4.9
-      - g++-4.9
-      - zlib1g-dev
-      - libncurses5-dev
-      - python3-all-dev
-      - libhdf5-dev
-      - libatlas-base-dev
-      - libopenblas-base
-      - libopenblas-dev
-      - libbz2-dev
-      - liblzma-dev
-      - libffi-dev
-
-
+    - gcc-4.9
+    - g++-4.9
+    - zlib1g-dev
+    - libncurses5-dev
+    - python3-all-dev
+    - libhdf5-dev
+    - libatlas-base-dev
+    - libopenblas-base
+    - libopenblas-dev
+    - libbz2-dev
+    - liblzma-dev
+    - libffi-dev
 install:
-  - echo $TRAVIS_PYTHON_VERSION
-  - export CXX="g++-4.9" CC="gcc-4.9"
-  - make install
-
-
+- echo $TRAVIS_PYTHON_VERSION
+- export CXX="g++-4.9" CC="gcc-4.9"
+- make install
 script:
-  - echo "No testing implemented"
-
-
+- echo "No testing implemented"
 before_deploy:
-  - if [[ "$TRAVIS_PYTHON_VERSION" == "3.6" ]]; then make docs; fi
-
+- if [[ "$TRAVIS_PYTHON_VERSION" == "3.6" ]]; then make docs; fi
 deploy:
+  matrix:
   - provider: pages
     skip_cleanup: true
-    github_token: $GHPAGES_TOKEN
+    github_token: "$GHPAGES_TOKEN"
     local_dir: docs/_build/html
     target_branch: gh-pages
     on:
       branch: master
-      python: "3.6"
+      python: '3.6'
   - provider: pypi
     user: ontresearch
-    password:
-      secure: "vrNEDv4dw6FuVBRId3dC5F3FFFIgFP1AJ2PFpBNCQ2q3Qn5iUpTOUQDRHDFIcxvWMfunzOORUD/7M1f2l7x1fHSQ28L/peXVdTuVmiwHnkcPqtug+UOKysgd8K8X0cxcO2/0MOQoev+AFiOXf815Za4/GnA822NcXcyzhugTzTfyqWTyDoGXJ7b3i4Upkty+d2j+nBRpKl4N3mX040gKbDszuTUAqsjO433qJf8SXPH8SJdW2TcM0KsPWf5kvOflqMKb4CLHI5m4NpNLBjd56PnPdVA9czazlR8ZW584+zaYyW6yTtfgg+44WuxNDfXv48cnsCloqiQusCfsl3bQ4LKGk1gg8tTaVOGfD9TI7OBXpLR6dG9SPOaER9flq0gUR9AOjI6zNw2B98RzpOlm82nJIbOYrRUdVy66uZaOt7se3OeYG182k487lrfGHYw217Z3x/Ua0CFMmmp0+WXDBOkozEywEw1ScPi17oLi25nyUHOOyBRKo3Wa6pgGaOdK7SQOEGtmQxmKmB18KOhoKQWsS6sLSKLEv316YhbxDNevwFILZzQ86t3qhDYQkl6y+oYkl6Ha5DRl6jnCEQDAIMG++kmUZbGeqkfPJBy/XpsPePY3HiK0WQWwu37J1nvDWbayfdGtciuQ82bkX/XdymrCgcFSSFoMVB+z/HFqLMk="
     on:
       tags: true
-      python: "3.6"
+      python: '3.6'
+  password:
+    secure: Y3KZZk0bYZ9hgDP0sFpaTzuLtAvT0PFpKKzlLYlVQDJvv5IoqzSpbfCfOKR+ZXHMLXdtVsc1KfYckXL6JlJqoJmHKS6424KbjBBqoWkAuv/tfG0CDhZ+W1bpcYMl16Qbk0l3nDYYySkN/BQBgAkPim/CUfsaciLNNHRjo1XH3qLMOg0bDS2HrfYPkzRNA5jOfvB7thEPGP3u1lx9Omvs7DEA/JQOXEo1xKpRPPiC5ICYHXvU+RpO8RYO5ZiOWC7MRdOg8yrW/AoTcxDUs4kPh40izv4iRxzcYdKAS+fNwt4hrGWI5kDMi3IAHsbM+EsAZocrqYOMF/HMyGf54vKLywLH8nc8E/X0ZzUeiiIaBjK8Es0oLLlUI+PGYii6qH1+4YLN4hfAyPuEo1OYYB6eB86MJjdgBBA4fD1jgkT4LtJjh6lY7e5KEMYoTc+BEmHJwrq6R8VZz4S6KxK9HmGIN8HJQw2/4zlJ7K/WUqNhHZctvCEcJcYNSJ3gifoIdQB7BQY0Qmvorv13FNuAeSwR/GgxClqNJvLq+YfLWjtVeV/LiDI8pqv/raMZ5jk1TX4QRqmncW0Ft4vV9ogUZiXX0WoRqkkA1B0u5CrbMYaSN/M7POYV5yit8Pi2ILHIuxxDWCF0kRF3YFOgadbISxGoUjfYDi0Eq3FbWOUqAULamoE=
