@@ -5,9 +5,21 @@ from setuptools import setup, find_packages
 from setuptools import Distribution
 from setuptools.command.install import install
 import shutil
+import sys
+
+__pkg_name__ = 'pomoxis'
+__author__ = 'cwright'
+__description__ = 'Assembly, consensensus, and analysis tools by ONT research.',
+
+# Use readme as long description and say its github-flavour markdown
+from os import path
+this_directory = path.abspath(path.dirname(__file__))
+kwargs = {'encoding':'utf-8'} if sys.version_info.major == 3 else {}
+with open(path.join(this_directory, 'README.md'), **kwargs) as f:
+    __long_description__ = f.read()
+__long_description_content_type__ = 'text/markdown'
 
 __path__ = os.path.dirname(__file__)
-__pkg_name__ = 'pomoxis'
 __pkg_path__ = os.path.join(os.path.join(__path__, __pkg_name__))
 
 # Get the version number from __init__.py, and exe_path
@@ -57,10 +69,11 @@ if os.environ.get("POMO_BINARIES") is not None:
 setup(
     name=__pkg_name__,
     version=__version__,
-    url='https://github.com/nanoporetech/{}'.format(__pkg_name__),
-    author='cwright',
-    author_email='cwright@nanoporetech.com',
-    description='Real-time analysis components.',
+    author=__author__,
+    author_email='{}@nanoporetech.com'.format(__author__),
+    description=__description__,
+    long_description=__long_description__,
+    long_description_content_type=__long_description_content_type__,
     dependency_links=[],
     ext_modules=extensions,
     install_requires=install_requires,
