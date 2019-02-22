@@ -1,0 +1,7 @@
+include README.md
+include LICENSE.md
+include requirements.txt
+include Makefile
+graft images
+prune build
+prune docs
