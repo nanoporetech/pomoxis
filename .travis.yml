@@ -45,11 +45,18 @@ before_deploy:
   - if [[ "$TRAVIS_PYTHON_VERSION" == "3.6" ]]; then make docs; fi
 
 deploy:
-  provider: pages
-  skip_cleanup: true
-  github_token: $GHPAGES_TOKEN
-  local_dir: docs/_build/html
-  target_branch: gh-pages
-  on:
-    branch: master
-    python: "3.6"
+  - provider: pages
+    skip_cleanup: true
+    github_token: $GHPAGES_TOKEN
+    local_dir: docs/_build/html
+    target_branch: gh-pages
+    on:
+      branch: master
+      python: "3.6"
+  - provider: pypi
+    user: ontresearch
+    password:
+      secure: "vrNEDv4dw6FuVBRId3dC5F3FFFIgFP1AJ2PFpBNCQ2q3Qn5iUpTOUQDRHDFIcxvWMfunzOORUD/7M1f2l7x1fHSQ28L/peXVdTuVmiwHnkcPqtug+UOKysgd8K8X0cxcO2/0MOQoev+AFiOXf815Za4/GnA822NcXcyzhugTzTfyqWTyDoGXJ7b3i4Upkty+d2j+nBRpKl4N3mX040gKbDszuTUAqsjO433qJf8SXPH8SJdW2TcM0KsPWf5kvOflqMKb4CLHI5m4NpNLBjd56PnPdVA9czazlR8ZW584+zaYyW6yTtfgg+44WuxNDfXv48cnsCloqiQusCfsl3bQ4LKGk1gg8tTaVOGfD9TI7OBXpLR6dG9SPOaER9flq0gUR9AOjI6zNw2B98RzpOlm82nJIbOYrRUdVy66uZaOt7se3OeYG182k487lrfGHYw217Z3x/Ua0CFMmmp0+WXDBOkozEywEw1ScPi17oLi25nyUHOOyBRKo3Wa6pgGaOdK7SQOEGtmQxmKmB18KOhoKQWsS6sLSKLEv316YhbxDNevwFILZzQ86t3qhDYQkl6y+oYkl6Ha5DRl6jnCEQDAIMG++kmUZbGeqkfPJBy/XpsPePY3HiK0WQWwu37J1nvDWbayfdGtciuQ82bkX/XdymrCgcFSSFoMVB+z/HFqLMk="
+    on:
+      tags: true
+      python: "3.6"

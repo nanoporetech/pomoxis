@@ -79,6 +79,37 @@ On the final line, use for example:
 A conda package is planned in the future.
 
 
+**Installation with pip**
+  
+Pomoxis can be installed using the python package manager, pip:
+
+.. code-block:: bash
+
+    pip install pomoxis
+
+We recommend using medaka within a virtual environment, viz.:
+
+.. code-block:: bash
+
+    virtualenv pomoxis --python=python3 --prompt "(pomoxis) "
+    . pomoxis/bin/activate
+    pip install pomoxis
+
+.. note::
+
+    Using this method requires the user to provide several binaries:
+
+    `minimap2 <https://github.com/lh3/minimap2>`_,
+    `miniasm <https://github.com/lh3/miniasm>`_,
+    `samtools <https://github.com/samtools/samtools>`_,
+    `racon <https://github.com/isovic/racon>`_,
+    `samtools <https://github.com/samtools/samtools`_,
+    `bcftools <https://github.com/samtools/bcftools/`_, and
+    `seqkit <https://github.com/shenwei356/seqkit`_,
+
+    and place these within the `PATH`.
+
+
 **Installation from source**
 
 With this method pomoxis will install itself into a an isolated virtual
