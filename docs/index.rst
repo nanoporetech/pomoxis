@@ -85,6 +85,7 @@ Pomoxis can be installed using the python package manager, pip:
 
 .. code-block:: bash
 
+    pip install git+https://github.com/rrwick/Porechop
     pip install pomoxis
 
 We recommend using medaka within a virtual environment, viz.:
@@ -93,6 +94,7 @@ We recommend using medaka within a virtual environment, viz.:
 
     virtualenv pomoxis --python=python3 --prompt "(pomoxis) "
     . pomoxis/bin/activate
+    pip install git+https://github.com/rrwick/Porechop
     pip install pomoxis
 
 .. note::

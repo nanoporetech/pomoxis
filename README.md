@@ -68,12 +68,14 @@ A conda package is planned in the future.
 For those who prefer python's native pacakage manager, medaka is also available
 on pypi and can be installed using pip:
 
+    pip install git+https://github.com/rrwick/Porechop
     pip install pomoxis
 
 We recommend using pomoxis within a virtual environment, viz.:
 
     virtualenv pomoxis --python=python3 --prompt "(pomoxis) "
     . pomoxis/bin/activate
+    pip install git+https://github.com/rrwick/Porechop
     pip install pomoxis
 
 Using this method requires the user to provide several binaries:
