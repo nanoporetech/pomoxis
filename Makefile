@@ -91,11 +91,8 @@ venv/bin/activate:
 	${IN_VENV} && pip install pip --upgrade
 	${IN_VENV} && pip install -r requirements.txt
 
-bwapy: venv
-	cd submodules/bwapy && make bwa/libbwa.a 
-	${IN_VENV} && cd submodules/bwapy && python setup.py install
 
-install: venv bwapy | $(addprefix $(BINCACHEDIR)/, $(BINARIES))
+install: venv | $(addprefix $(BINCACHEDIR)/, $(BINARIES))
 	${IN_VENV} && POMO_BINARIES=1 python setup.py install
 
 PYVER=3.6
@@ -111,6 +108,18 @@ conda:
 	${IN_CONDA} && conda activate pomoxis && python setup.py install \
 		--single-version-externally-managed --record=conda_install.out
 	rm conda_reqs.txt
+
+
+IN_BUILD=. ./pypi_build/bin/activate
+pypi_build/bin/activate:
+	test -d pypi_build || virtualenv pypi_build --python=python3 --prompt "(pypi) "
+	${IN_BUILD} && pip install pip --upgrade
+	${IN_BUILD} && pip install --upgrade pip setuptools twine wheel readme_renderer[md]
+
+
+sdist: pypi_build/bin/activate
+	${IN_BUILD} && python setup.py sdist
+
 
 # You can set these variables from the command line.
 SPHINXOPTS    =

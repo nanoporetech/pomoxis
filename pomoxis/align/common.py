@@ -7,8 +7,6 @@ import subprocess
 from aiozmq import rpc
 
 from pomoxis.align.minimap import MiniMapServe
-from pomoxis.align.bwa import BwapyServe
-
 
 from pomoxis import set_wakeup
 from pomoxis.common import util
@@ -23,10 +21,6 @@ def align_server(index, port, aligner, opts=''):
     if aligner == 'minimap':
         server = yield from rpc.serve_rpc(
             MiniMapServe(index[0], map_opts=opts), bind=bind
-        )
-    elif aligner == 'bwa':
-        server = yield from rpc.serve_rpc(
-            BwapyServe(index[0], bwa_opts=opts), bind=bind
         )
     else:
         raise ValueError("Unknown aligner '{}'.".format(aligner))
@@ -110,7 +104,7 @@ def get_parser():
     sparser.set_defaults(func=serve)
     sparser.add_argument('port', type=int, help='Port on which to serve.')
     sparser.add_argument('index', nargs='+', help='Filename path prefix for index files.')
-    sparser.add_argument('--aligner', choices=('minimap', 'bwa'), default='minimap', help='Choice of aligner.')
+    sparser.add_argument('--aligner', choices=('minimap'), default='minimap', help='Choice of aligner.')
     sparser.add_argument('--opts', default=dict(), type=to_dict, help="Alignment options as 'key:value key:value ...'.")
 
     sparser = subparsers.add_parser('client', help='Test client.')
