@@ -258,12 +258,14 @@ def _nearest_overlapping_point(src, point):
 def _write_bam(bam, prefix, region, sequences):
     # filtered bam
     sequences = set(sequences)
+    taken = set()
     output = '{}_{}.{}'.format(prefix, region.ref_name, os.path.basename(bam))
     src_bam = pysam.AlignmentFile(bam, "rb")
     out_bam = pysam.AlignmentFile(output, "wb", template=src_bam)
     for read in src_bam.fetch(region.ref_name, region.start, region.end):
-        if read.query_name in sequences:
+        if read.query_name in sequences and read.query_name not in taken:
             out_bam.write(read)
+            taken.add(read.query_name)
     src_bam.close()
     out_bam.close()
     pysam.index(output)
