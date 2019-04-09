@@ -37,7 +37,7 @@ eflag=false
 lflag=false
 xflag=false
 kflag=false
-while getopts ':hi:q:r:o:p:t:m:n:w:K:ce:l:x' option; do
+while getopts ':hi:q:r:o:p:t:m:n:w:K:kce:l:x' option; do
   case "$option" in
     h  ) echo "$usage" >&2; exit;;
     i  ) iflag=true; INPUT=$OPTARG;;
