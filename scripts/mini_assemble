@@ -37,7 +37,7 @@ eflag=false
 lflag=false
 xflag=false
 kflag=false
-while getopts ':hi:q:r:o:p:t:m:n:w:K:ce:l:x' option; do
+while getopts ':hi:q:r:o:p:t:m:n:w:K:kce:l:x' option; do
   case "$option" in
     h  ) echo "$usage" >&2; exit;;
     i  ) iflag=true; INPUT=$OPTARG;;
@@ -185,7 +185,9 @@ for SHUF in $(seq -w 1 ${SHUFFLES}); do
     echo "Shuffling reads..."
     MOD_WINDOW_LEN=$(find_larger_prime ${MOD_WINDOW_LEN})  # might explode at larger lengths...
     SHUFREADS=shuffled_${SHUF}_${READS}
-    seqkit shuffle ${READS} | gzip -1 > ${SHUFREADS}
+    # set a random -s (random seed) for each shuffle iteration
+    # (else seed adopts default value of 23, and we do n identical shuffles)
+    seqkit shuffle -s ${RANDOM:0:2} ${READS} | gzip -1 > ${SHUFREADS}
     # as well as shuffling reads we shift the backbone to force
     #   racon to use different boundaries
     SCAFFOLD=shuffled_${SHUF}_backbone.fa.gz

@@ -9,7 +9,7 @@ import sys
 
 __pkg_name__ = 'pomoxis'
 __author__ = 'cwright'
-__description__ = 'Assembly, consensensus, and analysis tools by ONT research.',
+__description__ = 'Assembly, consensensus, and analysis tools by ONT research.'
 
 # Use readme as long description and say its github-flavour markdown
 from os import path

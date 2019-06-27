@@ -11,15 +11,16 @@ Align fastq/a formatted reads to a genome using minimap2.
     -I  split index every ~NUM input bases (default: 16G, this is larger
         than the usual minimap2 default).
     -a  aggressively extend gaps (sets -A1 -B2 -O2 -E1 for minimap2).
-    -P  filter to only primary alignments (i.e. run samtools view -F 2308.
-        Deprecated: this filter is now default and can be disabled with -A.)
+    -P  filter to only primary alignments (i.e. run samtools view -F 2308).
+        Deprecated: this filter is now default and can be disabled with -A.
     -A  do not filter alignments to primary alignments, output all.
     -n  sort bam by read name.
     -c  chunk size. Input reads/contigs will be broken into chunks
         prior to alignment.
     -t  alignment threads (default: 1).
     -p  output file prefix (default: reads).
-    -m  fill MD tag."
+    -m  fill MD tag.
+    -s  fill cs(=long) tag."
 
 PREFIX="reads"
 ALIGN_OPTS="-x map-ont"
@@ -31,7 +32,8 @@ CHUNK=""
 rflag=false
 iflag=false
 filter_set=0
-while getopts ':hr:i:p:aPAmnc:t:' option; do
+csmd_set=0
+while getopts ':hr:i:p:aPAmsnc:t:' option; do
   case "$option" in
     h  ) echo "$usage" >&2; exit;;
     r  ) rflag=true; REFERENCE=$OPTARG;;
@@ -39,7 +41,8 @@ while getopts ':hr:i:p:aPAmnc:t:' option; do
     I  ) INDEX_SIZE=$OPTARG;;
     P  ) ((filter_set++)); echo "-P option is deprecated";;
     A  ) ((filter_set++)); FILTER="";;
-    m  ) ALIGN_OPTS="${ALIGN_OPTS} --MD";;
+    m  ) ((csmd_set++)); ALIGN_OPTS="${ALIGN_OPTS} --MD";;
+    s  ) ((csmd_set++)); ALIGN_OPTS="${ALIGN_OPTS} --cs=long";;
     n  ) SORT="-n";;
     p  ) PREFIX=$OPTARG;;
     a  ) ALIGN_OPTS="${ALIGN_OPTS} -A1 -B2 -O2 -E1";;
@@ -56,6 +59,13 @@ if [ "$filter_set" -gt 1 ]; then
     echo "Both -A and -P were specified (-P is deprecated)." >&2;
     exit 1;
 fi
+
+if [ "$csmd_set" -gt 1 ]; then
+    echo "$usage" >&2;
+    echo "Both -s and -m were specified (only one can be set)." >&2;
+    exit 1;
+fi
+
 
 if ! $iflag || ! $rflag; then
   echo "$usage" >&2;
@@ -77,7 +87,8 @@ if [ "$missing" -eq 0 ]; then
   echo "Found minimap files." >&2
 elif [ "$missing" -eq "$num_minimap_exts" ]; then
   echo "Constructing minimap index." >&2
-  minimap2 -I ${INDEX_SIZE} ${ALIGN_OPTS} -d ${REFERENCE}.mmi ${REFERENCE}
+  minimap2 -I ${INDEX_SIZE} ${ALIGN_OPTS} -d ${REFERENCE}.mmi ${REFERENCE} \
+      || (echo "Indexing draft failed" && exit 1)
 else
   echo "Missing ${missing} index files. Clean up any files named
 ${REFERENCE}<EXT> where <EXT> is one of ${minimap_exts[*]}." >&2
@@ -86,11 +97,14 @@ fi
 
 if [ "$CHUNK" != "" ]; then
   echo "Splitting input into ${CHUNK} chunks." >&2
-  split_fastx ${INPUT} ${INPUT}.chunks ${CHUNK}
+  split_fastx ${INPUT} ${INPUT}.chunks ${CHUNK} \
+      || (echo "Failed to split input into chunks.")
   INPUT=${INPUT}.chunks
 fi
 
 minimap2 ${ALIGN_OPTS} -t ${THREADS} -a ${REFERENCE}.mmi ${INPUT} |
   samtools view -@ ${THREADS} -T ${REFERENCE} ${FILTER} -bS - |
-  samtools sort -@ ${THREADS} ${SORT} -l 9 -o ${PREFIX}.bam -
-samtools index ${PREFIX}.bam ${PREFIX}.bam.bai
+  samtools sort -@ ${THREADS} ${SORT} -l 9 -o ${PREFIX}.bam - \
+    || (echo "Alignment pipeline failed." && exit 1)
+samtools index ${PREFIX}.bam ${PREFIX}.bam.bai \
+    || (echo "Failed to index alignment file." && exit 1)

@@ -17,7 +17,7 @@ def set_wakeup():
     """Workaround suppression of `KeyboardInterrrupt` on Windows."""
     if platform.system() == 'Windows':
         #SO/27480967
-        asyncio.async(wakeup())
+        asyncio.ensure_future(wakeup())
 
 
 def get_prog_path(prog):

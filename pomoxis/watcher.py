@@ -82,7 +82,7 @@ class AIORegexMatchingEventHandler(RegexMatchingEventHandler):
             return
 
         if any(r.match(p) for r in self.regexes for p in paths):
-            self._loop.call_soon_threadsafe(asyncio.async, self._process_file(event))
+            self._loop.call_soon_threadsafe(asyncio.ensure_future, self._process_file(event))
 
 
 class Watcher(object):
