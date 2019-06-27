@@ -65,7 +65,7 @@ A conda package is planned in the future.
 
 **Installation with pip**
   
-For those who prefer python's native pacakage manager, medaka is also available
+For those who prefer python's native package manager, pomoxis is also available
 on pypi and can be installed using pip:
 
     pip install git+https://github.com/rrwick/Porechop
