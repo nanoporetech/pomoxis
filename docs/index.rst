@@ -58,25 +58,12 @@ provided `Makefile`
 
 **Installation with conda**
 
-Pomoxis can be installed using the `conda <https://conda.io/docs/>`_ package
-manager. Many users will prefer this method. If `make` is installed on the
-system, the following will create a conda environment and install pomoxis
-and its third party dependencies into the environment:
-
+Pomoxis is available on `bioconda <https://bioconda.github.io/recipes/pomoxis/>`_
+and so can be most easily installed with:
 
 .. code-block:: bash
 
-    git clone --recursive https://github.com/nanoporetech/pomoxis
-    cd pomoxis
-    CONDA=<path to conda install> make conda
-
-On the final line, use for example:
-
-.. code-block:: bash
-
-    CONDA=~/miniconda3/ make conda
-
-A conda package is planned in the future.
+    conda install pomoxis
 
 
 **Installation with pip**
@@ -104,10 +91,10 @@ We recommend using medaka within a virtual environment, viz.:
     `minimap2 <https://github.com/lh3/minimap2>`_,
     `miniasm <https://github.com/lh3/miniasm>`_,
     `samtools <https://github.com/samtools/samtools>`_,
-    `racon <https://github.com/isovic/racon>`_,
-    `samtools <https://github.com/samtools/samtools`_,
-    `bcftools <https://github.com/samtools/bcftools/`_, and
-    `seqkit <https://github.com/shenwei356/seqkit`_,
+    `racon <https://github.com/isovic/racon>>`_,
+    `samtools <https://github.com/samtools/samtools>`_,
+    `bcftools <https://github.com/samtools/bcftools/>`_, and
+    `seqkit <https://github.com/shenwei356/seqkiti>`_,
 
     and place these within the `PATH`.
 
