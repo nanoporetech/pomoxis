@@ -654,6 +654,9 @@ def plot_summary(df, outdir, prefix, ref_len):
     ax.set_yticks(y_pos)
     ax.set_yticklabels(['total error'] + list(df['klass']))
     ax.invert_yaxis()  # labels read top-to-bottom
+    xstart, xend = ax.get_xlim()
+    ystart, yend = ax.get_ylim()
+    ax.text(xend - 2.25, ystart - 0.25, '+')
     ax.set_title('Q-score after removing error class')
     fp = os.path.join(outdir, '{}_remaining_errors.png'.format(prefix))
     fig.savefig(fp)
