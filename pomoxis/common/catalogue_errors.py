@@ -642,25 +642,25 @@ def analyze_counts(counts, total_ref_length):
     return df
 
 
-def plot_summary(df, outdir, prefix):
-    """Create a plot showing the Q-score for each error klass if all larger
-    error classes are removed"""
+def plot_summary(df, outdir, prefix, ref_len):
+    """Create a plot showing Q-scores as largest remaining
+    error klass is removed"""
 
     fig, ax = plt.subplots()
     fig.subplots_adjust(left=0.3)
-    err_q = qscore(df['err_rate'].sum())
-    ax.vlines([err_q], 0, 100)
-    y_pos = np.arange(len(df))
-    ax.set_ylabel('Q(Accuracy')
-
-    ax.barh(y_pos, df['remaining_err_rate_q'], align='center', color='green', ecolor='black')
+    y_pos = np.arange(len(df) + 1)
+    no_error_score = -10 * np.log10(1/ref_len)
+    ax.barh(y_pos, df['remaining_err_rate_q'].append(pd.Series(no_error_score)), align='center', color='green', ecolor='black')
     ax.set_xlabel('Q(Accuracy)')
     ax.set_ylabel('Error Class')
     ax.set_ylim((y_pos[0]-0.5, y_pos[-1]+0.5))
     ax.set_yticks(y_pos)
-    ax.set_yticklabels(df['klass'])
+    ax.set_yticklabels(['total error'] + list(df['klass']))
     ax.invert_yaxis()  # labels read top-to-bottom
-    ax.set_title('Overall Q-scores after fixing all larger errors')
+    xstart, xend = ax.get_xlim()
+    ystart, yend = ax.get_ylim()
+    ax.text(xend - 2.25, ystart - 0.25, '+')
+    ax.set_title('Q-score after removing error class')
     fp = os.path.join(outdir, '{}_remaining_errors.png'.format(prefix))
     fig.savefig(fp)
     plt.close()
@@ -769,7 +769,8 @@ def main():
         df = analyze_counts(aggr_by_ref[ref_name], total_ref_length[ref_name])
         fp = os.path.join(args.outdir, '{}_aggr_error_summary.txt'.format(ref_name))
         df.to_csv(fp, sep=_sep_, index=False)
-        plot_summary(df, args.outdir, '{}_aggr'.format(ref_name))
+        plot_summary(df, args.outdir, '{}_aggr'.format(ref_name),
+                     ref_len=total_ref_length[ref_name])
 
         total_counts.update(counts)
 
@@ -781,7 +782,8 @@ def main():
     df = analyze_counts(aggregate_counts, sum(total_ref_length.values()))
     fp = os.path.join(args.outdir, '{}_aggr_error_summary.txt'.format('total'))
     df.to_csv(fp, sep=_sep_, index=False)
-    plot_summary(df, args.outdir, '{}_aggr'.format('total'))
+    plot_summary(df, args.outdir, '{}_aggr'.format('total'),
+                 ref_len=sum(total_ref_length.values()))
 
     if len(multi_errs) > 0:
         multi_err_df = pd.DataFrame([d for d in multi_errs.values()])
