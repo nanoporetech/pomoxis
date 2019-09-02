@@ -556,6 +556,9 @@ def _process_read(bam, read_num, bed_file=None):
     :param bed_file: path to .bed file of regions to include in analysis.
     :returns: result of `_process_seg`.
     """
+    trees = None
+    if bed_file is not None:
+        trees = intervaltrees_from_bed(bed_file)
 
     with pysam.AlignmentFile(bam, 'rb') as bam_obj:
         gen = (r for r in bam_obj)
@@ -565,7 +568,7 @@ def _process_read(bam, read_num, bed_file=None):
             return
 
         if bed_file is not None:
-            tree = intervaltrees_from_bed(bed_file, rec.reference_name)
+            tree = trees[rec.reference_name]
 
             if not tree.overlaps(rec.reference_start, rec.reference_end):
                 #sys.stderr.write('read {} does not overlap with any regions in bedfile\n'.format(rec.query_name))

@@ -331,7 +331,6 @@ def intervaltrees_from_bed(path_to_bed):
     """Created dict of intervaltrees from a .bed file, indexed by chrom.
 
     :param path_to_bed: str, path to .bed file.
-    :param chrom: str, chromosome name.
     :returns: { str chrom: `intervaltree.IntervalTree` obj }.
     """
     trees = defaultdict(intervaltree.IntervalTree)
