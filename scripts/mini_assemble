@@ -245,7 +245,7 @@ fi
 
 if ! $kflag; then
   #TODO: move these earlier?
-  rm racon_*_*.fa.gz shuffled* *paf* *gfa* &
+  rm -rf racon_*_*.fa.gz shuffled* *paf* *gfa* &
 fi
 echo "Waiting for cleanup."
 wait
