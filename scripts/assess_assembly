@@ -63,7 +63,11 @@ fi
 
 mini_align -i $INPUT -r $REFERENCE -p $PREFIX -t $THREADS $ALIGN_OPTS 
 
-stats_from_bam ${PREFIX}.bam -o ${PREFIX}_stats.txt ${BED} 
+STATS_THREADS=1
+if [[ "$BED" != "" ]]; then
+    STATS_THREADS=$THREADS
+fi
+stats_from_bam ${PREFIX}.bam -o ${PREFIX}_stats.txt -t ${STATS_THREADS} ${BED} 
 
 summary_from_stats -i ${PREFIX}_stats.txt -pr -o ${PREFIX}_summ.txt
 
