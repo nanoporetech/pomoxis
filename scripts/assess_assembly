@@ -36,7 +36,7 @@ while getopts ':hr:i:p:c:CTt:b:' option; do
     p  ) PREFIX=$OPTARG;;
     c  ) CHUNK=$OPTARG;;
     C  ) catalogue_flag=true; ALIGN_OPTS="-m";;
-    T  ) trim_flag=true;;
+    T  ) trim_flag=true; ALIGN_OPTS="-m";;
     t  ) THREADS=$OPTARG;;
     b  ) bed_flag=true; BED="--bed $OPTARG"; ALIGN_OPTS="-m";;
     \? ) echo "Invalid option: -${OPTARG}." >&2; exit 1;;
