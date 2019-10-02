@@ -10,6 +10,7 @@ Align fastq/a formatted reads to a genome using minimap2.
     -i  fastq/a input reads (required).
     -I  split index every ~NUM input bases (default: 16G, this is larger
         than the usual minimap2 default).
+    -f  force recreation of index file.
     -a  aggressively extend gaps (sets -A1 -B2 -O2 -E1 for minimap2).
     -P  filter to only primary alignments (i.e. run samtools view -F 2308).
         Deprecated: this filter is now default and can be disabled with -A.
@@ -31,14 +32,16 @@ SORT=""
 CHUNK=""
 rflag=false
 iflag=false
+FORCE_INDEX=false
 filter_set=0
 csmd_set=0
-while getopts ':hr:i:p:aPAmsnc:t:' option; do
+while getopts ':hr:i:fp:aPAmsnc:t:' option; do
   case "$option" in
     h  ) echo "$usage" >&2; exit;;
     r  ) rflag=true; REFERENCE=$OPTARG;;
     i  ) iflag=true; INPUT=$OPTARG;;
     I  ) INDEX_SIZE=$OPTARG;;
+    f  ) FORCE_INDEX=true;;
     P  ) ((filter_set++)); echo "-P option is deprecated";;
     A  ) ((filter_set++)); FILTER="";;
     m  ) ((csmd_set++)); ALIGN_OPTS="${ALIGN_OPTS} --MD";;
@@ -66,7 +69,6 @@ if [ "$csmd_set" -gt 1 ]; then
     exit 1;
 fi
 
-
 if ! $iflag || ! $rflag; then
   echo "$usage" >&2;
   echo "-i and -r must be specified." >&2;
@@ -78,6 +80,10 @@ num_minimap_exts=${#minimap_exts[@]}
 missing=0
 for ext in "${minimap_exts[@]}"; do
   minimap_index=${REFERENCE}${ext}
+  if ${FORCE_INDEX}; then
+    echo "Removing previous index file ${minimap_index}"
+    rm -rf ${minimap_index}
+  fi
   if [[ ! -e ${minimap_index} ]]; then
     ((missing+=1))
   fi
