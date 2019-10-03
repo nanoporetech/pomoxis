@@ -18,6 +18,10 @@ parser = argparse.ArgumentParser(
     description="""Parse a bamfile (from a stream) and output summary stats for each read.""",
     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
+from collections import defaultdict
+insert_len_frequency = defaultdict(int)
+delete_len_frequency = defaultdict(int)
+
 parser.add_argument('bam', type=str, help='Path to bam file.')
 parser.add_argument('--bed', default=None, help='.bed file of reference regions to include.')
 parser.add_argument('-m', '--min_length', type=int, default=None)
@@ -75,9 +79,6 @@ def count_from_cigartuples(cigartuples, longest_indel):
 
     """
     match, ins, delt = 0, 0, 0
-    from collections import defaultdict
-    insert_len_frequency = defaultdict(int)
-    delete_len_frequency = defaultdict(int)
 
     for cigar_op, cigar_len in cigartuples:
         # match
@@ -98,12 +99,6 @@ def count_from_cigartuples(cigartuples, longest_indel):
                 delt += cigar_len
             else:
                 print('Skipping DEL {}:{}'.format(cigar_op, cigar_len))
-
-    for in_len, count in insert_len_frequency.items():
-        print("INSERT LENGTH: ", in_len, " COUNT: ", count)
-    print("############################")
-    for del_len, count in delete_len_frequency.items():
-        print("DELETE LENGTH: ", del_len, " COUNT: ", count)
 
     return match, ins, delt
 
@@ -494,6 +489,12 @@ def main(arguments=None):
         raise ValueError('No alignments processed. Check your bam and filtering options.')
 
     args.summary.write('Mapped/Unmapped/Short/Masked: {total}/{unmapped}/{short}/{masked}\n'.format_map(counts))
+
+    for in_len, count in insert_len_frequency.items():
+        print("INSERT LENGTH: ", in_len, " COUNT: ", count)
+    print("############################")
+    for del_len, count in delete_len_frequency.items():
+        print("DELETE LENGTH: ", del_len, " COUNT: ", count)
 
 
 if __name__ == '__main__':
