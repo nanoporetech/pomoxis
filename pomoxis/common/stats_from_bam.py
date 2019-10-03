@@ -490,10 +490,10 @@ def main(arguments=None):
 
     args.summary.write('Mapped/Unmapped/Short/Masked: {total}/{unmapped}/{short}/{masked}\n'.format_map(counts))
 
-    for in_len, count in insert_len_frequency.items():
+    for in_len, count in sorted(insert_len_frequency.items()):
         print("INSERT LENGTH: ", in_len, " COUNT: ", count)
     print("############################")
-    for del_len, count in delete_len_frequency.items():
+    for del_len, count in sorted(delete_len_frequency.items()):
         print("DELETE LENGTH: ", del_len, " COUNT: ", count)
 
 
