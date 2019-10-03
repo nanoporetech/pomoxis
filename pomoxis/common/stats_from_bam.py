@@ -83,10 +83,14 @@ def count_from_cigartuples(cigartuples, longest_indel):
         if cigar_op == 1:
             if longest_indel == 0 or cigar_len <= longest_indel:
                 ins += cigar_len
+            else:
+                print('Skipping ins {}:{}'.format(cigar_op, cigar_len))
         # delt
         if cigar_op == 2:
             if longest_indel == 0 or cigar_len <= longest_indel:
                 delt += cigar_len
+            else:
+                print('Skipping ins {}:{}'.format(cigar_op, cigar_len))
 
     return match, ins, delt
 
