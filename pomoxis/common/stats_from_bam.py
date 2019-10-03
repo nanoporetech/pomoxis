@@ -99,11 +99,11 @@ def count_from_cigartuples(cigartuples, longest_indel):
             else:
                 print('Skipping DEL {}:{}'.format(cigar_op, cigar_len))
 
-    for in_len, count in insert_len_frequency:
+    for in_len, count in insert_len_frequency.items():
         print("INSERT LENGTH: ", in_len, " COUNT: ", count)
     print("############################")
-    for del_len, count in delete_len_frequency:
-        print("DELETE LENGTH: ", in_len, " COUNT: ", count)
+    for del_len, count in delete_len_frequency.items():
+        print("DELETE LENGTH: ", del_len, " COUNT: ", count)
 
     return match, ins, delt
 
