@@ -75,22 +75,35 @@ def count_from_cigartuples(cigartuples, longest_indel):
 
     """
     match, ins, delt = 0, 0, 0
+    from collections import defaultdict
+    insert_len_frequency = defaultdict(int)
+    delete_len_frequency = defaultdict(int)
+
     for cigar_op, cigar_len in cigartuples:
         # match
         if cigar_op == 0:
             match += cigar_len
         # insert
         if cigar_op == 1:
+            insert_len_frequency[cigar_len] += 1
+
             if longest_indel == 0 or cigar_len <= longest_indel:
                 ins += cigar_len
             else:
-                print('Skipping ins {}:{}'.format(cigar_op, cigar_len))
+                print('Skipping IN {}:{}'.format(cigar_op, cigar_len))
         # delt
         if cigar_op == 2:
+            delete_len_frequency[cigar_len] += 1
             if longest_indel == 0 or cigar_len <= longest_indel:
                 delt += cigar_len
             else:
-                print('Skipping ins {}:{}'.format(cigar_op, cigar_len))
+                print('Skipping DEL {}:{}'.format(cigar_op, cigar_len))
+
+    for in_len, count in insert_len_frequency:
+        print("INSERT LENGTH: ", in_len, " COUNT: ", count)
+    print("############################")
+    for del_len, count in delete_len_frequency:
+        print("DELETE LENGTH: ", in_len, " COUNT: ", count)
 
     return match, ins, delt
 
