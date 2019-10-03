@@ -256,7 +256,7 @@ def masked_stats_from_aligned_read_excluding_longindels(read, references, length
         if not tree.overlaps(pos) or (rp is None and not tree.overlaps(pos + 1)):
             # if rp is None, we are in an insertion, check if pos + 1 overlaps
             # (ref position of ins is arbitrary)
-            print('Skipping ref {}:{}'.format(read.reference_name, pos))
+            # print('Skipping ref {}:{}'.format(read.reference_name, pos))
             masked += 1
 
             # check if the previous operation is complete due to this
