@@ -18,10 +18,6 @@ parser = argparse.ArgumentParser(
     description="""Parse a bamfile (from a stream) and output summary stats for each read.""",
     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-from collections import defaultdict
-insert_len_frequency = defaultdict(int)
-delete_len_frequency = defaultdict(int)
-
 parser.add_argument('bam', type=str, help='Path to bam file.')
 parser.add_argument('--bed', default=None, help='.bed file of reference regions to include.')
 parser.add_argument('-m', '--min_length', type=int, default=None)
@@ -86,15 +82,12 @@ def count_from_cigartuples(cigartuples, longest_indel):
             match += cigar_len
         # insert
         if cigar_op == 1:
-            insert_len_frequency[cigar_len] += 1
-
             if longest_indel == 0 or cigar_len <= longest_indel:
                 ins += cigar_len
             # else:
             #     print('Skipping IN {}:{}'.format(cigar_op, cigar_len))
         # delt
         if cigar_op == 2:
-            delete_len_frequency[cigar_len] += 1
             if longest_indel == 0 or cigar_len <= longest_indel:
                 delt += cigar_len
             # else:
@@ -224,183 +217,8 @@ def masked_stats_from_aligned_read(read, references, lengths, tree):
     }
     return results
 
+
 def masked_stats_from_aligned_read_excluding_longindels(read, references, lengths, tree, longest_indel):
-    """Create summary information for an aligned read over regions in bed file.
-
-    :param read: :class:`pysam.AlignedSegment` object
-    """
-
-    tags = dict(read.tags)
-    try:
-        tags.get('MD')
-    except:
-        raise IOError("Read is missing required 'MD' tag. Try running 'samtools callmd - ref.fa'.")
-
-    correct, delt, ins, sub, aligned_ref_len, masked = 0, 0, 0, 0, 0, 0
-    pairs = read.get_aligned_pairs(with_seq=True)
-    qseq = read.query_sequence
-    pos_is_none = lambda x: (x[1] is None or x[0] is None)
-    pos = None
-    insertions = []
-
-    # use a flag that indicates which operation we are in now to help count the length
-    # 0 = MATCH, 1 = INSERT, 2 = DELETE, -1 = START
-
-    running_operation_flag = -1
-    running_operation_length = 0
-    # TODO: refactor to use get_trimmed_pairs (as in catalogue_errors)?
-    for qp, rp, rb in itertools.dropwhile(pos_is_none, pairs):
-        if rp == read.reference_end or (qp == read.query_alignment_end):
-            break
-        pos = rp if rp is not None else pos
-        if not tree.overlaps(pos) or (rp is None and not tree.overlaps(pos + 1)):
-            # if rp is None, we are in an insertion, check if pos + 1 overlaps
-            # (ref position of ins is arbitrary)
-            # print('Skipping ref {}:{}'.format(read.reference_name, pos))
-            masked += 1
-
-            # check if the previous operation is complete due to this
-            if running_operation_flag != -1:
-                if running_operation_flag == 1: # it was an insert
-                    if longest_indel == 0 or running_operation_length <= longest_indel:
-                        ins += running_operation_length
-                elif running_operation_flag == 2: # it was a delete
-                    if longest_indel == 0 or running_operation_length <= longest_indel:
-                        delt += running_operation_length
-                        aligned_ref_len += running_operation_length
-                # we count the sub and mismatch separately so no need to handle that here
-
-                # unset the running operation flag now
-                running_operation_flag = -1
-                running_operation_length = 0
-
-            continue
-        else:
-            if rp is not None:  # we don't have an insertion
-                if qp is None:  # deletion
-                    if running_operation_flag == -1:
-                        # the flag is unset, so set the flag to delete and start counting
-                        running_operation_flag = 2
-                        running_operation_length = 1
-
-                    elif running_operation_flag == 1:
-                        # the running operation is a insert but this is del, so count the insert and change the flag
-                        if longest_indel == 0 or running_operation_length <= longest_indel:
-                            ins += running_operation_length
-                        # set the flag
-                        running_operation_flag = 2
-                        running_operation_length = 1
-
-                    elif running_operation_flag == 2:
-                        # the running operation is a delete so increase the length
-                        running_operation_length += 1
-
-                elif qseq[qp] == rb:  # correct
-                    correct += 1
-                    aligned_ref_len += 1
-
-                    # in match and sub we don't have to maintain the flag as we count them directly
-                    # just check if we need to take previous operation into account
-                    if running_operation_flag == 1:
-                        # it was an insert
-                        if longest_indel == 0 or running_operation_length <= longest_indel:
-                            ins += running_operation_length
-                    elif running_operation_flag == 2:
-                        # it was a delete
-                        if longest_indel == 0 or running_operation_length <= longest_indel:
-                            delt += running_operation_length
-                            aligned_ref_len += running_operation_length
-
-                    # unset the running operation flag now
-                    running_operation_flag = -1
-                    running_operation_length = 0
-
-                elif qseq[qp] != rb:  # sub
-                    sub += 1
-                    aligned_ref_len += 1
-                    # in match and sub we don't have to maintain the flag as we count them directly
-                    # just check if we need to take previous operation into account
-                    if running_operation_flag == 1:
-                        # it was an insert
-                        if longest_indel == 0 or running_operation_length <= longest_indel:
-                            ins += running_operation_length
-                    elif running_operation_flag == 2:
-                        # it was a delete
-                        if longest_indel == 0 or running_operation_length <= longest_indel:
-                            delt += running_operation_length
-                            aligned_ref_len += running_operation_length
-
-                    # unset the running operation flag now
-                    running_operation_flag = -1
-                    running_operation_length = 0
-
-            else:  # we have an insertion
-                if running_operation_flag == -1:
-                    # the flag is unset, so set the flag to delete and start counting
-                    running_operation_flag = 1
-                    running_operation_length = 1
-
-                elif running_operation_flag == 1:
-                    # the running operation is a insert so increase the running operation length
-                    running_operation_length += 1
-
-                elif running_operation_flag == 2:
-                    # the running operation is a delete but this is an insert, so count the delete and change flag
-                    if longest_indel == 0 or running_operation_length <= longest_indel:
-                        delt += running_operation_length
-                        aligned_ref_len += running_operation_length
-
-                    running_operation_flag = 1
-                    running_operation_length = 1
-
-    # for the last operation that we recorded
-    if running_operation_flag != -1:
-        if running_operation_flag == 1:
-            # it was an insert
-            if longest_indel == 0 or running_operation_length <= longest_indel:
-                ins += running_operation_length
-        elif running_operation_flag == 2:
-            # it was a delete
-            if longest_indel == 0 or running_operation_length <= longest_indel:
-                delt += running_operation_length
-                aligned_ref_len += running_operation_length
-
-    name = read.qname
-    match = correct + sub
-    length = match + ins + delt
-    iden = 100 * float(match - sub) / match
-    acc = 100 - 100 * float(sub + ins + delt) / length
-
-    read_length = read.infer_read_length()
-    masked_query_alignment_length = correct + sub + ins
-    coverage = 100*float(masked_query_alignment_length) / read_length
-    direction = '-' if read.is_reverse else '+'
-
-    results = {
-        "name": name,
-        "coverage": coverage,
-        "direction": direction,
-        "length": length,
-        "read_length": read_length,
-        "match": match,
-        "ins": ins,
-        "del": delt,
-        "sub": sub,
-        "iden": iden,
-        "acc": acc,
-        "qstart": read.query_alignment_start,
-        "qend": read.query_alignment_end,
-        "rstart": read.reference_start,
-        "rend": read.reference_end,
-        "ref": references[read.reference_id],
-        "aligned_ref_len": aligned_ref_len,
-        "ref_coverage": 100 * float(aligned_ref_len) / lengths[read.reference_id],
-        "masked": masked,
-    }
-    return results
-
-
-def masked_stats_from_aligned_read_excluding_longindels_2(read, references, lengths, tree, longest_indel):
     """Create summary information for an aligned read over regions in bed file.
 
     :param read: :class:`pysam.AlignedSegment` object
@@ -564,12 +382,9 @@ def _process_reads(bam_fp, longest_indel_length, start_stop, all_alignments=Fals
                     counts['masked'] += 1
                     continue
                 else:
-                    result = masked_stats_from_aligned_read(read, bam.references, bam.lengths, trees[read.reference_name])
-                    result_1 = masked_stats_from_aligned_read_excluding_longindels(read, bam.references, bam.lengths,
-                                                                                   trees[read.reference_name], longest_indel_length)
-                    result_2 = masked_stats_from_aligned_read_excluding_longindels_2(read, bam.references, bam.lengths,
-                                                                                     trees[read.reference_name], longest_indel_length)
-                    assert result == result_1 == result_2
+                    result = masked_stats_from_aligned_read_excluding_longindels(read, bam.references, bam.lengths,
+                                                                                 trees[read.reference_name],
+                                                                                 longest_indel_length)
             else:
                 result = stats_from_aligned_read(read, bam.references, bam.lengths, longest_indel_length)
 
@@ -632,12 +447,6 @@ def main(arguments=None):
         raise ValueError('No alignments processed. Check your bam and filtering options.')
 
     args.summary.write('Mapped/Unmapped/Short/Masked: {total}/{unmapped}/{short}/{masked}\n'.format_map(counts))
-
-    # for in_len, count in sorted(insert_len_frequency.items()):
-    #     print("INSERT LENGTH: ", in_len, " COUNT: ", count)
-    # print("############################")
-    # for del_len, count in sorted(delete_len_frequency.items()):
-    #     print("DELETE LENGTH: ", del_len, " COUNT: ", count)
 
 
 if __name__ == '__main__':
