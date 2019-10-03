@@ -90,15 +90,15 @@ def count_from_cigartuples(cigartuples, longest_indel):
 
             if longest_indel == 0 or cigar_len <= longest_indel:
                 ins += cigar_len
-            else:
-                print('Skipping IN {}:{}'.format(cigar_op, cigar_len))
+            # else:
+            #     print('Skipping IN {}:{}'.format(cigar_op, cigar_len))
         # delt
         if cigar_op == 2:
             delete_len_frequency[cigar_len] += 1
             if longest_indel == 0 or cigar_len <= longest_indel:
                 delt += cigar_len
-            else:
-                print('Skipping DEL {}:{}'.format(cigar_op, cigar_len))
+            # else:
+            #     print('Skipping DEL {}:{}'.format(cigar_op, cigar_len))
 
     return match, ins, delt
 
@@ -400,6 +400,146 @@ def masked_stats_from_aligned_read_excluding_longindels(read, references, length
     return results
 
 
+def masked_stats_from_aligned_read_excluding_longindels_2(read, references, lengths, tree, longest_indel):
+    """Create summary information for an aligned read over regions in bed file.
+
+    :param read: :class:`pysam.AlignedSegment` object
+    """
+
+    tags = dict(read.tags)
+    try:
+        tags.get('MD')
+    except:
+        raise IOError("Read is missing required 'MD' tag. Try running 'samtools callmd - ref.fa'.")
+
+    correct, delt, ins, sub, aligned_ref_len, masked = 0, 0, 0, 0, 0, 0
+    cigartuples = read.cigartuples
+    reference_position = read.reference_start
+    read_index = 0
+    reference_index = 0
+    reference_sequence = read.get_reference_sequence()
+    read_sequence = read.query_sequence
+    """
+    M	BAM_CMATCH	0
+    I	BAM_CINS	1
+    D	BAM_CDEL	2
+    N	BAM_CREF_SKIP	3
+    S	BAM_CSOFT_CLIP	4
+    H	BAM_CHARD_CLIP	5
+    P	BAM_CPAD	6
+    =	BAM_CEQUAL	7
+    X	BAM_CDIFF	8
+    B	BAM_CBACK	9
+    """
+    for cigar_op, cigar_len in cigartuples:
+        # match or mismatch
+        if cigar_op == 7 or cigar_op == 8 or cigar_op == 0:
+            for i in range(0, cigar_len):
+                read_base = read_sequence[read_index]
+                ref_base = reference_sequence[reference_index]
+
+                # match
+                if read_base == ref_base:
+                    # check if position overlaps the bed region
+                    if tree.overlaps(reference_position):
+                        correct += 1
+                        aligned_ref_len += 1
+                    else:
+                        masked += 1
+                else:
+                    # base mismatch
+                    # check if position overlaps the bed region
+                    if tree.overlaps(reference_position):
+                        sub += 1
+                        aligned_ref_len += 1
+                    else:
+                        masked += 1
+
+                read_index += 1
+                reference_position += 1
+                reference_index += 1
+        # insert
+        elif cigar_op == 1:
+            # insert
+            # first check if the insert is longer than allowed longes indel length
+            if longest_indel == 0 or cigar_len <= longest_indel:
+                # then check if the anchor and the next reference position overlaps the range
+                if tree.overlaps(reference_position-1) and tree.overlaps(reference_position):
+                    ins += cigar_len
+                else:
+                    masked += cigar_len
+            else:
+                # longer than longest insert
+                masked += cigar_len
+
+            # for insert only move the read index
+            read_index += cigar_len
+        # delete
+        elif cigar_op == 2:
+            # delete
+            # first check if the deletion is longer than longest allowed indel length
+            if longest_indel == 0 or cigar_len <= longest_indel:
+                for i in range(0, cigar_len):
+                    # see if the position overlaps the bed region
+                    if tree.overlaps(reference_position):
+                        delt += 1
+                        aligned_ref_len += 1
+                    else:
+                        masked += 1
+
+                    reference_position += 1
+                    reference_index += 1
+            else:
+                masked += cigar_len
+                reference_position += cigar_len
+                reference_index += cigar_len
+
+        # ref_skip or PAD
+        elif cigar_op == 3 or cigar_op == 6:
+            reference_position += cigar_len
+            reference_index += cigar_len
+        # soft_clip
+        elif cigar_op == 4:
+            read_index += cigar_len
+        # hard_clip
+        elif cigar_op == 5:
+            continue
+
+    name = read.qname
+    match = correct + sub
+    length = match + ins + delt
+    iden = 100 * float(match - sub) / match
+    acc = 100 - 100 * float(sub + ins + delt) / length
+
+    read_length = read.infer_read_length()
+    masked_query_alignment_length = correct + sub + ins
+    coverage = 100*float(masked_query_alignment_length) / read_length
+    direction = '-' if read.is_reverse else '+'
+
+    results = {
+        "name": name,
+        "coverage": coverage,
+        "direction": direction,
+        "length": length,
+        "read_length": read_length,
+        "match": match,
+        "ins": ins,
+        "del": delt,
+        "sub": sub,
+        "iden": iden,
+        "acc": acc,
+        "qstart": read.query_alignment_start,
+        "qend": read.query_alignment_end,
+        "rstart": read.reference_start,
+        "rend": read.reference_end,
+        "ref": references[read.reference_id],
+        "aligned_ref_len": aligned_ref_len,
+        "ref_coverage": 100 * float(aligned_ref_len) / lengths[read.reference_id],
+        "masked": masked,
+    }
+    return results
+
+
 def _process_reads(bam_fp, longest_indel_length, start_stop, all_alignments=False, min_length=None, bed_file=None):
     start, stop = start_stop
     counts = Counter()
@@ -424,9 +564,12 @@ def _process_reads(bam_fp, longest_indel_length, start_stop, all_alignments=Fals
                     counts['masked'] += 1
                     continue
                 else:
-                    # result = masked_stats_from_aligned_read(read, bam.references, bam.lengths, trees[read.reference_name])
-                    result = masked_stats_from_aligned_read_excluding_longindels(read, bam.references, bam.lengths,
-                                                                                 trees[read.reference_name], longest_indel_length)
+                    result = masked_stats_from_aligned_read(read, bam.references, bam.lengths, trees[read.reference_name])
+                    result_1 = masked_stats_from_aligned_read_excluding_longindels(read, bam.references, bam.lengths,
+                                                                                   trees[read.reference_name], longest_indel_length)
+                    result_2 = masked_stats_from_aligned_read_excluding_longindels_2(read, bam.references, bam.lengths,
+                                                                                     trees[read.reference_name], longest_indel_length)
+                    assert result == result_1 == result_2
             else:
                 result = stats_from_aligned_read(read, bam.references, bam.lengths, longest_indel_length)
 
@@ -490,11 +633,11 @@ def main(arguments=None):
 
     args.summary.write('Mapped/Unmapped/Short/Masked: {total}/{unmapped}/{short}/{masked}\n'.format_map(counts))
 
-    for in_len, count in sorted(insert_len_frequency.items()):
-        print("INSERT LENGTH: ", in_len, " COUNT: ", count)
-    print("############################")
-    for del_len, count in sorted(delete_len_frequency.items()):
-        print("DELETE LENGTH: ", del_len, " COUNT: ", count)
+    # for in_len, count in sorted(insert_len_frequency.items()):
+    #     print("INSERT LENGTH: ", in_len, " COUNT: ", count)
+    # print("############################")
+    # for del_len, count in sorted(delete_len_frequency.items()):
+    #     print("DELETE LENGTH: ", del_len, " COUNT: ", count)
 
 
 if __name__ == '__main__':
