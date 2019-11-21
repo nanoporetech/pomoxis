@@ -14,11 +14,13 @@ Calculate accuracy statistics for an assembly.
     -t  alignment threads (default: 1).
     -p  output file prefix (default: assm).
     -T  trim consensus to primary alignments of truth to assembly.
-    -b  .bed file of reference regions to assess."
+    -b  .bed file of reference regions to assess.
+    -l  ignore insertions and deletions longer than this value, 0 means include everything. (default 0)"
 
 PREFIX="assm"
 THREADS=1
 CHUNK="100000"
+LONGEST_INDEL_LENGTH=0
 rflag=false
 iflag=false
 bed_flag=false
@@ -28,7 +30,7 @@ ALIGN_OPTS=""
 BED=""
 
 
-while getopts ':hr:i:p:c:CTt:b:' option; do
+while getopts ':hr:i:p:c:CTt:b:l:' option; do
   case "$option" in
     h  ) echo "$usage" >&2; exit;;
     r  ) rflag=true; REFERENCE=$OPTARG;;
@@ -39,6 +41,7 @@ while getopts ':hr:i:p:c:CTt:b:' option; do
     T  ) trim_flag=true; ALIGN_OPTS="-m";;
     t  ) THREADS=$OPTARG;;
     b  ) bed_flag=true; BED="--bed $OPTARG"; ALIGN_OPTS="-m";;
+    l  ) LONGEST_INDEL_LENGTH=$OPTARG;;
     \? ) echo "Invalid option: -${OPTARG}." >&2; exit 1;;
     :  ) echo "Option -$OPTARG requires an argument." >&2; exit 1;;
   esac
@@ -67,7 +70,7 @@ STATS_THREADS=1
 if [[ "$BED" != "" ]]; then
     STATS_THREADS=$THREADS
 fi
-stats_from_bam ${PREFIX}.bam -o ${PREFIX}_stats.txt -t ${STATS_THREADS} ${BED} 
+stats_from_bam ${PREFIX}.bam -o ${PREFIX}_stats.txt -t ${STATS_THREADS} ${BED} -l ${LONGEST_INDEL_LENGTH}
 
 summary_from_stats -i ${PREFIX}_stats.txt -pr -o ${PREFIX}_summ.txt
 
