@@ -14,6 +14,7 @@ Documentation can be found at https://nanoporetech.github.io/pomoxis/.
 
 © 2018 Oxford Nanopore Technologies Ltd.
 
+
 Features
 --------
 
@@ -22,8 +23,6 @@ Features
  * Creates an isolated environment with all third-party tools.
  * Can be installed with conda.
  * Streamlines common short analysis chains.
- * Includes a nanopore read simulator.
- * Server/client components for minimap2 and bwa.
  * Integrates into [katuali](https://github.com/nanoporetech/katuali)
    for performing more complex analysis pipelines.
  * Open source (Mozilla Public License 2.0).
@@ -155,6 +154,7 @@ The distribution bundles some common bioinformatics tools:
 * bcftools
 * seqkit
 * porechop
+
 
 Help
 ----

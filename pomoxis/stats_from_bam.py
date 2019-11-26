@@ -12,7 +12,7 @@ import sys
 
 import pysam
 
-from pomoxis.common.util import intervaltrees_from_bed
+from pomoxis.util import intervaltrees_from_bed
 
 parser = argparse.ArgumentParser(
         description="""Parse a bamfile (from a stream) and output summary stats for each read.""",

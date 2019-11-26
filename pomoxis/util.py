@@ -73,14 +73,23 @@ def split_fastx(fname, output, chunksize=10000):
 
 def split_fastx_cmdline():
     """Split records in a fasta/q file into chunks of a maximum size."""
-    fname, output, chunksize = sys.argv[1:]
-    split_fastx(fname, output, int(chunksize))
+    parser = argparse.ArgumentParser(
+        prog='split_fastx',
+        description='Split records in a fasta/q file into chunks of a maximum size.',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument('input', help='Input fastax/q file.')
+    parser.add_argument('output', help='Output fastax/q file.')
+    parser.add_argument('chunksize', type=int, help='Maximum size of output sequences.')
+    args = parser.parse_args()
+    split_fastx(args.input, args.output, args.chunksize)
 
 
 def fast_convert():
     """Convert between fasta<->fastq."""
-
-    parser = argparse.ArgumentParser(description='fast_convert -- Convert between fasta<->fastq.')
+    parser = argparse.ArgumentParser(
+        prog='fast_convert',
+        description='Convert between fasta<->fastq.',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('convert', choices=['qq', 'aa', 'aq', 'qa'],
         help='Conversion code: from->to.')
     parser.add_argument('--discard_q', action='store_true',
@@ -254,7 +263,10 @@ def get_seq_lens(fastx):
 
 
 def coverage_from_fastx():
-    parser = argparse.ArgumentParser('Estimate coverage from summed basecall and reference lengths')
+    parser = argparse.ArgumentParser(
+        prog='coverage_from_fastx',
+        description='Estimate coverage from summed basecall and reference lengths',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('basecalls', help='input fastx file.')
     parser.add_argument('ref_len', action=SeqLen,
                         help='reference length (e.g. 4.8kb/mb/gb) or reference fastx from which to calculate length.')

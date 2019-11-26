@@ -10,15 +10,17 @@ import numpy as np
 import pysam
 
 
-from pomoxis.common.util import parse_regions, Region
-from pomoxis.common.coverage_from_bam import coverage_summary_of_region
-from pomoxis.common.stats_from_bam import stats_from_aligned_read
+from pomoxis.util import parse_regions, Region
+from pomoxis.coverage_from_bam import coverage_summary_of_region
+from pomoxis.stats_from_bam import stats_from_aligned_read
 
 
 def main():
     logging.basicConfig(format='[%(asctime)s - %(name)s] %(message)s', datefmt='%H:%M:%S', level=logging.INFO)
-    parser = argparse.ArgumentParser('subsample bam to uniform or proportional depth',
-                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser = argparse.ArgumentParser(
+        prog='subsample_bam',
+        description='Subsample a bam to uniform or proportional depth',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('bam',
         help='input bam file.')
     parser.add_argument('depth', nargs='+', type=int,

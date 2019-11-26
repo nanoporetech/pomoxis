@@ -6,7 +6,10 @@ from Bio.Seq import Seq
 
 
 def main():
-    parser = argparse.ArgumentParser('Trim alignments in multiple bams to common overlap window.')
+    parser = argparse.ArgumentParser(
+        prog='trim_alignments',
+        description='Trim alignments in multiple bams to common overlap window.',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('bams', nargs='+', help='input bam files')
     parser.add_argument('-r', '--ref_name',
                         help='Reference to process, only needed if bams contain multiple references.')
