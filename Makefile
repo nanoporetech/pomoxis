@@ -8,7 +8,7 @@ CXX         ?= g++
 CONDA?=~/miniconda3/
 
 # Builds a cache of binaries which can just be copied for CI
-BINARIES=minimap2 miniasm racon samtools bcftools seqkit
+BINARIES=minimap2 miniasm racon samtools bcftools seqkit bedtools
 
 BINCACHEDIR=bincache
 $(BINCACHEDIR):
@@ -86,6 +86,18 @@ $(BINCACHEDIR)/seqkit: | $(BINCACHEDIR) $(BINBUILDDIR)
 	  tar -xzvf seqkit_${OS}_amd64.tar.gz; \
 	fi
 	cp ${BINBUILDDIR}/seqkit $@	
+
+BEDTOOLSVER=2.29.0
+$(BINCACHEDIR)/bedtools: | $(BINCACHEDIR) $(BINBUILDDIR)
+	@echo Making $(@F)
+	if [ ! -e ${BINBUILDDIR}/bedtools-2.29.0.tar.gz	]; then \
+	  cd ${BINBUILDDIR}; \
+	  wget https://github.com/arq5x/bedtools2/releases/download/v${BEDTOOLSVER}/bedtools-${BEDTOOLSVER}.tar.gz; \
+	  mkdir bedtools-${BEDTOOLSVER}; \
+	  tar -xzvf bedtools-${BEDTOOLSVER}.tar.gz --directory bedtools-${BEDTOOLSVER}; \
+	fi
+	cd ${BINBUILDDIR}/bedtools-${BEDTOOLSVER}/bedtools2/ && make
+	cp ${BINBUILDDIR}/bedtools-${BEDTOOLSVER}/bedtools2/bin/bedtools $@
 
 venv: venv/bin/activate
 IN_VENV=. ./venv/bin/activate

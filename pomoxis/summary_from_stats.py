@@ -64,7 +64,7 @@ def summarise_stats(d, percentiles=(10, 50, 90)):
 def main(arguments=None):
     args = parser.parse_args(arguments)
 
-    stats = pd.read_table(args.input)
+    stats = pd.read_csv(args.input, sep='\t')
 
     if len(stats) == 0:
         raise ValueError('No alignments stats found.')
