@@ -1,20 +1,21 @@
 import argparse
+from collections import defaultdict, Counter, namedtuple
 import concurrent.futures
+from functools import partial
 import itertools
 import logging
-import matplotlib; matplotlib.use('Agg', warn=False)  # enforce non-interactive backend
-import numpy as np
+from operator import attrgetter
 import os
-import pandas as pd
-import pysam
+import pickle
 import re
 import unittest
 import warnings
-import yaml
-from collections import defaultdict, Counter, namedtuple
-from functools import partial
+
+import matplotlib; matplotlib.use('Agg', warn=False)  # enforce non-interactive backend
 from matplotlib import pyplot as plt
-from operator import attrgetter
+import numpy as np
+import pandas as pd
+import pysam
 
 from pomoxis.util import get_trimmed_pairs, intervaltrees_from_bed
 
@@ -784,8 +785,8 @@ def main():
                           'total_aggr': aggregate_counts,
                          }
                }
-    with open(os.path.join(args.outdir, 'counts.yml'), 'w') as fh:
-         yaml.dump(to_save, fh)
+    with open(os.path.join(args.outdir, 'counts.pkl'), 'w') as fh:
+         pickle.dump(to_save, fh)
 
     db_fh.close()
     txt_fh.close()

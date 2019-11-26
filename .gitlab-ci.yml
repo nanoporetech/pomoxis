@@ -1,0 +1,41 @@
+image: $IMAGE
+
+stages:
+    - test
+    - build
+    - deploy
+
+test:
+    stage: test
+    before_script:
+        - apt-get update -qq && apt-get install -y -qq
+          gcc git make cmake curl wget
+          python3-all-dev python-virtualenv
+          zlib1g-dev libbz2-dev liblzma-dev libncurses5-dev libcurl4-gnutls-dev
+          libssl-dev
+    script:
+        - make -j 4 install
+        - make docs
+
+build:sdist:
+    stage: build
+    before_script:
+        - apt-get update -qq && apt-get install -y -qq
+          python3-all-dev python-virtualenv
+    script:
+        - make sdist
+    artifacts:
+        paths:
+            - dist/*.tar.gz
+
+deploy:pypi:
+    stage: deploy
+    before_script:
+        - apt-get update -qq && apt-get install -y -qq
+          python3-all-dev python-virtualenv
+    script:
+        - make build
+        - source pypi_build/bin/activate
+        - twine upload dist/*.tar.gz
+    only:
+        - tags
