@@ -1,8 +1,8 @@
 import argparse
 import pysam
 from collections import Counter
-from pomoxis.common.summary_from_stats import qscore
-from pomoxis.common.stats_from_bam import stats_from_aligned_read
+from pomoxis.summary_from_stats import qscore
+from pomoxis.stats_from_bam import stats_from_aligned_read
 
 
 def get_errors(aln, ref_seq=None):
@@ -70,7 +70,10 @@ def get_qscores(counts, ref_len):
 
 
 def main():
-    parser = argparse.ArgumentParser('Get errors common to multiple assemblies aligned to ref.')
+    parser = argparse.ArgumentParser(
+        prog='common_errors_from_bam',
+        description='Get errors common to multiple assemblies aligned to ref.',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('bam', help='input bam file containing assemblies trimmed to a common alignment window')
     parser.add_argument('ref_fasta', help='reference fasta file of the reference over that alignment window')
     parser.add_argument('-o', '--output_prefix', default='common_errors',

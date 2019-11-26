@@ -1,24 +1,10 @@
 __version__ = '0.2.5'
 
+import argparse
 import os
 import sys
-import asyncio
 import platform
 import subprocess
-
-@asyncio.coroutine
-def wakeup():
-    """No-op coroutine."""
-    while True:
-        yield from asyncio.sleep(1)
-
-
-def set_wakeup():
-    """Workaround suppression of `KeyboardInterrrupt` on Windows."""
-    if platform.system() == 'Windows':
-        #SO/27480967
-        asyncio.ensure_future(wakeup())
-
 
 def get_prog_path(prog):
     """Get the absolute path of bundled executables.
@@ -37,7 +23,13 @@ def get_prog_path(prog):
 
 def show_prog_path():
     """Print the path of bundled executables."""
-    print(get_prog_path(sys.argv[1]))
+    parser = argparse.ArgumentParser(
+        prog='pomoxis_path',
+        description='Print the path of bundled executables.',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument('program', help='name of program.')
+    args = parser.parse_args()
+    print(get_prog_path(args.program))
 
 
 def run_prog(prog, args, stdout=None):

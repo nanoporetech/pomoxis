@@ -16,7 +16,7 @@ from functools import partial
 from matplotlib import pyplot as plt
 from operator import attrgetter
 
-from pomoxis.common.util import get_trimmed_pairs, intervaltrees_from_bed
+from pomoxis.util import get_trimmed_pairs, intervaltrees_from_bed
 
 AlignSeg = namedtuple('AlignSeg', ('rname', 'qname', 'pairs', 'rlen'))
 Error = namedtuple('Error', ('rp', 'rname', 'qp', 'qname', 'ref', 'match', 'read', 'counts', 'klass', 'aggr_klass'))
@@ -689,7 +689,10 @@ def get_aggr_klass(klass):
 
 def main():
     logging.basicConfig(format='[%(asctime)s - %(name)s] %(message)s', datefmt='%H:%M:%S', level=logging.INFO)
-    parser = argparse.ArgumentParser('catalogue_errors')
+    parser = argparse.ArgumentParser(
+        prog='catalogue_errors',
+        description='Create a catalogue of all query errors in a bam.',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('bam', help='Input alignments (aligned to ref).')
     parser.add_argument('--bed', default=None, help='.bed file of reference regions to include.')
     parser.add_argument('-t', '--threads', type=int, default=1, help='Number of threads for parallel execution.')

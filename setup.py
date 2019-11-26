@@ -65,7 +65,6 @@ if os.environ.get("POMO_BINARIES") is not None:
         ])
     )
 
-
 setup(
     name=__pkg_name__,
     version=__version__,
@@ -87,31 +86,27 @@ setup(
     data_files=data_files,
     entry_points={
         'console_scripts': [
-            'align_serve = {}.align.common:main'.format(__pkg_name__),
-            'catalogue_errors = {}.common.catalogue_errors:main'.format(__pkg_name__),
-            'common_errors_from_bam = {}.common.common_errors_from_bam:main'.format(__pkg_name__),
-            'coverage_from_bam = {}.common.coverage_from_bam:main'.format(__pkg_name__),
-            'fast_convert = {}.common.util:fast_convert'.format(__pkg_name__),
-            'long_fastx = {}.common.util:extract_long_reads'.format(__pkg_name__),
+            'catalogue_errors = {}.catalogue_errors:main'.format(__pkg_name__),
+            'common_errors_from_bam = {}.common_errors_from_bam:main'.format(__pkg_name__),
+            'coverage_from_bam = {}.coverage_from_bam:main'.format(__pkg_name__),
+            'coverage_from_fastx = {}.util:coverage_from_fastx'.format(__pkg_name__),
+            'fast_convert = {}.util:fast_convert'.format(__pkg_name__),
+            'long_fastx = {}.util:extract_long_reads'.format(__pkg_name__),
             'pomoxis_path = {}:show_prog_path'.format(__pkg_name__),
-            'qscores_from_summary = {}.common.qscores_from_summary:main'.format(__pkg_name__),
-            'read_until_filter = {}.apps.read_until_filter:main'.format(__pkg_name__),
-            'simulate_calls = {}.common.simulate_calls:main'.format(__pkg_name__),
-            'split_fastx = {}.common.util:split_fastx_cmdline'.format(__pkg_name__),
-            'stats_from_bam = {}.common.stats_from_bam:main'.format(__pkg_name__),
-            'subsample_bam = {}.common.subsample_bam:main'.format(__pkg_name__),
-            'summary_from_stats = {}.common.summary_from_stats:main'.format(__pkg_name__),
-            'trim_alignments = {}.common.trim_alignments:main'.format(__pkg_name__),
-            'ref_seqs_from_bam = {}.common.ref_seqs_from_bam:main'.format(__pkg_name__),
-            'coverage_from_fastx = {}.common.util:coverage_from_fastx'.format(__pkg_name__),
-        ]
+            'qscores_from_summary = {}.qscores_from_summary:main'.format(__pkg_name__),
+            'split_fastx = {}.util:split_fastx_cmdline'.format(__pkg_name__),
+            'stats_from_bam = {}.stats_from_bam:main'.format(__pkg_name__),
+            'subsample_bam = {}.subsample_bam:main'.format(__pkg_name__),
+            'summary_from_stats = {}.summary_from_stats:main'.format(__pkg_name__),
+            'trim_alignments = {}.trim_alignments:main'.format(__pkg_name__),
+            'ref_seqs_from_bam = {}.ref_seqs_from_bam:main'.format(__pkg_name__),
+        ] # leave this here
     },
     scripts=[
         'scripts/assess_assembly',
         'scripts/intersect_assembly_errors',
         'scripts/mini_align',
-        'scripts/mini_assemble',
-    ]
+        'scripts/mini_assemble']
 )
 
 

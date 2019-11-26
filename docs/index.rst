@@ -9,7 +9,8 @@ sequencing. Notably tools are included for generating and analysing draft
 assemblies. Many of these tools are used by the research data analysis
 group at Oxford Nanopore Technologies.
 
-See :doc:`examples` for common simple tasks.
+See :doc:`programs` for common simple tasks.
+
 
 Features
 --------
@@ -19,8 +20,6 @@ Features
  * Creates an isolated environment with all third-party tools.
  * Can be installed with conda.
  * Streamlines common short analysis chains.
- * Includes a nanopore read simulator.
- * Server/client components for minimap2 and bwa.
  * Integrates into `katuali <https://github.com/nanoporetech/katuali>`_
    for performing more complex analysis pipelines.
  * Open source (Mozilla Public License 2.0).
@@ -38,6 +37,7 @@ Features
     releases may be unstable and subject to rapid iteration by Oxford Nanopore
     Technologies.
 
+
 Compatibility
 -------------
 
@@ -51,10 +51,10 @@ notably scrappy, are known to not work on some MacOS configurations
 Installation
 ------------
 
-
 Much of pomoxis's functionality is dependent on thirty party tools. These
 can be provided by the user, or can be installed with the help of the
 provided `Makefile`
+
 
 **Installation with conda**
 
@@ -91,7 +91,7 @@ We recommend using medaka within a virtual environment, viz.:
     `minimap2 <https://github.com/lh3/minimap2>`_,
     `miniasm <https://github.com/lh3/miniasm>`_,
     `samtools <https://github.com/samtools/samtools>`_,
-    `racon <https://github.com/isovic/racon>>`_,
+    `racon <https://github.com/isovic/racon>`_,
     `samtools <https://github.com/samtools/samtools>`_,
     `bcftools <https://github.com/samtools/bcftools/>`_, and
     `seqkit <https://github.com/shenwei356/seqkiti>`_,
@@ -175,14 +175,14 @@ The distribution bundles some common bioinformatics tools:
  * porechop
 
 
-
 Contents
 --------
 
 .. toctree::
    :maxdepth: 2
 
-   examples
+   programs
+
 
 Full API reference
 ------------------

@@ -4,7 +4,7 @@ import numpy as np
 import os
 import pandas as pd
 import pysam
-from pomoxis.common.util import parse_regions, Region
+from pomoxis.util import parse_regions, Region
 
 
 def coverage_of_region(region, bam_fp, stride):
@@ -36,8 +36,10 @@ def coverage_summary_of_region(*args):
 
 def main():
     logging.basicConfig(format='[%(asctime)s - %(name)s] %(message)s', datefmt='%H:%M:%S', level=logging.INFO)
-    parser = argparse.ArgumentParser('Calculate read coverage depth from a bam.',
-                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser = argparse.ArgumentParser(
+        prog='coverage_from_bam',
+        description='Calculate read coverage depth from a bam.',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('bam', help='.fasta/fastq file.')
     parser.add_argument('-r', '--regions', nargs='+', help='Only process given regions.')
     parser.add_argument('-p', '--prefix', help='Prefix for output, defaults to basename of bam.')

@@ -14,7 +14,10 @@ def _gen_seqs(bam):
 
 
 def main():
-    parser = argparse.ArgumentParser('Extract reference sequence that queries are aligned to')
+    parser = argparse.ArgumentParser(
+        prog='ref_seqs_from_bam',
+        description='Extract reference sequence that queries are aligned to',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('bam', help='input bam file, MD tag must be set (mini_align -m).')
 
     args = parser.parse_args()
