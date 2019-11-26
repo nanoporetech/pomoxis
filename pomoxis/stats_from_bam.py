@@ -15,6 +15,7 @@ import pysam
 from pomoxis.util import intervaltrees_from_bed
 
 parser = argparse.ArgumentParser(
+        prog='stats_from_bam',
         description="""Parse a bamfile (from a stream) and output summary stats for each read.""",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 

@@ -748,19 +748,6 @@ def main():
                 txt_fh.write(e.read + "\n")
                 txt_fh.write(".\n")
 
-                if 'multi ins' in e.klass or 'multi del' in e.klass:
-                    key = (e.qname, e.rname, e.rp) if 'multi ins' in e.klass else (e.qname, e.rname, e.qp)
-                    if key not in multi_errs:
-                        d = e._asdict()
-                        for k in 'rp', 'qp':
-                            d[k] = helper(d[k])
-                        d['n_ins'] = len(d['counts']['ins'])
-                        d['n_del'] = len(d['counts']['del'])
-                        del d['counts']
-                        multi_errs[key] = d
-                    multi_errs[key]['qp_end'] = helper(e.qp)
-                    multi_errs[key]['rp_end'] = helper(e.rp)
-
     total_counts = Counter()
     aggr_by_ref = {}
     for ref_name, counts in error_count.items():
@@ -787,14 +774,6 @@ def main():
     df.to_csv(fp, sep=_sep_, index=False)
     plot_summary(df, args.outdir, '{}_aggr'.format('total'),
                  ref_len=sum(total_ref_length.values()))
-
-    if len(multi_errs) > 0:
-        multi_err_df = pd.DataFrame([d for d in multi_errs.values()])
-        multi_err_df['q_len'] = multi_err_df['qp_end'] - multi_err_df['qp']
-        multi_err_df['r_len'] = multi_err_df['rp_end'] - multi_err_df['rp']
-        cols=['rname', 'rp', 'qname', 'qp', 'qp_end', 'q_len', 'r_len', 'klass', 'n_ins', 'n_del']
-        output = os.path.join(args.outdir, 'multi_errs.txt')
-        multi_err_df[cols].to_csv(output, sep=_sep_, index=False)
 
     # save counts to yaml for any further analysis
     to_save = {'ref_lengths': total_ref_length,

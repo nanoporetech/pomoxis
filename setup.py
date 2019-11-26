@@ -100,6 +100,7 @@ setup(
             'summary_from_stats = {}.summary_from_stats:main'.format(__pkg_name__),
             'trim_alignments = {}.trim_alignments:main'.format(__pkg_name__),
             'ref_seqs_from_bam = {}.ref_seqs_from_bam:main'.format(__pkg_name__),
+            'find_indels = {}.find_indels:main'.format(__pkg_name__),
         ] # leave this here
     },
     scripts=[
