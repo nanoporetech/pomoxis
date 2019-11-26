@@ -111,20 +111,6 @@ venv/bin/activate:
 install: venv | $(addprefix $(BINCACHEDIR)/, $(BINARIES))
 	${IN_VENV} && POMO_BINARIES=1 python setup.py install
 
-PYVER=3.6
-IN_CONDA=. ${CONDA}/etc/profile.d/conda.sh
-conda:
-	${IN_CONDA} && conda remove -n pomoxis --all
-	${IN_CONDA} && conda create -y -n pomoxis -c bioconda -c conda-forge porechop \
-		samtools=${SAMVER} bcftools=${BCFVER} seqkit=${SEQKITVER} \
-		miniasm=${ASMVER} minimap2=${MAPVER} racon=${RACONVER} \
-		python=${PYVER}
-	grep -v Porechop requirements.txt > conda_reqs.txt
-	${IN_CONDA} && conda activate pomoxis && pip install -r conda_reqs.txt
-	${IN_CONDA} && conda activate pomoxis && python setup.py install \
-		--single-version-externally-managed --record=conda_install.out
-	rm conda_reqs.txt
-
 
 IN_BUILD=. ./pypi_build/bin/activate
 pypi_build/bin/activate:
@@ -152,7 +138,7 @@ DOCSRC = docs
 
 docs: venv
 	${IN_VENV} && pip install sphinx sphinx_rtd_theme sphinx-argparse
-	${IN_VENV} && python prog_docs.py > $(DOCSRC)/programs.rst
+	${IN_VENV} && ./prog_docs.py > $(DOCSRC)/programs.rst
 	${IN_VENV} && cd $(DOCSRC) && $(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html
 	@echo
 	@echo "Build finished. The HTML pages are in $(DOCSRC)/$(BUILDDIR)/html."
