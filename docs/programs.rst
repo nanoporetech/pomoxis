@@ -1,5 +1,5 @@
 
-Pomoxis Examples
+Pomoxis Programs
 ================
 
 Below you will find a listing with brief description of all the tools
