@@ -79,7 +79,7 @@ if ! $rflag; then
   exit 1;
 fi
 
-if ! $iflag && ! $ONLY_INDEX; then
+if ! $iflag && ! ${ONLY_INDEX}; then
   echo "$usage" >&2;
   echo "-i or -X must be specified." >&2;
   exit 1;
