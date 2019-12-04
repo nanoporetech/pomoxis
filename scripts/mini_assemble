@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -eo pipefail
 
 usage="$(basename "$0") [-h] -i <fastq>
 
