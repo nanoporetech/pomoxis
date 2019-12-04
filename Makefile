@@ -52,7 +52,8 @@ $(BINCACHEDIR)/racon: | $(BINCACHEDIR) $(BINBUILDDIR)
 	  wget https://github.com/isovic/racon/releases/download/${RACONVER}/racon-v${RACONVER}.tar.gz; \
 	  tar -xzf racon-v${RACONVER}.tar.gz; \
 	fi
-	cd ${BINBUILDDIR}/racon-v${RACONVER} && mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Release ..
+	cd ${BINBUILDDIR}/racon-v${RACONVER} && mkdir build && cd build && \
+		cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS="-mno-avx2 " ..
 	cd ${BINBUILDDIR}/racon-v${RACONVER}/build && make
 	cp ${BINBUILDDIR}/racon-v${RACONVER}/build/bin/racon $@
 
