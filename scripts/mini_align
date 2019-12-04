@@ -22,7 +22,8 @@ Align fastq/a formatted reads to a genome using minimap2.
     -t  alignment threads (default: 1).
     -p  output file prefix (default: reads).
     -m  fill MD tag.
-    -s  fill cs(=long) tag."
+    -s  fill cs(=long) tag.
+    -X  only create reference index files."
 
 PREFIX="reads"
 ALIGN_OPTS="-x map-ont"
@@ -33,10 +34,11 @@ SORT=""
 CHUNK=""
 rflag=false
 iflag=false
+ONLY_INDEX=false
 FORCE_INDEX=false
 filter_set=0
 csmd_set=0
-while getopts ':hr:i:fp:aPAmsnc:t:' option; do
+while getopts ':hr:i:fp:aPAmsnc:t:X' option; do
   case "$option" in
     h  ) echo "$usage" >&2; exit;;
     r  ) rflag=true; REFERENCE=$OPTARG;;
@@ -52,6 +54,7 @@ while getopts ':hr:i:fp:aPAmsnc:t:' option; do
     a  ) ALIGN_OPTS="${ALIGN_OPTS} -A1 -B2 -O2 -E1";;
     c  ) CHUNK=$OPTARG;;
     t  ) THREADS=$OPTARG;;
+    X  ) ONLY_INDEX=true;;
     \? ) echo "Invalid option: -${OPTARG}." >&2; exit 1;;
     :  ) echo "Option -$OPTARG requires an argument." >&2; exit 1;;
   esac
@@ -70,13 +73,19 @@ if [ "$csmd_set" -gt 1 ]; then
     exit 1;
 fi
 
-if ! $iflag || ! $rflag; then
+if ! $rflag; then
   echo "$usage" >&2;
-  echo "-i and -r must be specified." >&2;
+  echo "-r must be specified." >&2;
   exit 1;
 fi
 
-minimap_exts=('.mmi')
+if ! $iflag && ! $ONLY_INDEX; then
+  echo "$usage" >&2;
+  echo "-i or -X must be specified." >&2;
+  exit 1;
+fi
+
+minimap_exts=('.mmi' '.fai')
 num_minimap_exts=${#minimap_exts[@]}
 missing=0
 for ext in "${minimap_exts[@]}"; do
@@ -94,12 +103,17 @@ if [ "$missing" -eq 0 ]; then
   echo "Found minimap files." >&2
 elif [ "$missing" -eq "$num_minimap_exts" ]; then
   echo "Constructing minimap index." >&2
+  samtools faidx ${REFERENCE}
   minimap2 -I ${INDEX_SIZE} ${ALIGN_OPTS} -d ${REFERENCE}.mmi ${REFERENCE} \
       || (echo "Indexing draft failed" && exit 1)
 else
   echo "Missing ${missing} index files. Clean up any files named
 ${REFERENCE}<EXT> where <EXT> is one of ${minimap_exts[*]}." >&2
   exit 1;
+fi
+
+if ${ONLY_INDEX}; then
+    exit 0
 fi
 
 if [ "$CHUNK" != "" ]; then
