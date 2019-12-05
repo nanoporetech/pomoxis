@@ -38,7 +38,7 @@ ONLY_INDEX=false
 FORCE_INDEX=false
 filter_set=0
 csmd_set=0
-while getopts ':hr:i:fp:aPAmsnc:t:X' option; do
+while getopts ':hr:i:I:fPAmsnp:ac:t:X' option; do
   case "$option" in
     h  ) echo "$usage" >&2; exit;;
     r  ) rflag=true; REFERENCE=$OPTARG;;
