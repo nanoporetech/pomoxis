@@ -23,7 +23,8 @@ Align fastq/a formatted reads to a genome using minimap2.
     -p  output file prefix (default: reads).
     -m  fill MD tag.
     -s  fill cs(=long) tag.
-    -X  only create reference index files."
+    -X  only create reference index files.
+    -x  log all commands before running."
 
 PREFIX="reads"
 ALIGN_OPTS="-x map-ont"
@@ -38,23 +39,26 @@ ONLY_INDEX=false
 FORCE_INDEX=false
 filter_set=0
 csmd_set=0
-while getopts ':hr:i:I:fPAmsnp:ac:t:X' option; do
+xflag=false
+
+while getopts ':hr:i:I:fPAmsnp:ac:t:Xx' option; do
   case "$option" in
     h  ) echo "$usage" >&2; exit;;
     r  ) rflag=true; REFERENCE=$OPTARG;;
     i  ) iflag=true; INPUT=$OPTARG;;
     I  ) INDEX_SIZE=$OPTARG;;
     f  ) FORCE_INDEX=true;;
-    P  ) ((filter_set++)); echo "-P option is deprecated";;
-    A  ) ((filter_set++)); FILTER="";;
-    m  ) ((csmd_set++)); ALIGN_OPTS="${ALIGN_OPTS} --MD";;
-    s  ) ((csmd_set++)); ALIGN_OPTS="${ALIGN_OPTS} --cs=long";;
+    P  ) filter_set=$(($filter_set + 1)); echo "-P option is deprecated";;
+    A  ) filter_set=$(($filter_set + 1)); FILTER="";;
+    m  ) csmd_set=$(($csmd_set + 1)); ALIGN_OPTS="${ALIGN_OPTS} --MD";;
+    s  ) csmd_set=$(($csmd_set + 1)); ALIGN_OPTS="${ALIGN_OPTS} --cs=long";;
     n  ) SORT="-n";;
     p  ) PREFIX=$OPTARG;;
     a  ) ALIGN_OPTS="${ALIGN_OPTS} -A1 -B2 -O2 -E1";;
     c  ) CHUNK=$OPTARG;;
     t  ) THREADS=$OPTARG;;
     X  ) ONLY_INDEX=true;;
+    x  ) xflag=true;;
     \? ) echo "Invalid option: -${OPTARG}." >&2; exit 1;;
     :  ) echo "Option -$OPTARG requires an argument." >&2; exit 1;;
   esac
@@ -83,6 +87,10 @@ if ! $iflag && ! ${ONLY_INDEX}; then
   echo "$usage" >&2;
   echo "-i or -X must be specified." >&2;
   exit 1;
+fi
+
+if $xflag; then
+  set -x;
 fi
 
 minimap_exts=('.mmi' '.fai')
