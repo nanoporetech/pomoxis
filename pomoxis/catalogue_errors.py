@@ -785,7 +785,7 @@ def main():
                           'total_aggr': aggregate_counts,
                          }
                }
-    with open(os.path.join(args.outdir, 'counts.pkl'), 'w') as fh:
+    with open(os.path.join(args.outdir, 'counts.pkl'), 'wb') as fh:
          pickle.dump(to_save, fh)
 
     db_fh.close()
