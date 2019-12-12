@@ -1,5 +1,4 @@
 import argparse
-from distutils.version import LooseVersion
 
 _field_name_map_ = {
                     'del': 'Q(del)',
@@ -54,7 +53,7 @@ def main():
 
     print('\t'.join(_cols_))
 
-    for f in sorted(args.summaries, key=LooseVersion):
+    for f in sorted(args.summaries):
         with open(f) as fh:
             lines = [l.strip() for l in fh.readlines()]
         if match not in lines:
