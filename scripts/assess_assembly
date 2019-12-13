@@ -11,7 +11,8 @@ Calculate accuracy statistics for an assembly.
     -i  fastq/a input assembly (required).
     -c  chunk size. Input reads/contigs will be broken into chunks
         prior to alignment, 0 will not chunk (default 100000).
-    -C  catalogue errors. 
+    -C  catalogue errors.
+    -H  count homopolymers. 
     -t  alignment threads (default: 1).
     -p  output file prefix (default: assm).
     -T  trim consensus to primary alignments of truth to assembly.
@@ -26,6 +27,7 @@ rflag=false
 iflag=false
 bed_flag=false
 catalogue_flag=false
+homopolymer_flag=false
 trim_flag=false
 ALIGN_OPTS=""
 BED=""
@@ -33,7 +35,7 @@ MIN_INDEL_LEN=100
 exclude_indel_flag=false
 
 
-while getopts ':hr:i:p:c:CTt:b:l:e' option; do
+while getopts ':hr:i:p:c:CHTt:b:l:e' option; do
   case "$option" in
     h  ) echo "$usage" >&2; exit;;
     r  ) rflag=true; REFERENCE=$OPTARG;;
@@ -41,6 +43,7 @@ while getopts ':hr:i:p:c:CTt:b:l:e' option; do
     p  ) PREFIX=$OPTARG;;
     c  ) CHUNK=$OPTARG;;
     C  ) catalogue_flag=true; ALIGN_OPTS="-m";;
+    H  ) homopolymer_flag=true; ALIGN_OPTS="-m";;
     T  ) trim_flag=true; ALIGN_OPTS="-m";;
     t  ) THREADS=$OPTARG;;
     b  ) bed_flag=true; BED="--bed $OPTARG"; ALIGN_OPTS="-m";;
@@ -56,6 +59,11 @@ if ! $iflag || ! $rflag; then
   echo "$usage" >&2;
   echo "-i and -r must be specified." >&2;
   exit 1;
+fi
+
+if $bed_flag && $homopolymer_flag; then
+    echo "Using a .bed file for homopolymer analysis is not currently supported."
+    exit 1;
 fi
 
 if (($CHUNK > 0)); then
@@ -107,5 +115,12 @@ fi
 
 grep 'Percentage Errors' -A 7 -m 1 ${PREFIX}_summ.txt
 grep 'Q Scores' -A 7 -m 1 ${PREFIX}_summ.txt
+
+if $homopolymer_flag; then
+    OUTDIR=${PREFIX}_homopolymer
+    echo "Running homopolymer count, saving data to ${OUTDIR}"
+    assess_homopolymers count ${PREFIX}.bam -o ${OUTDIR} 
+fi
+
 
 echo "All done, output written to ${PREFIX}_stats.txt, ${PREFIX}_summ.txt and ${PREFIX}_indel_ge${MIN_INDEL_LEN}.txt"
