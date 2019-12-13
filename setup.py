@@ -88,6 +88,7 @@ setup(
         'console_scripts': [
             'catalogue_errors = {}.catalogue_errors:main'.format(__pkg_name__),
             'common_errors_from_bam = {}.common_errors_from_bam:main'.format(__pkg_name__),
+            'assess_homopolymers = {}.assess_homopolymers:main'.format(__pkg_name__),
             'coverage_from_bam = {}.coverage_from_bam:main'.format(__pkg_name__),
             'coverage_from_fastx = {}.util:coverage_from_fastx'.format(__pkg_name__),
             'fast_convert = {}.util:fast_convert'.format(__pkg_name__),
