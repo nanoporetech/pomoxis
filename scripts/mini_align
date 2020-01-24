@@ -31,7 +31,7 @@ ALIGN_OPTS="-x map-ont"
 INDEX_SIZE="16G"
 THREADS=1
 FILTER="-F 2308"
-SORT=""
+SORT=${SORT:-''}
 CHUNK=""
 rflag=false
 iflag=false
@@ -52,7 +52,7 @@ while getopts ':hr:i:I:fPAmsnp:ac:t:Xx' option; do
     A  ) filter_set=$(($filter_set + 1)); FILTER="";;
     m  ) csmd_set=$(($csmd_set + 1)); ALIGN_OPTS="${ALIGN_OPTS} --MD";;
     s  ) csmd_set=$(($csmd_set + 1)); ALIGN_OPTS="${ALIGN_OPTS} --cs=long";;
-    n  ) SORT="-n";;
+    n  ) SORT="${SORT} -n";;
     p  ) PREFIX=$OPTARG;;
     a  ) ALIGN_OPTS="${ALIGN_OPTS} -A1 -B2 -O2 -E1";;
     c  ) CHUNK=$OPTARG;;
@@ -135,5 +135,5 @@ minimap2 ${ALIGN_OPTS} -t ${THREADS} -a ${REFERENCE}.mmi ${INPUT} |
   samtools view -@ ${THREADS} -T ${REFERENCE} ${FILTER} -bS - |
   samtools sort -@ ${THREADS} ${SORT} -l 9 -o ${PREFIX}.bam - \
     || (echo "Alignment pipeline failed." && exit 1)
-samtools index ${PREFIX}.bam ${PREFIX}.bam.bai \
+samtools index -@ ${THREADS} ${PREFIX}.bam ${PREFIX}.bam.bai \
     || (echo "Failed to index alignment file." && exit 1)
