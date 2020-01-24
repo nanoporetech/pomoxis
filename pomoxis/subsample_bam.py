@@ -41,6 +41,8 @@ def main():
         help='Filter reads by accuracy.')
     parser.add_argument('-c', '--coverage', type=float,
         help='Filter reads by coverage (what fraction of the read aligns).')
+    parser.add_argument('-l', '--length', type=int, default=None,
+        help='Filter reads by read length.')
 
     eparser = parser.add_mutually_exclusive_group()
     eparser.add_argument('--any_fail', action='store_true',
@@ -157,13 +159,16 @@ def filter_read(r, bam, args, logger):
             return True
 
     # filter accuracy or alignment coverage
-    if args.accuracy is not None or args.coverage is not None:
+    if args.accuracy is not None or args.coverage is not None or args.length is not None:
         stats = stats_from_aligned_read(r, bam.references, bam.lengths)
         if args.accuracy is not None and stats['acc'] < args.accuracy:
             logger.info("Filtering {} by accuracy ({:.2f}).".format(r.query_name, stats['acc']))
             return True
         if args.coverage is not None and stats['coverage'] < args.coverage:
             logger.info("Filtering {} by coverage ({:.2f}).".format(r.query_name, stats['coverage']))
+            return True
+        if args.length is not None and stats['read_length'] < args.length:
+            logger.info("Filtering {} by length ({:.2f}).".format(r.query_name, stats['length']))
             return True
     # don't filter
     return False
