@@ -6,7 +6,7 @@ CXX         ?= g++
 CONDA?=~/miniconda3/
 
 # Builds a cache of binaries which can just be copied for CI
-BINARIES=minimap2 miniasm racon samtools bcftools seqkit bedtools
+BINARIES=minimap2 miniasm racon samtools bcftools seqkit bedtools bgzip tabix
 
 
 BINCACHEDIR=bincache
@@ -68,8 +68,16 @@ $(BINCACHEDIR)/samtools: | $(BINCACHEDIR) $(BINBUILDDIR)
 	  wget https://github.com/samtools/samtools/releases/download/${SAMVER}/samtools-${SAMVER}.tar.bz2; \
 	  tar -xjf samtools-${SAMVER}.tar.bz2; \
 	fi
-	cd ${BINBUILDDIR}/samtools-${SAMVER} && make
+	# make all-htslib to get bgzip and tabix
+	cd ${BINBUILDDIR}/samtools-${SAMVER} && make all all-htslib
 	cp ${BINBUILDDIR}/samtools-${SAMVER}/samtools $@
+
+$(BINCACHEDIR)/tabix: | $(BINCACHEDIR)/samtools
+	cp ${BINBUILDDIR}/samtools-${SAMVER}/htslib-${SAMVER}/$(@F) $@
+
+
+$(BINCACHEDIR)/bgzip: | $(BINCACHEDIR)/samtools
+	cp ${BINBUILDDIR}/samtools-${SAMVER}/htslib-${SAMVER}/$(@F) $@
 
 
 BCFVER=1.7
