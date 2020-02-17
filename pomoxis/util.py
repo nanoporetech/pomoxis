@@ -7,7 +7,8 @@ import sys
 from Bio import SeqIO
 import intervaltree
 import numpy as np
-from pysam import FastxFile
+import pandas as pd
+import pysam
 
 Region = namedtuple('Region', 'ref_name start end')
 AlignPos = namedtuple('AlignPos', ('qpos', 'qbase', 'rpos', 'rbase'))
@@ -50,7 +51,7 @@ def split_fastx(fname, output, chunksize=10000):
     :param chunksize: (maximum) length of output records.
     """
     with open(output, 'w') as fout:
-        with FastxFile(fname, persist=False) as fin:
+        with pysam.FastxFile(fname, persist=False) as fin:
             for rec in fin:
                 name = rec.name
                 seq = rec.sequence
@@ -259,7 +260,7 @@ class SeqLen(argparse.Action):
 
 def get_seq_lens(fastx):
     """Get sequence lengths from fastx file"""
-    return [len(r.sequence) for r in FastxFile(fastx)]
+    return [len(r.sequence) for r in pysam.FastxFile(fastx)]
 
 
 def coverage_from_fastx():
@@ -349,3 +350,44 @@ def intervaltrees_from_bed(path_to_bed):
     for chrom, start, stop in yield_from_bed(path_to_bed):
         trees[chrom].add(intervaltree.Interval(begin=start, end=stop))
     return trees
+
+
+def tag_bam():
+    """Command line tool to add tags to a bam."""
+    parser = argparse.ArgumentParser(
+        prog='tag_bam',
+        description='Add a tag to all alignments in a bam.',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument('input', help='Input bam file.')
+    parser.add_argument('output', help='Output output file.')
+    parser.add_argument('tag_name', help='Tag name.')
+    parser.add_argument('tag_value', type=int, help='Tag value.')
+    args = parser.parse_args()
+    with pysam.AlignmentFile(args.input) as bam_in:
+        with pysam.AlignmentFile(args.output, 'wb', header=bam_in.header) as bam_out:
+            for r in bam_in:
+                r.set_tag(args.tag_name, args.tag_value)
+                bam_out.write(r)
+
+
+def reverse_bed():
+    """Convert bed-file coordinates to coordinates on the reverse strand."""
+    parser = argparse.ArgumentParser(
+        prog='reverse_bed',
+        description='Convert bed-file coordinates to coordinates on the reverse strand.',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+    parser.add_argument('bed_in', help='Input bed file.')
+    parser.add_argument('ref_fasta', help='Input reference fasta file.')
+    parser.add_argument('bed_out', help='Output bed file.')
+    args = parser.parse_args()
+
+    fasta = pysam.FastaFile(args.ref_fasta)
+    lengths = dict(zip(fasta.references, fasta.lengths))
+    d = pd.read_csv(args.bed_in, sep='\t', names=['chrom', 'start', 'stop'])
+
+    d['chrom_length'] = d['chrom'].map(lambda x: lengths[x])
+    d['rc_stop'] = d['chrom_length'] - d['start']
+    d['rc_start'] = d['chrom_length'] - d['stop']
+    d['chrom_rc'] = d['chrom'] + '_rc'
+    d[['chrom_rc', 'rc_start', 'rc_stop']].to_csv(args.bed_out, index=False, header=False, sep='\t')
