@@ -24,7 +24,12 @@ Align fastq/a formatted reads to a genome using minimap2.
     -m  fill MD tag.
     -s  fill cs(=long) tag.
     -X  only create reference index files.
-    -x  log all commands before running."
+    -x  log all commands before running.
+    -M  match score 
+    -S  mismatch score
+    -O  open gat penalty
+    -E  extend gap penalty."
+
 
 PREFIX="reads"
 ALIGN_OPTS="-x map-ont"
@@ -40,8 +45,12 @@ FORCE_INDEX=false
 filter_set=0
 csmd_set=0
 xflag=false
+MATCH_SCORE=2
+MISMATCH_SCORE=4
+GAP_OPEN="(4,24)"
+GAP_EXTEND="(2,1)"
 
-while getopts ':hr:i:I:fPAmsnp:ac:t:Xx' option; do
+while getopts ':hr:i:I:M:S:O:E:fPAmsnp:ac:t:Xx' option; do
   case "$option" in
     h  ) echo "$usage" >&2; exit;;
     r  ) rflag=true; REFERENCE=$OPTARG;;
@@ -59,6 +68,10 @@ while getopts ':hr:i:I:fPAmsnp:ac:t:Xx' option; do
     t  ) THREADS=$OPTARG;;
     X  ) ONLY_INDEX=true;;
     x  ) xflag=true;;
+    M  ) MATCH_SCORE=$OPTARG;;
+    S  ) MISMATCH_SCORE=$OPTARG;;
+    O  ) GAP_OPEN=$OPTARG;;
+    E  ) GAP_EXTEND=$OPTARG;;
     \? ) echo "Invalid option: -${OPTARG}." >&2; exit 1;;
     :  ) echo "Option -$OPTARG requires an argument." >&2; exit 1;;
   esac
@@ -131,7 +144,8 @@ if [ "$CHUNK" != "" ]; then
   INPUT=${INPUT}.chunks
 fi
 
-minimap2 ${ALIGN_OPTS} -t ${THREADS} -a ${REFERENCE}.mmi ${INPUT} |
+minimap2 ${ALIGN_OPTS} -t ${THREADS} -a ${REFERENCE}.mmi ${INPUT} \
+  -A ${MATCH_SCORE} -B ${MISMATCH_SCORE} -O ${GAP_OPEN} -E ${GAP_EXTEND} |
   samtools view -@ ${THREADS} -T ${REFERENCE} ${FILTER} -bS - |
   samtools sort -@ ${THREADS} ${SORT} -l 9 -o ${PREFIX}.bam - \
     || (echo "Alignment pipeline failed." && exit 1)
