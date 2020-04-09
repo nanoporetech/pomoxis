@@ -166,7 +166,7 @@ def _process_reads(bam_fp, start_stop, all_alignments=False, min_length=None, be
     with pysam.AlignmentFile(bam_fp, 'rb') as bam:
         if bed_file is not None:
             trees = intervaltrees_from_bed(bed_file)
-        for i, read in enumerate(bam):
+        for i, read in enumerate(bam.fetch(until_eof=True)):
             if i < start:
                 continue
             elif i == stop:
@@ -221,7 +221,7 @@ def main(arguments=None):
     # create a slice of reads to process in each thread to avoid looping through
     # bam n read times and reduce mp overhead
     with pysam.AlignmentFile(args.bam) as bam:
-        n_reads = bam.count()
+        n_reads = bam.count(until_eof=True)
     n_reads_per_proc = ceil(n_reads / args.threads)
     ranges = [(start, min(start + n_reads_per_proc, n_reads))
                for start in range(0, n_reads, n_reads_per_proc)]
