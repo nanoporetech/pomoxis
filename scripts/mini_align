@@ -47,8 +47,8 @@ csmd_set=0
 xflag=false
 MATCH_SCORE=2
 MISMATCH_SCORE=4
-GAP_OPEN="(4,24)"
-GAP_EXTEND="(2,1)"
+GAP_OPEN="4,24"
+GAP_EXTEND="2,1"
 
 while getopts ':hr:i:I:M:S:O:E:fPAmsnp:ac:t:Xx' option; do
   case "$option" in
