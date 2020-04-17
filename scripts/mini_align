@@ -44,9 +44,11 @@ ONLY_INDEX=false
 FORCE_INDEX=false
 filter_set=0
 csmd_set=0
+aflag=false
+aparamflag=false
 xflag=false
-MATCH_SCORE=2
-MISMATCH_SCORE=4
+MATCH_SCORE="2"
+MISMATCH_SCORE="4"
 GAP_OPEN="4,24"
 GAP_EXTEND="2,1"
 
@@ -63,15 +65,15 @@ while getopts ':hr:i:I:M:S:O:E:fPAmsnp:ac:t:Xx' option; do
     s  ) csmd_set=$(($csmd_set + 1)); ALIGN_OPTS="${ALIGN_OPTS} --cs=long";;
     n  ) SORT="${SORT} -n";;
     p  ) PREFIX=$OPTARG;;
-    a  ) ALIGN_OPTS="${ALIGN_OPTS} -A1 -B2 -O2 -E1";;
+    a  ) aflag=true; MATCH_SCORE="1"; MISMATCH_SCORE="2"; GAP_OPEN="2"; GAP_EXTEND="1";;
     c  ) CHUNK=$OPTARG;;
     t  ) THREADS=$OPTARG;;
     X  ) ONLY_INDEX=true;;
     x  ) xflag=true;;
-    M  ) MATCH_SCORE=$OPTARG;;
-    S  ) MISMATCH_SCORE=$OPTARG;;
-    O  ) GAP_OPEN=$OPTARG;;
-    E  ) GAP_EXTEND=$OPTARG;;
+    M  ) aparamflag=true; MATCH_SCORE=$OPTARG;;
+    S  ) aparamflag=true; MISMATCH_SCORE=$OPTARG;;
+    O  ) aparamflag=true; GAP_OPEN=$OPTARG;;
+    E  ) aparamflag=true; GAP_EXTEND=$OPTARG;;
     \? ) echo "Invalid option: -${OPTARG}." >&2; exit 1;;
     :  ) echo "Option -$OPTARG requires an argument." >&2; exit 1;;
   esac
@@ -87,6 +89,12 @@ fi
 if [ "$csmd_set" -gt 1 ]; then
     echo "$usage" >&2;
     echo "Both -s and -m were specified (only one can be set)." >&2;
+    exit 1;
+fi
+
+if [ $aflag  = true ] && [ $aparamflag = true ]; then
+    echo "$usage" >&2;
+    echo " -a is not compatible with -M, -S, -O or -E." >&2;
     exit 1;
 fi
 
