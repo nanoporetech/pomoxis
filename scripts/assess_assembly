@@ -6,7 +6,7 @@ usage="$(basename "$0") [-h] -r <reference> -i <fastq>
 Calculate accuracy statistics for an assembly. 
 
     -h  show this help text.
-    -r  reference, should be a fasta file. If correspondng bwa indices
+    -r  reference, should be a fasta file. If correspondng minimap2 indices
         do not exist they will be created. (required).
     -i  fastq/a input assembly (required).
     -c  chunk size. Input reads/contigs will be broken into chunks
