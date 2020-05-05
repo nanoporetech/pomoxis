@@ -1,7 +1,6 @@
 # pomoxis requirements. 
 # Add comments to keep track of why we are using particular versions
 biopython >= 1.63
-fast5_research
 intervaltree >= 3
 matplotlib
 mappy
