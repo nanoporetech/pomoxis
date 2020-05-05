@@ -44,6 +44,8 @@ def main():
     parser.add_argument('-r', '--regions', nargs='+', help='Only process given regions.')
     parser.add_argument('-p', '--prefix', help='Prefix for output, defaults to basename of bam.')
     parser.add_argument('-s', '--stride', type=int, default=1000, help='Stride in genomic coordinate.')
+    parser.add_argument('--summary_only', action='store_true',
+                        help='Output only the depth_summary.txt file')
 
     args = parser.parse_args()
 
@@ -64,11 +66,13 @@ def main():
             prefix = os.path.splitext(os.path.basename(args.bam))[0]
 
         region_str = '{}_{}_{}'.format(region.ref_name, region.start, region.end)
-        depth_fp = '{}_{}.depth.txt'.format(prefix, region_str)
-
         df = coverage_of_region(region, args.bam, args.stride)
-        df.to_csv(depth_fp, sep='\t', index=False)
         summary[region_str] = df['depth'].describe()
+
+        if not args.summary_only:
+            depth_fp = '{}_{}.depth.txt'.format(prefix, region_str)
+            df.to_csv(depth_fp, sep='\t', index=False)
+
 
     summary_fp = '{}_depth_summary.txt'.format(prefix)
     summary_df = pd.DataFrame(summary).T.reset_index().rename(columns={'index': 'region'})
