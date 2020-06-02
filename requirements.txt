@@ -1,11 +1,11 @@
 # pomoxis requirements. 
 # Add comments to keep track of why we are using particular versions
-biopython >= 1.63
+biopython >=1.63,<1.77  #  1.76 is last version to support python < 3.6
 intervaltree >= 3
 matplotlib
 mappy
 numpy
 pandas
-pysam==0.15.2     # latest with non-broken wheels (21Aug2019)
+pysam
 git+https://github.com/rrwick/Porechop
 
