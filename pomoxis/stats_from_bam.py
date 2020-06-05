@@ -37,10 +37,8 @@ def stats_from_aligned_read(read, references, lengths):
 
     :param read: :class:`pysam.AlignedSegment` object
     """
-
-    tags = dict(read.tags)
     try:
-        tags.get('NM')
+        NM = read.get_tag('NM')
     except:
         raise IOError("Read is missing required 'NM' tag. Try running 'samtools fillmd -S - ref.fa'.")
 
@@ -50,13 +48,13 @@ def stats_from_aligned_read(read, references, lengths):
     ins = counts[1]
     delt = counts[2]
     # NM is edit distance: NM = INS + DEL + SUB
-    sub = tags['NM'] - ins - delt
+    sub = NM - ins - delt
     length = match + ins + delt
-    iden = 100*float(match - sub)/match
-    acc = 100 - 100*float(tags['NM'])/length
+    iden = 100 * float(match - sub) / match
+    acc = 100 - 100 * float(NM) / length
 
     read_length = read.infer_read_length()
-    coverage = 100*float(read.query_alignment_length) / read_length
+    coverage = 100 * float(read.query_alignment_length) / read_length
     direction = '-' if read.is_reverse else '+'
 
     results = {
@@ -88,10 +86,8 @@ def masked_stats_from_aligned_read(read, references, lengths, tree):
 
     :param read: :class:`pysam.AlignedSegment` object
     """
-
-    tags = dict(read.tags)
     try:
-        tags.get('MD')
+        MD = read.get_tag('MD')
     except:
         raise IOError("Read is missing required 'MD' tag. Try running 'samtools callmd - ref.fa'.")
 
@@ -220,11 +216,13 @@ def main(arguments=None):
 
     # create a slice of reads to process in each thread to avoid looping through
     # bam n read times and reduce mp overhead
-    with pysam.AlignmentFile(args.bam) as bam:
-        n_reads = bam.count(until_eof=True)
-    n_reads_per_proc = ceil(n_reads / args.threads)
-    ranges = [(start, min(start + n_reads_per_proc, n_reads))
-               for start in range(0, n_reads, n_reads_per_proc)]
+    ranges = [(0, float('inf'))]
+    if args.threads > 1:
+        with pysam.AlignmentFile(args.bam) as bam:
+            n_reads = bam.count(until_eof=True)
+        n_reads_per_proc = ceil(n_reads / args.threads)
+        ranges = [(start, min(start + n_reads_per_proc, n_reads))
+                   for start in range(0, n_reads, n_reads_per_proc)]
 
     func = functools.partial(_process_reads, args.bam,
                              all_alignments=args.all_alignments,
