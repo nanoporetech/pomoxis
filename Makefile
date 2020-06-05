@@ -43,13 +43,13 @@ $(BINCACHEDIR)/miniasm: | $(BINCACHEDIR) $(BINBUILDDIR)
 	cp ${BINBUILDDIR}/miniasm-${ASMVER}/miniasm $@
 
 
-RACONVER=1.3.1
+RACONVER=1.4.13
 $(BINCACHEDIR)/racon: | $(BINCACHEDIR) $(BINBUILDDIR)
 	@echo Making $(@F)
 	@echo GCC is $(GCC)
 	if [ ! -e ${BINBUILDDIR}/racon-v${RACONVER}.tar.gz ]; then \
 	  cd ${BINBUILDDIR}; \
-	  wget https://github.com/isovic/racon/releases/download/${RACONVER}/racon-v${RACONVER}.tar.gz; \
+	  wget https://github.com/lbcb-sci/racon/releases/download/${RACONVER}/racon-v${RACONVER}.tar.gz; \
 	  tar -xzf racon-v${RACONVER}.tar.gz; \
 	fi
 	cd ${BINBUILDDIR}/racon-v${RACONVER} && mkdir build && cd build && \
