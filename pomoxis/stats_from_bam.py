@@ -123,6 +123,12 @@ def masked_stats_from_aligned_read(read, references, lengths, tree):
     name = read.qname
     match = correct + sub
     length = match + ins + delt
+
+    if match == 0:
+        # no matches within bed regions - all bed ref positions were deleted.
+        # skip this alignment.
+        return None
+
     iden = 100 * float(match - sub) / match
     acc = 100 - 100 * float(sub + ins + delt) / length
 
@@ -180,6 +186,9 @@ def _process_reads(bam_fp, start_stop, all_alignments=False, min_length=None, be
                     continue
                 else:
                     result = masked_stats_from_aligned_read(read, bam.references, bam.lengths, trees[read.reference_name])
+                    if result is None:  # no matches within bed regions
+                        counts['all_matches_masked'] +=  1
+                        continue
             else:
                 result = stats_from_aligned_read(read, bam.references, bam.lengths)
 
@@ -242,7 +251,7 @@ def main(arguments=None):
     if counts['total'] == 0:
         raise ValueError('No alignments processed. Check your bam and filtering options.')
 
-    args.summary.write('Mapped/Unmapped/Short/Masked: {total}/{unmapped}/{short}/{masked}\n'.format_map(counts))
+    args.summary.write('Mapped/Unmapped/Short/Masked/Skipped(all matches masked): {total}/{unmapped}/{short}/{masked}/{all_matches_masked}\n'.format_map(counts))
 
 
 if __name__ == '__main__':
