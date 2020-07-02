@@ -43,6 +43,11 @@ def stats_from_aligned_read(read, references, lengths):
         raise IOError("Read is missing required 'NM' tag. Try running 'samtools fillmd -S - ref.fa'.")
 
     name = read.qname
+    start_offset = 0
+    if read.is_secondary or read.is_supplementary:
+        first_cig = read.cigartuples[0]
+        if first_cig[0] == 5:  # should always be true for minimap2
+            start_offset = first_cig[1]
     counts, _ = read.get_cigar_stats()
     match = counts[0] # alignment match (can be a sequence match or mismatch)
     ins = counts[1]
@@ -69,8 +74,8 @@ def stats_from_aligned_read(read, references, lengths):
         "sub": sub,
         "iden": iden,
         "acc": acc,
-        "qstart": read.query_alignment_start,
-        "qend": read.query_alignment_end,
+        "qstart": read.query_alignment_start + start_offset,
+        "qend": read.query_alignment_end + start_offset,
         "rstart": read.reference_start,
         "rend": read.reference_end,
         "ref": references[read.reference_id],
