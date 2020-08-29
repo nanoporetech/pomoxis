@@ -11,7 +11,7 @@ import re
 import unittest
 import warnings
 
-import matplotlib; matplotlib.use('Agg', warn=False)  # enforce non-interactive backend
+import matplotlib; matplotlib.use('Agg', force=True)  # enforce non-interactive backend
 from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
