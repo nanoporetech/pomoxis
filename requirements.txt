@@ -5,6 +5,7 @@ intervaltree >= 3  # various bugs in 2.x
 matplotlib
 mappy
 numpy
+ont_fast5_api
 pandas
 pysam >= 0.15.4
 git+https://github.com/rrwick/Porechop

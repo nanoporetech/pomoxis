@@ -5,7 +5,7 @@ import pickle
 import re
 
 import matplotlib
-matplotlib.use('Agg')
+matplotlib.use('Agg', force=True)
 
 import  matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
