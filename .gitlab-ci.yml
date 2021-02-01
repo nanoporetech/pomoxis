@@ -5,23 +5,38 @@ stages:
     - build
     - deploy
 
-test:
+.setup_ubuntu: &setup_ubuntu |
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update -qq && apt-get install -y -qq \
+        gcc git make cmake curl wget \
+        python3-all-dev python3-venv python-is-python3
+
+
+test-quick:
     stage: test
     before_script:
-        - apt-get update -qq && apt-get install -y -qq
+        - *setup_ubuntu
+        - apt-get install -y -qq
+    script:
+        - make venv
+        - . ./venv/bin/activate && python setup.py install
+        - make docs
+
+test-all:
+    stage: test
+    before_script:
+        - *setup_ubuntu
+        - apt-get install -y -qq
           gcc git make cmake curl wget
-          python3-all-dev python-virtualenv
           zlib1g-dev libbz2-dev liblzma-dev libncurses5-dev libcurl4-gnutls-dev
           libssl-dev
     script:
         - make -j 4 install
-        - make docs
 
 build:sdist:
     stage: build
     before_script:
-        - apt-get update -qq && apt-get install -y -qq
-          python3-all-dev python-virtualenv
+        - *setup_ubuntu
     script:
         - make sdist
     artifacts:
@@ -31,8 +46,7 @@ build:sdist:
 deploy:pypi:
     stage: deploy
     before_script:
-        - apt-get update -qq && apt-get install -y -qq
-          python3-all-dev python-virtualenv
+        - *setup_ubuntu
     script:
         - make build
         - source pypi_build/bin/activate

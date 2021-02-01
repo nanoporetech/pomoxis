@@ -3,11 +3,11 @@ OS := $(shell uname | tr '[:upper:]' '[:lower:]')
 
 # for porechop on travis (or other platform with older gcc)
 CXX         ?= g++
-CONDA?=~/miniconda3/
+PYTHON      ?= python3
+CONDA       ?= ~/miniconda3/
 
 # Builds a cache of binaries which can just be copied for CI
 BINARIES=minimap2 miniasm racon samtools bcftools seqkit bedtools bgzip tabix
-
 
 BINCACHEDIR=bincache
 $(BINCACHEDIR):
@@ -120,7 +120,7 @@ $(BINCACHEDIR)/bedtools: | $(BINCACHEDIR) $(BINBUILDDIR)
 venv: venv/bin/activate
 IN_VENV=. ./venv/bin/activate
 venv/bin/activate:
-	test -d venv || virtualenv venv --prompt '(pomoxis) ' --python=python3
+	test -d venv || $(PYTHON) -m venv venv --prompt '(pomoxis) '
 	${IN_VENV} && pip install pip --upgrade
 	${IN_VENV} && pip install -r requirements.txt
 
@@ -134,7 +134,7 @@ install: venv | $(addprefix $(BINCACHEDIR)/, $(BINARIES))
 build: pypi_build/bin/activate
 IN_BUILD=. ./pypi_build/bin/activate
 pypi_build/bin/activate:
-	test -d pypi_build || virtualenv pypi_build --python=python3 --prompt "(pypi) "
+	test -d pypi_build || $(PYTHON) -m venv pypi_build --prompt "(pypi) "
 	${IN_BUILD} && pip install pip --upgrade
 	${IN_BUILD} && pip install --upgrade pip setuptools twine wheel readme_renderer[md]
 

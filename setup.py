@@ -78,7 +78,7 @@ setup(
     install_requires=install_requires,
     tests_require=[].extend(install_requires),
     extras_require=extra_requires,
-    python_requires='>=3.5.2, <3.7',
+    python_requires='>=3.6',
     packages=find_packages(exclude=['*.test', '*.test.*', 'test.*', 'test']),
     package_data={},
     zip_safe=False,
