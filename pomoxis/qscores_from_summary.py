@@ -1,11 +1,11 @@
 import argparse
 
 _field_name_map_ = {
-                    'del': 'Q(del)',
-                    'err_ont': 'Q(acc)',
-                    'idel': 'Q(iden)',
-                    'ins': 'Q(ins)',
-                    'iden': 'Q(iden)',
+    'del': 'Q(del)',
+    'err_ont': 'Q(acc)',
+    'idel': 'Q(iden)',
+    'ins': 'Q(ins)',
+    'iden': 'Q(iden)',
 }
 
 _cols_ = ['name', 'ref', 'ref_cover', 'Q(acc)', 'Q(iden)', 'Q(del)', 'Q(ins)']
@@ -34,7 +34,6 @@ def extract_vals(vals, name_map, col_ind):
 
 
 def main():
-
     parser = argparse.ArgumentParser(
         description='Extract Q scores from summary_from_stats output',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
@@ -43,17 +42,21 @@ def main():
     parser.add_argument('--median', help='Use median. If false, use mean.', action='store_true', default=False)
     parser.add_argument('--ref', default=None, help='process single ref, rather than overall result')
     args = parser.parse_args()
+    qscore_from_summary(args.summaries, args.median, args.ref)
 
-    if args.ref is None:
+
+def qscore_from_summary(summaries, median, ref):
+    if ref is None:
         match = '#  Q Scores'
     else:
-        match = '# {} Q Scores'.format(args.ref)
+        match = '# {} Q Scores'.format(ref)
 
-    col_ind = _median_col_ind_[args.median]
+    col_ind = _median_col_ind_[median]
 
     print('\t'.join(_cols_))
 
-    for f in sorted(args.summaries):
+    results = []
+    for f in sorted(summaries):
         with open(f) as fh:
             lines = [l.strip() for l in fh.readlines()]
         if match not in lines:
@@ -62,14 +65,16 @@ def main():
         vals = lines[ind + 2: ind + 7]
         data = extract_vals(vals, _field_name_map_, col_ind)
         data['name'] = f
-        if args.ref is None:
+        if ref is None:
             data['ref_cover'] = 'NA'
             data['ref'] = 'all'
         else:
-            data['ref_cover'] = get_ref_cover(lines, args.ref)
-            data['ref'] = args.ref
-
+            data['ref_cover'] = get_ref_cover(lines, ref)
+            data['ref'] = ref
         print(_format_str_.format(**data))
+        results.append(data)
+
+    return results
 
 
 if __name__ == "__main__":
