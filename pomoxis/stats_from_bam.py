@@ -254,7 +254,7 @@ def main(arguments=None):
         pool.shutdown(wait=True)
 
     if counts['total'] == 0:
-        raise ValueError('No alignments processed. Check your bam and filtering options.')
+        args.summary.write('No alignments processed. Check your bam and filtering options.\n')
 
     args.summary.write('Mapped/Unmapped/Short/Masked/Skipped(all matches masked): {total}/{unmapped}/{short}/{masked}/{all_matches_masked}\n'.format_map(counts))
 
