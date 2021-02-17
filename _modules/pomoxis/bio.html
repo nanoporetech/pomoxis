@@ -1,0 +1,289 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <title>pomoxis.bio &mdash; Pomoxis 0.3.6 documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+
+  
+  
+
+  
+  
+
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> Pomoxis
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.3.6
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../programs.html">Pomoxis Programs</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../pomoxis.html">pomoxis package</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Pomoxis</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+        
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+          <li><a href="../pomoxis.html">pomoxis</a> &raquo;</li>
+        
+      <li>pomoxis.bio</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for pomoxis.bio</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">pysam</span> <span class="kn">import</span> <span class="n">FastaFile</span>
+
+<span class="sd">&quot;&quot;&quot;Bioinformatics helpers.&quot;&quot;&quot;</span>
+
+<span class="n">comp</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;A&#39;</span><span class="p">:</span> <span class="s1">&#39;T&#39;</span><span class="p">,</span> <span class="s1">&#39;T&#39;</span><span class="p">:</span> <span class="s1">&#39;A&#39;</span><span class="p">,</span> <span class="s1">&#39;C&#39;</span><span class="p">:</span> <span class="s1">&#39;G&#39;</span><span class="p">,</span> <span class="s1">&#39;G&#39;</span><span class="p">:</span> <span class="s1">&#39;C&#39;</span><span class="p">,</span> <span class="s1">&#39;X&#39;</span><span class="p">:</span> <span class="s1">&#39;X&#39;</span><span class="p">,</span> <span class="s1">&#39;N&#39;</span><span class="p">:</span> <span class="s1">&#39;N&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;a&#39;</span><span class="p">:</span> <span class="s1">&#39;t&#39;</span><span class="p">,</span> <span class="s1">&#39;t&#39;</span><span class="p">:</span> <span class="s1">&#39;a&#39;</span><span class="p">,</span> <span class="s1">&#39;c&#39;</span><span class="p">:</span> <span class="s1">&#39;g&#39;</span><span class="p">,</span> <span class="s1">&#39;g&#39;</span><span class="p">:</span> <span class="s1">&#39;c&#39;</span><span class="p">,</span> <span class="s1">&#39;x&#39;</span><span class="p">:</span> <span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="s1">&#39;n&#39;</span><span class="p">:</span> <span class="s1">&#39;n&#39;</span><span class="p">,</span>
+    <span class="c1">#&#39;-&#39;: &#39;-&#39;</span>
+<span class="p">}</span>
+<span class="n">comp_trans</span> <span class="o">=</span> <span class="nb">str</span><span class="o">.</span><span class="n">maketrans</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">comp</span><span class="o">.</span><span class="n">keys</span><span class="p">()),</span> <span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">comp</span><span class="o">.</span><span class="n">values</span><span class="p">()))</span>
+
+
+<div class="viewcode-block" id="reverse_complement"><a class="viewcode-back" href="../../pomoxis.html#pomoxis.bio.reverse_complement">[docs]</a><span class="k">def</span> <span class="nf">reverse_complement</span><span class="p">(</span><span class="n">seq</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Reverse complement sequence.</span>
+
+<span class="sd">    :param: input sequence string.</span>
+
+<span class="sd">    :returns: reverse-complemented string.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">seq</span><span class="o">.</span><span class="n">translate</span><span class="p">(</span><span class="n">comp_trans</span><span class="p">)[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="shotgun_library"><a class="viewcode-back" href="../../pomoxis.html#pomoxis.bio.shotgun_library">[docs]</a><span class="k">def</span> <span class="nf">shotgun_library</span><span class="p">(</span><span class="n">fasta_file</span><span class="p">,</span> <span class="n">mu</span><span class="p">,</span> <span class="n">sigma</span><span class="p">,</span> <span class="n">direction</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="p">)):</span>
+    <span class="sd">&quot;&quot;&quot;Generate random fragment sequences of a given input sequence</span>
+
+<span class="sd">    :param seq: input sequence.</span>
+<span class="sd">    :param mu: mean fragment length.</span>
+<span class="sd">    :param sigma: stdv of fragment length.</span>
+<span class="sd">    :param direction: tuple represention direction of output sequences with</span>
+<span class="sd">        respect to the input sequence.</span>
+
+<span class="sd">    :yields: sequence fragments.</span>
+
+<span class="sd">    .. note:: Could be made more efficient using buffers for random samples</span>
+<span class="sd">        and handling cases separately.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">fasta</span> <span class="o">=</span> <span class="n">FastaFile</span><span class="p">(</span><span class="n">fasta_file</span><span class="p">)</span>
+    <span class="n">seq_lens</span> <span class="o">=</span> <span class="p">[</span><span class="n">fasta</span><span class="o">.</span><span class="n">get_reference_length</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">fasta</span><span class="o">.</span><span class="n">references</span><span class="p">]</span>
+    <span class="n">total_len</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">seq_lens</span><span class="p">)</span>
+    <span class="n">seq_probs</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span> <span class="o">/</span> <span class="n">total_len</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">seq_lens</span><span class="p">]</span>
+    <span class="c1"># FastaFile.fetch is proper slow, just read everything</span>
+    <span class="n">refs</span> <span class="o">=</span> <span class="n">fasta</span><span class="o">.</span><span class="n">references</span>
+    <span class="n">fasta</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span><span class="n">fasta</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="n">k</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">refs</span><span class="p">}</span>
+
+    <span class="k">def</span> <span class="nf">random_buffer</span><span class="p">(</span><span class="n">probs</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">10000</span><span class="p">):</span>
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="n">buf</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">probs</span><span class="p">)),</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">multinomial</span><span class="p">(</span><span class="n">size</span><span class="p">,</span> <span class="n">probs</span><span class="p">)):</span>
+                <span class="n">buf</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="n">x</span><span class="p">]</span><span class="o">*</span><span class="n">n</span><span class="p">)</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">shuffle</span><span class="p">(</span><span class="n">buf</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">buf</span><span class="p">:</span>
+                <span class="k">yield</span> <span class="n">x</span>
+    <span class="n">seq_chooser</span> <span class="o">=</span> <span class="n">random_buffer</span><span class="p">(</span><span class="n">seq_probs</span><span class="p">)</span>
+   
+    <span class="c1"># parameters for lognormal</span>
+    <span class="n">mean</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">mu</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">sigma</span><span class="o">**</span><span class="mi">2</span> <span class="o">/</span> <span class="n">mu</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span>
+    <span class="n">stdv</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">sigma</span><span class="o">**</span><span class="mi">2</span> <span class="o">/</span> <span class="n">mu</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span>
+    
+    <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="c1"># choose a seq based on length</span>
+        <span class="n">seq_i</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">seq_chooser</span><span class="p">)</span>
+        <span class="n">seq</span> <span class="o">=</span> <span class="n">fasta</span><span class="p">[</span><span class="n">refs</span><span class="p">[</span><span class="n">seq_i</span><span class="p">]]</span>
+        <span class="n">seq_len</span> <span class="o">=</span> <span class="n">seq_lens</span><span class="p">[</span><span class="n">seq_i</span><span class="p">]</span>
+
+        <span class="n">start</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">seq_len</span><span class="p">)</span>
+        <span class="n">frag_length</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">lognormal</span><span class="p">(</span><span class="n">mean</span><span class="p">,</span> <span class="n">stdv</span><span class="p">))</span>
+        <span class="n">move</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">direction</span><span class="p">)</span>
+        <span class="n">end</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">start</span> <span class="o">+</span> <span class="n">move</span><span class="o">*</span><span class="n">frag_length</span><span class="p">)</span>
+        <span class="n">end</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">end</span><span class="p">,</span> <span class="n">seq_len</span><span class="p">)</span>
+        <span class="n">start</span><span class="p">,</span> <span class="n">end</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">([</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">])</span>
+
+        <span class="k">if</span> <span class="n">end</span> <span class="o">-</span> <span class="n">start</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="c1"># Expand a bit to ensure we grab at least one base.</span>
+            <span class="n">start</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">start</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="n">end</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="n">frag_seq</span> <span class="o">=</span> <span class="n">seq</span><span class="p">[</span><span class="n">start</span><span class="p">:</span><span class="n">end</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">move</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+            <span class="n">frag_seq</span> <span class="o">=</span> <span class="n">reverse_complement</span><span class="p">(</span><span class="n">frag_seq</span><span class="p">)</span>
+        <span class="k">yield</span> <span class="n">frag_seq</span><span class="p">,</span> <span class="n">refs</span><span class="p">[</span><span class="n">seq_i</span><span class="p">],</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="s1">&#39;+&#39;</span> <span class="k">if</span> <span class="n">move</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="s1">&#39;-&#39;</span></div>
+
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &#169; Copyright 2017, Oxford Nanopore Technologies.
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

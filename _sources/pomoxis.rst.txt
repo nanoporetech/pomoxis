@@ -1,0 +1,117 @@
+pomoxis package
+===============
+
+Submodules
+----------
+
+pomoxis.assess\_homopolymers module
+-----------------------------------
+
+.. automodule:: pomoxis.assess_homopolymers
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pomoxis.bio module
+------------------
+
+.. automodule:: pomoxis.bio
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pomoxis.catalogue\_errors module
+--------------------------------
+
+.. automodule:: pomoxis.catalogue_errors
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pomoxis.common\_errors\_from\_bam module
+----------------------------------------
+
+.. automodule:: pomoxis.common_errors_from_bam
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pomoxis.coverage\_from\_bam module
+----------------------------------
+
+.. automodule:: pomoxis.coverage_from_bam
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pomoxis.find\_indels module
+---------------------------
+
+.. automodule:: pomoxis.find_indels
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pomoxis.qscores\_from\_summary module
+-------------------------------------
+
+.. automodule:: pomoxis.qscores_from_summary
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pomoxis.ref\_seqs\_from\_bam module
+-----------------------------------
+
+.. automodule:: pomoxis.ref_seqs_from_bam
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pomoxis.stats\_from\_bam module
+-------------------------------
+
+.. automodule:: pomoxis.stats_from_bam
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pomoxis.subsample\_bam module
+-----------------------------
+
+.. automodule:: pomoxis.subsample_bam
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pomoxis.summary\_from\_stats module
+-----------------------------------
+
+.. automodule:: pomoxis.summary_from_stats
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pomoxis.trim\_alignments module
+-------------------------------
+
+.. automodule:: pomoxis.trim_alignments
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pomoxis.util module
+-------------------
+
+.. automodule:: pomoxis.util
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Module contents
+---------------
+
+.. automodule:: pomoxis
+   :members:
+   :undoc-members:
+   :show-inheritance:

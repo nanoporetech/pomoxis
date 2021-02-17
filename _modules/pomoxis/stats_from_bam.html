@@ -1,0 +1,470 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <title>pomoxis.stats_from_bam &mdash; Pomoxis 0.3.6 documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+
+  
+  
+
+  
+  
+
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> Pomoxis
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.3.6
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../programs.html">Pomoxis Programs</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../pomoxis.html">pomoxis package</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Pomoxis</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+        
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+          <li><a href="../pomoxis.html">pomoxis</a> &raquo;</li>
+        
+      <li>pomoxis.stats_from_bam</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for pomoxis.stats_from_bam</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Tabulate some simple alignment stats from sam.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">argparse</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">Counter</span>
+<span class="kn">from</span> <span class="nn">concurrent.futures</span> <span class="kn">import</span> <span class="n">ProcessPoolExecutor</span>
+<span class="kn">import</span> <span class="nn">functools</span>
+<span class="kn">import</span> <span class="nn">itertools</span>
+<span class="kn">from</span> <span class="nn">math</span> <span class="kn">import</span> <span class="n">ceil</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+
+<span class="kn">import</span> <span class="nn">pysam</span>
+
+<span class="kn">from</span> <span class="nn">pomoxis.util</span> <span class="kn">import</span> <span class="n">intervaltrees_from_bed</span>
+
+<span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span>
+        <span class="n">prog</span><span class="o">=</span><span class="s1">&#39;stats_from_bam&#39;</span><span class="p">,</span>
+        <span class="n">description</span><span class="o">=</span><span class="s2">&quot;&quot;&quot;Parse a bamfile (from a stream) and output summary stats for each read.&quot;&quot;&quot;</span><span class="p">,</span>
+        <span class="n">formatter_class</span><span class="o">=</span><span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentDefaultsHelpFormatter</span><span class="p">)</span>
+
+<span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;bam&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Path to bam file.&#39;</span><span class="p">)</span>
+<span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--bed&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;.bed file of reference regions to include.&#39;</span><span class="p">)</span>
+<span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;-m&#39;</span><span class="p">,</span> <span class="s1">&#39;--min_length&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+<span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;-a&#39;</span><span class="p">,</span> <span class="s1">&#39;--all_alignments&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store_true&#39;</span><span class="p">,</span>
+                    <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Include secondary and supplementary alignments.&#39;</span><span class="p">)</span>
+<span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;-o&#39;</span><span class="p">,</span> <span class="s1">&#39;--output&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">argparse</span><span class="o">.</span><span class="n">FileType</span><span class="p">(</span><span class="s1">&#39;w&#39;</span><span class="p">),</span> <span class="n">default</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="p">,</span>
+                    <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Output alignment stats to file instead of stdout.&#39;</span><span class="p">)</span>
+<span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;-s&#39;</span><span class="p">,</span> <span class="s1">&#39;--summary&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">argparse</span><span class="o">.</span><span class="n">FileType</span><span class="p">(</span><span class="s1">&#39;w&#39;</span><span class="p">),</span> <span class="n">default</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">,</span>
+                    <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Output summary to file instead of stderr.&#39;</span><span class="p">)</span>
+<span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;-t&#39;</span><span class="p">,</span> <span class="s1">&#39;--threads&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                    <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Number of threads for parallel processing.&#39;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="stats_from_aligned_read"><a class="viewcode-back" href="../../pomoxis.html#pomoxis.stats_from_bam.stats_from_aligned_read">[docs]</a><span class="k">def</span> <span class="nf">stats_from_aligned_read</span><span class="p">(</span><span class="n">read</span><span class="p">,</span> <span class="n">references</span><span class="p">,</span> <span class="n">lengths</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Create summary information for an aligned read</span>
+
+<span class="sd">    :param read: :class:`pysam.AlignedSegment` object</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">NM</span> <span class="o">=</span> <span class="n">read</span><span class="o">.</span><span class="n">get_tag</span><span class="p">(</span><span class="s1">&#39;NM&#39;</span><span class="p">)</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s2">&quot;Read is missing required &#39;NM&#39; tag. Try running &#39;samtools fillmd -S - ref.fa&#39;.&quot;</span><span class="p">)</span>
+
+    <span class="n">name</span> <span class="o">=</span> <span class="n">read</span><span class="o">.</span><span class="n">qname</span>
+    <span class="n">start_offset</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">if</span> <span class="n">read</span><span class="o">.</span><span class="n">is_secondary</span> <span class="ow">or</span> <span class="n">read</span><span class="o">.</span><span class="n">is_supplementary</span><span class="p">:</span>
+        <span class="n">first_cig</span> <span class="o">=</span> <span class="n">read</span><span class="o">.</span><span class="n">cigartuples</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">first_cig</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="mi">5</span><span class="p">:</span>  <span class="c1"># should always be true for minimap2</span>
+            <span class="n">start_offset</span> <span class="o">=</span> <span class="n">first_cig</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">counts</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">read</span><span class="o">.</span><span class="n">get_cigar_stats</span><span class="p">()</span>
+    <span class="n">match</span> <span class="o">=</span> <span class="n">counts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="c1"># alignment match (can be a sequence match or mismatch)</span>
+    <span class="n">ins</span> <span class="o">=</span> <span class="n">counts</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">delt</span> <span class="o">=</span> <span class="n">counts</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+    <span class="c1"># NM is edit distance: NM = INS + DEL + SUB</span>
+    <span class="n">sub</span> <span class="o">=</span> <span class="n">NM</span> <span class="o">-</span> <span class="n">ins</span> <span class="o">-</span> <span class="n">delt</span>
+    <span class="n">length</span> <span class="o">=</span> <span class="n">match</span> <span class="o">+</span> <span class="n">ins</span> <span class="o">+</span> <span class="n">delt</span>
+    <span class="n">iden</span> <span class="o">=</span> <span class="mi">100</span> <span class="o">*</span> <span class="nb">float</span><span class="p">(</span><span class="n">match</span> <span class="o">-</span> <span class="n">sub</span><span class="p">)</span> <span class="o">/</span> <span class="n">match</span>
+    <span class="n">acc</span> <span class="o">=</span> <span class="mi">100</span> <span class="o">-</span> <span class="mi">100</span> <span class="o">*</span> <span class="nb">float</span><span class="p">(</span><span class="n">NM</span><span class="p">)</span> <span class="o">/</span> <span class="n">length</span>
+
+    <span class="n">read_length</span> <span class="o">=</span> <span class="n">read</span><span class="o">.</span><span class="n">infer_read_length</span><span class="p">()</span>
+    <span class="n">coverage</span> <span class="o">=</span> <span class="mi">100</span> <span class="o">*</span> <span class="nb">float</span><span class="p">(</span><span class="n">read</span><span class="o">.</span><span class="n">query_alignment_length</span><span class="p">)</span> <span class="o">/</span> <span class="n">read_length</span>
+    <span class="n">direction</span> <span class="o">=</span> <span class="s1">&#39;-&#39;</span> <span class="k">if</span> <span class="n">read</span><span class="o">.</span><span class="n">is_reverse</span> <span class="k">else</span> <span class="s1">&#39;+&#39;</span>
+
+    <span class="n">results</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="n">name</span><span class="p">,</span>
+        <span class="s2">&quot;coverage&quot;</span><span class="p">:</span> <span class="n">coverage</span><span class="p">,</span>
+        <span class="s2">&quot;direction&quot;</span><span class="p">:</span> <span class="n">direction</span><span class="p">,</span>
+        <span class="s2">&quot;length&quot;</span><span class="p">:</span> <span class="n">length</span><span class="p">,</span>
+        <span class="s2">&quot;read_length&quot;</span><span class="p">:</span> <span class="n">read_length</span><span class="p">,</span>
+        <span class="s2">&quot;match&quot;</span><span class="p">:</span> <span class="n">match</span><span class="p">,</span>
+        <span class="s2">&quot;ins&quot;</span><span class="p">:</span> <span class="n">ins</span><span class="p">,</span>
+        <span class="s2">&quot;del&quot;</span><span class="p">:</span> <span class="n">delt</span><span class="p">,</span>
+        <span class="s2">&quot;sub&quot;</span><span class="p">:</span> <span class="n">sub</span><span class="p">,</span>
+        <span class="s2">&quot;iden&quot;</span><span class="p">:</span> <span class="n">iden</span><span class="p">,</span>
+        <span class="s2">&quot;acc&quot;</span><span class="p">:</span> <span class="n">acc</span><span class="p">,</span>
+        <span class="s2">&quot;qstart&quot;</span><span class="p">:</span> <span class="n">read</span><span class="o">.</span><span class="n">query_alignment_start</span> <span class="o">+</span> <span class="n">start_offset</span><span class="p">,</span>
+        <span class="s2">&quot;qend&quot;</span><span class="p">:</span> <span class="n">read</span><span class="o">.</span><span class="n">query_alignment_end</span> <span class="o">+</span> <span class="n">start_offset</span><span class="p">,</span>
+        <span class="s2">&quot;rstart&quot;</span><span class="p">:</span> <span class="n">read</span><span class="o">.</span><span class="n">reference_start</span><span class="p">,</span>
+        <span class="s2">&quot;rend&quot;</span><span class="p">:</span> <span class="n">read</span><span class="o">.</span><span class="n">reference_end</span><span class="p">,</span>
+        <span class="s2">&quot;ref&quot;</span><span class="p">:</span> <span class="n">references</span><span class="p">[</span><span class="n">read</span><span class="o">.</span><span class="n">reference_id</span><span class="p">],</span>
+        <span class="s2">&quot;aligned_ref_len&quot;</span><span class="p">:</span> <span class="n">read</span><span class="o">.</span><span class="n">reference_length</span><span class="p">,</span>
+        <span class="s2">&quot;ref_coverage&quot;</span><span class="p">:</span> <span class="mi">100</span><span class="o">*</span><span class="nb">float</span><span class="p">(</span><span class="n">read</span><span class="o">.</span><span class="n">reference_length</span><span class="p">)</span> <span class="o">/</span> <span class="n">lengths</span><span class="p">[</span><span class="n">read</span><span class="o">.</span><span class="n">reference_id</span><span class="p">],</span>
+    <span class="p">}</span>
+
+    <span class="k">return</span> <span class="n">results</span></div>
+
+
+<div class="viewcode-block" id="masked_stats_from_aligned_read"><a class="viewcode-back" href="../../pomoxis.html#pomoxis.stats_from_bam.masked_stats_from_aligned_read">[docs]</a><span class="k">def</span> <span class="nf">masked_stats_from_aligned_read</span><span class="p">(</span><span class="n">read</span><span class="p">,</span> <span class="n">references</span><span class="p">,</span> <span class="n">lengths</span><span class="p">,</span> <span class="n">tree</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Create summary information for an aligned read over regions in bed file.</span>
+
+<span class="sd">    :param read: :class:`pysam.AlignedSegment` object</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">MD</span> <span class="o">=</span> <span class="n">read</span><span class="o">.</span><span class="n">get_tag</span><span class="p">(</span><span class="s1">&#39;MD&#39;</span><span class="p">)</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s2">&quot;Read is missing required &#39;MD&#39; tag. Try running &#39;samtools callmd - ref.fa&#39;.&quot;</span><span class="p">)</span>
+
+    <span class="n">correct</span><span class="p">,</span> <span class="n">delt</span><span class="p">,</span> <span class="n">ins</span><span class="p">,</span> <span class="n">sub</span><span class="p">,</span> <span class="n">aligned_ref_len</span><span class="p">,</span> <span class="n">masked</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span>
+    <span class="n">pairs</span> <span class="o">=</span> <span class="n">read</span><span class="o">.</span><span class="n">get_aligned_pairs</span><span class="p">(</span><span class="n">with_seq</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">qseq</span> <span class="o">=</span> <span class="n">read</span><span class="o">.</span><span class="n">query_sequence</span>
+    <span class="n">pos_is_none</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="n">pos</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">insertions</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="c1"># TODO: refactor to use get_trimmed_pairs (as in catalogue_errors)?</span>
+    <span class="k">for</span> <span class="n">qp</span><span class="p">,</span> <span class="n">rp</span><span class="p">,</span> <span class="n">rb</span> <span class="ow">in</span> <span class="n">itertools</span><span class="o">.</span><span class="n">dropwhile</span><span class="p">(</span><span class="n">pos_is_none</span><span class="p">,</span> <span class="n">pairs</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">rp</span> <span class="o">==</span> <span class="n">read</span><span class="o">.</span><span class="n">reference_end</span> <span class="ow">or</span> <span class="p">(</span><span class="n">qp</span> <span class="o">==</span> <span class="n">read</span><span class="o">.</span><span class="n">query_alignment_end</span><span class="p">):</span>
+            <span class="k">break</span>
+        <span class="n">pos</span> <span class="o">=</span> <span class="n">rp</span> <span class="k">if</span> <span class="n">rp</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">pos</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">tree</span><span class="o">.</span><span class="n">overlaps</span><span class="p">(</span><span class="n">pos</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">rp</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">tree</span><span class="o">.</span><span class="n">overlaps</span><span class="p">(</span><span class="n">pos</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)):</span>
+            <span class="c1"># if rp is None, we are in an insertion, check if pos + 1 overlaps</span>
+            <span class="c1"># (ref position of ins is arbitrary)</span>
+            <span class="c1"># print(&#39;Skipping ref {}:{}&#39;.format(read.reference_name, pos))</span>
+            <span class="n">masked</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">continue</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">rp</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># we don&#39;t have an insertion</span>
+                <span class="n">aligned_ref_len</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="k">if</span> <span class="n">qp</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># deletion</span>
+                    <span class="n">delt</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="k">elif</span> <span class="n">qseq</span><span class="p">[</span><span class="n">qp</span><span class="p">]</span> <span class="o">==</span> <span class="n">rb</span><span class="p">:</span>  <span class="c1"># correct</span>
+                    <span class="n">correct</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="k">elif</span> <span class="n">qseq</span><span class="p">[</span><span class="n">qp</span><span class="p">]</span> <span class="o">!=</span> <span class="n">rb</span><span class="p">:</span>  <span class="c1"># sub</span>
+                    <span class="n">sub</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">else</span><span class="p">:</span>  <span class="c1"># we have an insertion</span>
+                <span class="n">ins</span> <span class="o">+=</span> <span class="mi">1</span>
+
+    <span class="n">name</span> <span class="o">=</span> <span class="n">read</span><span class="o">.</span><span class="n">qname</span>
+    <span class="n">match</span> <span class="o">=</span> <span class="n">correct</span> <span class="o">+</span> <span class="n">sub</span>
+    <span class="n">length</span> <span class="o">=</span> <span class="n">match</span> <span class="o">+</span> <span class="n">ins</span> <span class="o">+</span> <span class="n">delt</span>
+
+    <span class="k">if</span> <span class="n">match</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="c1"># no matches within bed regions - all bed ref positions were deleted.</span>
+        <span class="c1"># skip this alignment.</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="n">iden</span> <span class="o">=</span> <span class="mi">100</span> <span class="o">*</span> <span class="nb">float</span><span class="p">(</span><span class="n">match</span> <span class="o">-</span> <span class="n">sub</span><span class="p">)</span> <span class="o">/</span> <span class="n">match</span>
+    <span class="n">acc</span> <span class="o">=</span> <span class="mi">100</span> <span class="o">-</span> <span class="mi">100</span> <span class="o">*</span> <span class="nb">float</span><span class="p">(</span><span class="n">sub</span> <span class="o">+</span> <span class="n">ins</span> <span class="o">+</span> <span class="n">delt</span><span class="p">)</span> <span class="o">/</span> <span class="n">length</span>
+
+    <span class="n">read_length</span> <span class="o">=</span> <span class="n">read</span><span class="o">.</span><span class="n">infer_read_length</span><span class="p">()</span>
+    <span class="n">masked_query_alignment_length</span> <span class="o">=</span> <span class="n">correct</span> <span class="o">+</span> <span class="n">sub</span> <span class="o">+</span> <span class="n">ins</span>
+    <span class="n">coverage</span> <span class="o">=</span> <span class="mi">100</span><span class="o">*</span><span class="nb">float</span><span class="p">(</span><span class="n">masked_query_alignment_length</span><span class="p">)</span> <span class="o">/</span> <span class="n">read_length</span>
+    <span class="n">direction</span> <span class="o">=</span> <span class="s1">&#39;-&#39;</span> <span class="k">if</span> <span class="n">read</span><span class="o">.</span><span class="n">is_reverse</span> <span class="k">else</span> <span class="s1">&#39;+&#39;</span>
+
+    <span class="n">results</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="n">name</span><span class="p">,</span>
+        <span class="s2">&quot;coverage&quot;</span><span class="p">:</span> <span class="n">coverage</span><span class="p">,</span>
+        <span class="s2">&quot;direction&quot;</span><span class="p">:</span> <span class="n">direction</span><span class="p">,</span>
+        <span class="s2">&quot;length&quot;</span><span class="p">:</span> <span class="n">length</span><span class="p">,</span>
+        <span class="s2">&quot;read_length&quot;</span><span class="p">:</span> <span class="n">read_length</span><span class="p">,</span>
+        <span class="s2">&quot;match&quot;</span><span class="p">:</span> <span class="n">match</span><span class="p">,</span>
+        <span class="s2">&quot;ins&quot;</span><span class="p">:</span> <span class="n">ins</span><span class="p">,</span>
+        <span class="s2">&quot;del&quot;</span><span class="p">:</span> <span class="n">delt</span><span class="p">,</span>
+        <span class="s2">&quot;sub&quot;</span><span class="p">:</span> <span class="n">sub</span><span class="p">,</span>
+        <span class="s2">&quot;iden&quot;</span><span class="p">:</span> <span class="n">iden</span><span class="p">,</span>
+        <span class="s2">&quot;acc&quot;</span><span class="p">:</span> <span class="n">acc</span><span class="p">,</span>
+        <span class="s2">&quot;qstart&quot;</span><span class="p">:</span> <span class="n">read</span><span class="o">.</span><span class="n">query_alignment_start</span><span class="p">,</span>
+        <span class="s2">&quot;qend&quot;</span><span class="p">:</span> <span class="n">read</span><span class="o">.</span><span class="n">query_alignment_end</span><span class="p">,</span>
+        <span class="s2">&quot;rstart&quot;</span><span class="p">:</span> <span class="n">read</span><span class="o">.</span><span class="n">reference_start</span><span class="p">,</span>
+        <span class="s2">&quot;rend&quot;</span><span class="p">:</span> <span class="n">read</span><span class="o">.</span><span class="n">reference_end</span><span class="p">,</span>
+        <span class="s2">&quot;ref&quot;</span><span class="p">:</span> <span class="n">references</span><span class="p">[</span><span class="n">read</span><span class="o">.</span><span class="n">reference_id</span><span class="p">],</span>
+        <span class="s2">&quot;aligned_ref_len&quot;</span><span class="p">:</span> <span class="n">aligned_ref_len</span><span class="p">,</span>
+        <span class="s2">&quot;ref_coverage&quot;</span><span class="p">:</span> <span class="mi">100</span> <span class="o">*</span> <span class="nb">float</span><span class="p">(</span><span class="n">aligned_ref_len</span><span class="p">)</span> <span class="o">/</span> <span class="n">lengths</span><span class="p">[</span><span class="n">read</span><span class="o">.</span><span class="n">reference_id</span><span class="p">],</span>
+        <span class="s2">&quot;masked&quot;</span><span class="p">:</span> <span class="n">masked</span><span class="p">,</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="n">results</span></div>
+
+
+<span class="k">def</span> <span class="nf">_process_reads</span><span class="p">(</span><span class="n">bam_fp</span><span class="p">,</span> <span class="n">start_stop</span><span class="p">,</span> <span class="n">all_alignments</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">min_length</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">bed_file</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="n">start</span><span class="p">,</span> <span class="n">stop</span> <span class="o">=</span> <span class="n">start_stop</span>
+    <span class="n">counts</span> <span class="o">=</span> <span class="n">Counter</span><span class="p">()</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">with</span> <span class="n">pysam</span><span class="o">.</span><span class="n">AlignmentFile</span><span class="p">(</span><span class="n">bam_fp</span><span class="p">,</span> <span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">bam</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">bed_file</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">trees</span> <span class="o">=</span> <span class="n">intervaltrees_from_bed</span><span class="p">(</span><span class="n">bed_file</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">read</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">bam</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="n">until_eof</span><span class="o">=</span><span class="kc">True</span><span class="p">)):</span>
+            <span class="k">if</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">start</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="k">elif</span> <span class="n">i</span> <span class="o">==</span> <span class="n">stop</span><span class="p">:</span>
+                <span class="k">break</span>
+            <span class="k">if</span> <span class="n">read</span><span class="o">.</span><span class="n">is_unmapped</span><span class="p">:</span>
+                <span class="n">counts</span><span class="p">[</span><span class="s1">&#39;unmapped&#39;</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">all_alignments</span> <span class="ow">and</span> <span class="p">(</span><span class="n">read</span><span class="o">.</span><span class="n">is_secondary</span> <span class="ow">or</span> <span class="n">read</span><span class="o">.</span><span class="n">is_supplementary</span><span class="p">):</span>
+                <span class="k">continue</span>
+
+            <span class="k">if</span> <span class="n">bed_file</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">trees</span><span class="p">[</span><span class="n">read</span><span class="o">.</span><span class="n">reference_name</span><span class="p">]</span><span class="o">.</span><span class="n">overlaps</span><span class="p">(</span><span class="n">read</span><span class="o">.</span><span class="n">reference_start</span><span class="p">,</span> <span class="n">read</span><span class="o">.</span><span class="n">reference_end</span><span class="p">):</span>
+                    <span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;read </span><span class="si">{}</span><span class="s1"> does not overlap with any regions in bedfile</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">read</span><span class="o">.</span><span class="n">query_name</span><span class="p">))</span>
+                    <span class="n">counts</span><span class="p">[</span><span class="s1">&#39;masked&#39;</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+                    <span class="k">continue</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">result</span> <span class="o">=</span> <span class="n">masked_stats_from_aligned_read</span><span class="p">(</span><span class="n">read</span><span class="p">,</span> <span class="n">bam</span><span class="o">.</span><span class="n">references</span><span class="p">,</span> <span class="n">bam</span><span class="o">.</span><span class="n">lengths</span><span class="p">,</span> <span class="n">trees</span><span class="p">[</span><span class="n">read</span><span class="o">.</span><span class="n">reference_name</span><span class="p">])</span>
+                    <span class="k">if</span> <span class="n">result</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># no matches within bed regions</span>
+                        <span class="n">counts</span><span class="p">[</span><span class="s1">&#39;all_matches_masked&#39;</span><span class="p">]</span> <span class="o">+=</span>  <span class="mi">1</span>
+                        <span class="k">continue</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">result</span> <span class="o">=</span> <span class="n">stats_from_aligned_read</span><span class="p">(</span><span class="n">read</span><span class="p">,</span> <span class="n">bam</span><span class="o">.</span><span class="n">references</span><span class="p">,</span> <span class="n">bam</span><span class="o">.</span><span class="n">lengths</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">min_length</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">result</span><span class="p">[</span><span class="s1">&#39;length&#39;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">min_length</span><span class="p">:</span>
+                <span class="n">counts</span><span class="p">[</span><span class="s1">&#39;short&#39;</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="k">continue</span>
+
+            <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">counts</span><span class="p">,</span> <span class="n">results</span>
+
+
+<div class="viewcode-block" id="main"><a class="viewcode-back" href="../../pomoxis.html#pomoxis.stats_from_bam.main">[docs]</a><span class="k">def</span> <span class="nf">main</span><span class="p">(</span><span class="n">arguments</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">(</span><span class="n">arguments</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">threads</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="ow">and</span> <span class="n">args</span><span class="o">.</span><span class="n">bed</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">pool</span> <span class="o">=</span> <span class="n">ProcessPoolExecutor</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">threads</span><span class="p">)</span>
+        <span class="n">mapper</span> <span class="o">=</span> <span class="n">pool</span><span class="o">.</span><span class="n">map</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">pool</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">mapper</span> <span class="o">=</span> <span class="nb">map</span>
+        <span class="n">args</span><span class="o">.</span><span class="n">threads</span> <span class="o">=</span> <span class="mi">1</span>
+
+    <span class="n">headers</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">,</span> <span class="s1">&#39;ref&#39;</span><span class="p">,</span> <span class="s1">&#39;coverage&#39;</span><span class="p">,</span> <span class="s1">&#39;ref_coverage&#39;</span><span class="p">,</span> <span class="s1">&#39;qstart&#39;</span><span class="p">,</span> <span class="s1">&#39;qend&#39;</span><span class="p">,</span>
+               <span class="s1">&#39;rstart&#39;</span><span class="p">,</span> <span class="s1">&#39;rend&#39;</span><span class="p">,</span> <span class="s1">&#39;aligned_ref_len&#39;</span><span class="p">,</span> <span class="s1">&#39;direction&#39;</span><span class="p">,</span> <span class="s1">&#39;length&#39;</span><span class="p">,</span>
+               <span class="s1">&#39;read_length&#39;</span><span class="p">,</span> <span class="s1">&#39;match&#39;</span><span class="p">,</span> <span class="s1">&#39;ins&#39;</span><span class="p">,</span> <span class="s1">&#39;del&#39;</span><span class="p">,</span> <span class="s1">&#39;sub&#39;</span><span class="p">,</span> <span class="s1">&#39;iden&#39;</span><span class="p">,</span> <span class="s1">&#39;acc&#39;</span><span class="p">]</span>
+
+    <span class="n">masked_headers</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;masked&#39;</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">bed</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">headers</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">masked_headers</span><span class="p">)</span>
+
+    <span class="n">args</span><span class="o">.</span><span class="n">output</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\t</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">headers</span><span class="p">))</span>
+    <span class="n">args</span><span class="o">.</span><span class="n">output</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+
+    <span class="c1"># create a slice of reads to process in each thread to avoid looping through</span>
+    <span class="c1"># bam n read times and reduce mp overhead</span>
+    <span class="n">ranges</span> <span class="o">=</span> <span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;inf&#39;</span><span class="p">))]</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">threads</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">pysam</span><span class="o">.</span><span class="n">AlignmentFile</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">bam</span><span class="p">)</span> <span class="k">as</span> <span class="n">bam</span><span class="p">:</span>
+            <span class="n">n_reads</span> <span class="o">=</span> <span class="n">bam</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="n">until_eof</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">n_reads_per_proc</span> <span class="o">=</span> <span class="n">ceil</span><span class="p">(</span><span class="n">n_reads</span> <span class="o">/</span> <span class="n">args</span><span class="o">.</span><span class="n">threads</span><span class="p">)</span>
+        <span class="n">ranges</span> <span class="o">=</span> <span class="p">[(</span><span class="n">start</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="n">start</span> <span class="o">+</span> <span class="n">n_reads_per_proc</span><span class="p">,</span> <span class="n">n_reads</span><span class="p">))</span>
+                   <span class="k">for</span> <span class="n">start</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">n_reads</span><span class="p">,</span> <span class="n">n_reads_per_proc</span><span class="p">)]</span>
+
+    <span class="n">func</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">_process_reads</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">bam</span><span class="p">,</span>
+                             <span class="n">all_alignments</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">all_alignments</span><span class="p">,</span>
+                             <span class="n">min_length</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">min_length</span><span class="p">,</span> <span class="n">bed_file</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">bed</span><span class="p">)</span>
+
+    <span class="n">counts</span> <span class="o">=</span> <span class="n">Counter</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">batch_counts</span><span class="p">,</span> <span class="n">results</span> <span class="ow">in</span> <span class="n">mapper</span><span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="n">ranges</span><span class="p">):</span>
+        <span class="n">counts</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">batch_counts</span><span class="p">)</span>
+        <span class="n">counts</span><span class="p">[</span><span class="s1">&#39;total&#39;</span><span class="p">]</span> <span class="o">+=</span> <span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">result</span> <span class="ow">in</span> <span class="n">results</span><span class="p">:</span>
+            <span class="n">out_row</span> <span class="o">=</span> <span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="n">x</span><span class="p">])</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">headers</span><span class="p">)</span>
+            <span class="n">args</span><span class="o">.</span><span class="n">output</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\t</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">out_row</span><span class="p">))</span>
+            <span class="n">args</span><span class="o">.</span><span class="n">output</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">pool</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">pool</span><span class="o">.</span><span class="n">shutdown</span><span class="p">(</span><span class="n">wait</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">counts</span><span class="p">[</span><span class="s1">&#39;total&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">args</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;No alignments processed. Check your bam and filtering options.</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+
+    <span class="n">args</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;Mapped/Unmapped/Short/Masked/Skipped(all matches masked): </span><span class="si">{total}</span><span class="s1">/</span><span class="si">{unmapped}</span><span class="s1">/</span><span class="si">{short}</span><span class="s1">/</span><span class="si">{masked}</span><span class="s1">/</span><span class="si">{all_matches_masked}</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format_map</span><span class="p">(</span><span class="n">counts</span><span class="p">))</span></div>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">main</span><span class="p">()</span>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &#169; Copyright 2017, Oxford Nanopore Technologies.
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

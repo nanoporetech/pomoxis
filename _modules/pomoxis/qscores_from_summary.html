@@ -1,0 +1,288 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <title>pomoxis.qscores_from_summary &mdash; Pomoxis 0.3.6 documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+
+  
+  
+
+  
+  
+
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> Pomoxis
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.3.6
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../programs.html">Pomoxis Programs</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../pomoxis.html">pomoxis package</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Pomoxis</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+        
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+          <li><a href="../pomoxis.html">pomoxis</a> &raquo;</li>
+        
+      <li>pomoxis.qscores_from_summary</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for pomoxis.qscores_from_summary</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">argparse</span>
+
+<span class="n">_field_name_map_</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;del&#39;</span><span class="p">:</span> <span class="s1">&#39;Q(del)&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;err_ont&#39;</span><span class="p">:</span> <span class="s1">&#39;Q(acc)&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;idel&#39;</span><span class="p">:</span> <span class="s1">&#39;Q(iden)&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;ins&#39;</span><span class="p">:</span> <span class="s1">&#39;Q(ins)&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;iden&#39;</span><span class="p">:</span> <span class="s1">&#39;Q(iden)&#39;</span><span class="p">,</span>
+<span class="p">}</span>
+
+<span class="n">_cols_</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">,</span> <span class="s1">&#39;ref&#39;</span><span class="p">,</span> <span class="s1">&#39;ref_cover&#39;</span><span class="p">,</span> <span class="s1">&#39;Q(acc)&#39;</span><span class="p">,</span> <span class="s1">&#39;Q(iden)&#39;</span><span class="p">,</span> <span class="s1">&#39;Q(del)&#39;</span><span class="p">,</span> <span class="s1">&#39;Q(ins)&#39;</span><span class="p">]</span>
+
+<span class="n">_format_str_</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\t</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="s1">&#39;{&#39;</span> <span class="o">+</span> <span class="n">c</span> <span class="o">+</span> <span class="s1">&#39;}&#39;</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">_cols_</span><span class="p">])</span>
+
+<span class="n">_median_col_ind_</span> <span class="o">=</span> <span class="p">{</span><span class="kc">True</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span> <span class="kc">False</span><span class="p">:</span> <span class="mi">1</span><span class="p">}</span>
+
+
+<div class="viewcode-block" id="get_ref_cover"><a class="viewcode-back" href="../../pomoxis.html#pomoxis.qscores_from_summary.get_ref_cover">[docs]</a><span class="k">def</span> <span class="nf">get_ref_cover</span><span class="p">(</span><span class="n">lines</span><span class="p">,</span> <span class="n">ref</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">:</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">l</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">s</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">ref</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">s</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="extract_vals"><a class="viewcode-back" href="../../pomoxis.html#pomoxis.qscores_from_summary.extract_vals">[docs]</a><span class="k">def</span> <span class="nf">extract_vals</span><span class="p">(</span><span class="n">vals</span><span class="p">,</span> <span class="n">name_map</span><span class="p">,</span> <span class="n">col_ind</span><span class="p">):</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">vals</span><span class="p">:</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="n">s</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">val</span> <span class="o">=</span> <span class="n">s</span><span class="p">[</span><span class="n">col_ind</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">name_map</span><span class="p">:</span>
+            <span class="n">results</span><span class="p">[</span><span class="n">name_map</span><span class="p">[</span><span class="n">name</span><span class="p">]]</span> <span class="o">=</span> <span class="n">val</span>
+    <span class="k">return</span> <span class="n">results</span></div>
+
+
+<div class="viewcode-block" id="main"><a class="viewcode-back" href="../../pomoxis.html#pomoxis.qscores_from_summary.main">[docs]</a><span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span>
+        <span class="n">description</span><span class="o">=</span><span class="s1">&#39;Extract Q scores from summary_from_stats output&#39;</span><span class="p">,</span>
+        <span class="n">formatter_class</span><span class="o">=</span><span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentDefaultsHelpFormatter</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;summaries&#39;</span><span class="p">,</span> <span class="n">nargs</span><span class="o">=</span><span class="s1">&#39;+&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;*summ.txt created by summary_from_stats&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--median&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Use median. If false, use mean.&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store_true&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--ref&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;process single ref, rather than overall result&#39;</span><span class="p">)</span>
+    <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+    <span class="n">qscore_from_summary</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">summaries</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">median</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">ref</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="qscore_from_summary"><a class="viewcode-back" href="../../pomoxis.html#pomoxis.qscores_from_summary.qscore_from_summary">[docs]</a><span class="k">def</span> <span class="nf">qscore_from_summary</span><span class="p">(</span><span class="n">summaries</span><span class="p">,</span> <span class="n">median</span><span class="p">,</span> <span class="n">ref</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">ref</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">match</span> <span class="o">=</span> <span class="s1">&#39;#  Q Scores&#39;</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">match</span> <span class="o">=</span> <span class="s1">&#39;# </span><span class="si">{}</span><span class="s1"> Q Scores&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">ref</span><span class="p">)</span>
+
+    <span class="n">col_ind</span> <span class="o">=</span> <span class="n">_median_col_ind_</span><span class="p">[</span><span class="n">median</span><span class="p">]</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\t</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">_cols_</span><span class="p">))</span>
+
+    <span class="n">results</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">summaries</span><span class="p">):</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">f</span><span class="p">)</span> <span class="k">as</span> <span class="n">fh</span><span class="p">:</span>
+            <span class="n">lines</span> <span class="o">=</span> <span class="p">[</span><span class="n">l</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">fh</span><span class="o">.</span><span class="n">readlines</span><span class="p">()]</span>
+        <span class="k">if</span> <span class="n">match</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="n">ind</span> <span class="o">=</span> <span class="n">lines</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">match</span><span class="p">)</span>
+        <span class="n">vals</span> <span class="o">=</span> <span class="n">lines</span><span class="p">[</span><span class="n">ind</span> <span class="o">+</span> <span class="mi">2</span><span class="p">:</span> <span class="n">ind</span> <span class="o">+</span> <span class="mi">7</span><span class="p">]</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">extract_vals</span><span class="p">(</span><span class="n">vals</span><span class="p">,</span> <span class="n">_field_name_map_</span><span class="p">,</span> <span class="n">col_ind</span><span class="p">)</span>
+        <span class="n">data</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">f</span>
+        <span class="k">if</span> <span class="n">ref</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">data</span><span class="p">[</span><span class="s1">&#39;ref_cover&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;NA&#39;</span>
+            <span class="n">data</span><span class="p">[</span><span class="s1">&#39;ref&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;all&#39;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">data</span><span class="p">[</span><span class="s1">&#39;ref_cover&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">get_ref_cover</span><span class="p">(</span><span class="n">lines</span><span class="p">,</span> <span class="n">ref</span><span class="p">)</span>
+            <span class="n">data</span><span class="p">[</span><span class="s1">&#39;ref&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ref</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">_format_str_</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="o">**</span><span class="n">data</span><span class="p">))</span>
+        <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">results</span></div>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">main</span><span class="p">()</span>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &#169; Copyright 2017, Oxford Nanopore Technologies.
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

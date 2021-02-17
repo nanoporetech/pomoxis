@@ -1,0 +1,366 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <title>pomoxis.common_errors_from_bam &mdash; Pomoxis 0.3.6 documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+
+  
+  
+
+  
+  
+
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> Pomoxis
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.3.6
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../programs.html">Pomoxis Programs</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../pomoxis.html">pomoxis package</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Pomoxis</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+        
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+          <li><a href="../pomoxis.html">pomoxis</a> &raquo;</li>
+        
+      <li>pomoxis.common_errors_from_bam</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for pomoxis.common_errors_from_bam</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">argparse</span>
+<span class="kn">import</span> <span class="nn">pysam</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">Counter</span>
+<span class="kn">from</span> <span class="nn">pomoxis.summary_from_stats</span> <span class="kn">import</span> <span class="n">qscore</span>
+<span class="kn">from</span> <span class="nn">pomoxis.stats_from_bam</span> <span class="kn">import</span> <span class="n">stats_from_aligned_read</span>
+
+
+<div class="viewcode-block" id="get_errors"><a class="viewcode-back" href="../../pomoxis.html#pomoxis.common_errors_from_bam.get_errors">[docs]</a><span class="k">def</span> <span class="nf">get_errors</span><span class="p">(</span><span class="n">aln</span><span class="p">,</span> <span class="n">ref_seq</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="n">seq</span> <span class="o">=</span> <span class="n">aln</span><span class="o">.</span><span class="n">query_sequence</span>
+    <span class="n">errors</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">insertions</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+    <span class="n">pairs</span> <span class="o">=</span> <span class="n">aln</span><span class="o">.</span><span class="n">get_aligned_pairs</span><span class="p">(</span><span class="n">with_seq</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">pairs</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">pairs</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;It does not look like bam is trimmed to a common alignment window&#39;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">qp</span><span class="p">,</span> <span class="n">rp</span><span class="p">,</span> <span class="n">rb</span> <span class="ow">in</span> <span class="n">pairs</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span>  <span class="c1"># process pairs in reverse to easily accumulate insertions</span>
+        <span class="k">if</span> <span class="n">qp</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># deletion</span>
+            <span class="n">errors</span><span class="p">[</span><span class="n">rp</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">rb</span><span class="p">,</span> <span class="s1">&#39;-&#39;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">rp</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># insertion</span>
+            <span class="n">insertions</span> <span class="o">+=</span> <span class="n">seq</span><span class="p">[</span><span class="n">qp</span><span class="p">]</span>
+        <span class="c1"># if we reach here, qp is not None and rp is not None</span>
+        <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">insertions</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="c1"># this also includes cases where the ref and query don&#39;t agree</span>
+            <span class="c1"># e.g. ref   A-TGC</span>
+            <span class="c1">#      query GTTGC  would emit, A -&gt; GT</span>
+            <span class="n">errors</span><span class="p">[</span><span class="n">rp</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">rb</span><span class="o">.</span><span class="n">upper</span><span class="p">(),</span> <span class="n">seq</span><span class="p">[</span><span class="n">qp</span><span class="p">]</span> <span class="o">+</span> <span class="n">insertions</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+            <span class="n">insertions</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+        <span class="k">elif</span> <span class="n">seq</span><span class="p">[</span><span class="n">qp</span><span class="p">]</span> <span class="o">!=</span> <span class="n">rb</span><span class="p">:</span>  <span class="c1"># mismatch</span>
+            <span class="n">errors</span><span class="p">[</span><span class="n">rp</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">rb</span><span class="o">.</span><span class="n">upper</span><span class="p">(),</span> <span class="n">seq</span><span class="p">[</span><span class="n">qp</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">ref_seq</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">rp</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="n">ref_seq</span><span class="p">[</span><span class="n">rp</span><span class="p">]</span> <span class="o">==</span> <span class="n">rb</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">ref_seq</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># check we can scuff up reference using errors and get back our query</span>
+        <span class="n">scuffed</span> <span class="o">=</span> <span class="n">scuff_ref</span><span class="p">(</span><span class="n">ref_seq</span><span class="p">,</span> <span class="n">errors</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">scuffed</span> <span class="o">==</span> <span class="n">aln</span><span class="o">.</span><span class="n">query_sequence</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Scuffing up reference with errors did not recreate query&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">errors</span></div>
+
+
+<div class="viewcode-block" id="count_errors"><a class="viewcode-back" href="../../pomoxis.html#pomoxis.common_errors_from_bam.count_errors">[docs]</a><span class="k">def</span> <span class="nf">count_errors</span><span class="p">(</span><span class="n">errors</span><span class="p">):</span>
+    <span class="n">counts</span> <span class="o">=</span> <span class="n">Counter</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">rp</span><span class="p">,</span> <span class="p">(</span><span class="n">ref</span><span class="p">,</span> <span class="n">query</span><span class="p">)</span> <span class="ow">in</span> <span class="n">errors</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">query</span> <span class="o">==</span> <span class="s1">&#39;-&#39;</span><span class="p">:</span>
+            <span class="n">counts</span><span class="p">[</span><span class="s1">&#39;del&#39;</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">elif</span> <span class="n">ref</span> <span class="o">!=</span> <span class="n">query</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+            <span class="n">counts</span><span class="p">[</span><span class="s1">&#39;sub&#39;</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">query</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">counts</span><span class="p">[</span><span class="s1">&#39;ins&#39;</span><span class="p">]</span> <span class="o">+=</span> <span class="nb">len</span><span class="p">(</span><span class="n">query</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+    <span class="k">return</span> <span class="n">counts</span></div>
+
+
+<div class="viewcode-block" id="scuff_ref"><a class="viewcode-back" href="../../pomoxis.html#pomoxis.common_errors_from_bam.scuff_ref">[docs]</a><span class="k">def</span> <span class="nf">scuff_ref</span><span class="p">(</span><span class="n">ref_seq</span><span class="p">,</span> <span class="n">errors</span><span class="p">):</span>
+    <span class="n">orig_seq</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">ref_seq</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">rp</span><span class="p">,</span> <span class="p">(</span><span class="n">rb</span><span class="p">,</span> <span class="n">alt</span><span class="p">)</span> <span class="ow">in</span> <span class="n">errors</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">assert</span> <span class="n">orig_seq</span><span class="p">[</span><span class="n">rp</span><span class="p">]</span> <span class="o">==</span> <span class="n">rb</span>
+        <span class="k">if</span> <span class="n">alt</span> <span class="o">==</span> <span class="s1">&#39;-&#39;</span><span class="p">:</span>
+            <span class="n">orig_seq</span><span class="p">[</span><span class="n">rp</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">orig_seq</span><span class="p">[</span><span class="n">rp</span><span class="p">]</span> <span class="o">=</span> <span class="n">alt</span>
+    <span class="k">return</span> <span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">orig_seq</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="get_qscores"><a class="viewcode-back" href="../../pomoxis.html#pomoxis.common_errors_from_bam.get_qscores">[docs]</a><span class="k">def</span> <span class="nf">get_qscores</span><span class="p">(</span><span class="n">counts</span><span class="p">,</span> <span class="n">ref_len</span><span class="p">):</span>
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s1">&#39;Q(acc)&#39;</span><span class="p">:</span> <span class="n">qscore</span><span class="p">(</span><span class="nb">sum</span><span class="p">(</span><span class="n">counts</span><span class="o">.</span><span class="n">values</span><span class="p">())</span> <span class="o">/</span> <span class="n">ref_len</span><span class="p">),</span>
+        <span class="s1">&#39;Q(iden)&#39;</span><span class="p">:</span> <span class="n">qscore</span><span class="p">(</span><span class="n">counts</span><span class="p">[</span><span class="s1">&#39;sub&#39;</span><span class="p">]</span> <span class="o">/</span> <span class="p">(</span><span class="n">ref_len</span> <span class="o">-</span> <span class="n">counts</span><span class="p">[</span><span class="s1">&#39;del&#39;</span><span class="p">])),</span>
+        <span class="s1">&#39;Q(ins)&#39;</span><span class="p">:</span> <span class="n">qscore</span><span class="p">(</span><span class="n">counts</span><span class="p">[</span><span class="s1">&#39;ins&#39;</span><span class="p">]</span> <span class="o">/</span> <span class="n">ref_len</span><span class="p">),</span>
+        <span class="s1">&#39;Q(del)&#39;</span><span class="p">:</span> <span class="n">qscore</span><span class="p">(</span><span class="n">counts</span><span class="p">[</span><span class="s1">&#39;del&#39;</span><span class="p">]</span> <span class="o">/</span> <span class="n">ref_len</span><span class="p">),</span>
+    <span class="p">}</span></div>
+
+
+<div class="viewcode-block" id="main"><a class="viewcode-back" href="../../pomoxis.html#pomoxis.common_errors_from_bam.main">[docs]</a><span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span>
+        <span class="n">prog</span><span class="o">=</span><span class="s1">&#39;common_errors_from_bam&#39;</span><span class="p">,</span>
+        <span class="n">description</span><span class="o">=</span><span class="s1">&#39;Get errors common to multiple assemblies aligned to ref.&#39;</span><span class="p">,</span>
+        <span class="n">formatter_class</span><span class="o">=</span><span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentDefaultsHelpFormatter</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;bam&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;input bam file containing assemblies trimmed to a common alignment window&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;ref_fasta&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;reference fasta file of the reference over that alignment window&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;-o&#39;</span><span class="p">,</span> <span class="s1">&#39;--output_prefix&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s1">&#39;common_errors&#39;</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Prefix for outputs.&#39;</span><span class="p">)</span>
+
+    <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+
+    <span class="n">bam</span> <span class="o">=</span> <span class="n">pysam</span><span class="o">.</span><span class="n">AlignmentFile</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">bam</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">bam</span><span class="o">.</span><span class="n">references</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Bam should have just one reference&#39;</span><span class="p">)</span>
+    <span class="n">ref_lengths</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">bam</span><span class="o">.</span><span class="n">references</span><span class="p">,</span> <span class="n">bam</span><span class="o">.</span><span class="n">lengths</span><span class="p">))</span>
+
+    <span class="n">ref_seq</span> <span class="o">=</span> <span class="n">pysam</span><span class="o">.</span><span class="n">FastaFile</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">ref_fasta</span><span class="p">)</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="n">bam</span><span class="o">.</span><span class="n">references</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+    <span class="c1"># reads should already be trimmed to a common aligment start and end point</span>
+    <span class="n">reads</span> <span class="o">=</span> <span class="p">[</span><span class="n">r</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">bam</span><span class="p">]</span>
+    <span class="n">ref_end</span><span class="p">,</span> <span class="n">ref_start</span> <span class="o">=</span> <span class="n">reads</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">reference_end</span><span class="p">,</span> <span class="n">reads</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">reference_start</span>
+    <span class="n">ref_len</span> <span class="o">=</span> <span class="n">ref_end</span> <span class="o">-</span> <span class="n">ref_start</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="nb">all</span><span class="p">([</span><span class="n">r</span><span class="o">.</span><span class="n">reference_end</span> <span class="o">==</span> <span class="n">ref_end</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">reads</span><span class="p">])</span> <span class="ow">and</span>
+            <span class="nb">all</span><span class="p">([</span><span class="n">r</span><span class="o">.</span><span class="n">reference_start</span> <span class="o">==</span> <span class="n">ref_start</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">reads</span><span class="p">])):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Alignments have not been trimmed to a common overlap window, try trim_alignments&#39;</span><span class="p">)</span>
+
+    <span class="c1"># get errors in each read</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">qscores</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">aln</span> <span class="ow">in</span> <span class="n">reads</span><span class="p">:</span>
+        <span class="n">errors</span> <span class="o">=</span> <span class="n">get_errors</span><span class="p">(</span><span class="n">aln</span><span class="p">,</span> <span class="n">ref_seq</span><span class="p">)</span>
+        <span class="n">counts</span> <span class="o">=</span> <span class="n">count_errors</span><span class="p">(</span><span class="n">errors</span><span class="p">)</span>
+        <span class="c1"># check we got the same error counts as stats_from_aligned_read</span>
+        <span class="n">stats</span> <span class="o">=</span> <span class="n">stats_from_aligned_read</span><span class="p">(</span><span class="n">aln</span><span class="p">,</span> <span class="nb">list</span><span class="p">(</span><span class="n">ref_lengths</span><span class="o">.</span><span class="n">keys</span><span class="p">()),</span> <span class="nb">list</span><span class="p">(</span><span class="n">ref_lengths</span><span class="o">.</span><span class="n">values</span><span class="p">()))</span>
+        <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">counts</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">stats</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">!=</span> <span class="n">counts</span><span class="p">[</span><span class="n">k</span><span class="p">]:</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;Error counts </span><span class="si">{}</span><span class="s2"> don&#39;t match those from the CIGAR str </span><span class="si">{}</span><span class="s2">.&quot;</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">counts</span><span class="p">,</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">stats</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">counts</span><span class="o">.</span><span class="n">keys</span><span class="p">()}))</span>
+        <span class="n">qscores</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">aln</span><span class="o">.</span><span class="n">query_name</span><span class="p">,</span> <span class="n">get_qscores</span><span class="p">(</span><span class="n">counts</span><span class="p">,</span> <span class="n">ref_len</span><span class="p">)))</span>
+        <span class="n">data</span><span class="p">[</span><span class="n">aln</span><span class="o">.</span><span class="n">query_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">errors</span>
+
+    <span class="c1"># get intersection of errors</span>
+    <span class="n">names</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+    <span class="n">common_errors</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="n">names</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>  <span class="c1"># set of reference positions</span>
+    <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">names</span><span class="p">[</span><span class="mi">1</span><span class="p">:]:</span>
+        <span class="n">common_errors</span> <span class="o">=</span> <span class="n">common_errors</span><span class="o">.</span><span class="n">intersection</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">()))</span>
+    <span class="n">remaining_errors</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="c1"># loop through common errors, checking ref is the same and retaining the</span>
+    <span class="c1"># error with the shortest edit distance</span>
+    <span class="k">for</span> <span class="n">rp</span> <span class="ow">in</span> <span class="n">common_errors</span><span class="p">:</span>
+        <span class="n">ref</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">names</span><span class="p">[</span><span class="mi">0</span><span class="p">]][</span><span class="n">rp</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">assert</span> <span class="nb">all</span><span class="p">([</span><span class="n">d</span><span class="p">[</span><span class="n">rp</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">ref</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">values</span><span class="p">()])</span>  <span class="c1"># refs should be same</span>
+        <span class="n">alts</span> <span class="o">=</span> <span class="p">[</span><span class="n">d</span><span class="p">[</span><span class="n">rp</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">values</span><span class="p">()]</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nb">set</span><span class="p">([</span><span class="nb">len</span><span class="p">(</span><span class="n">alt</span><span class="p">)</span> <span class="k">for</span> <span class="n">alt</span> <span class="ow">in</span> <span class="n">alts</span><span class="p">]))</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="c1"># we should take the best one</span>
+            <span class="n">alts</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">alts</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
+            <span class="n">shortest</span> <span class="o">=</span> <span class="n">alts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">others</span> <span class="o">=</span> <span class="n">alts</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+            <span class="k">if</span> <span class="n">shortest</span> <span class="o">==</span> <span class="s1">&#39;-&#39;</span> <span class="ow">and</span> <span class="nb">any</span><span class="p">([</span><span class="n">alt</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">ref</span> <span class="k">for</span> <span class="n">alt</span> <span class="ow">in</span> <span class="n">others</span><span class="p">]):</span>
+                <span class="c1"># the alt with the insertion contained the ref,</span>
+                <span class="c1"># and the alt with the deletion did not contain the insertion</span>
+                <span class="c1"># so two wrongs make a right!</span>
+                <span class="k">continue</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">remaining_errors</span><span class="p">[</span><span class="n">rp</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">ref</span><span class="p">,</span> <span class="n">shortest</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>  <span class="c1"># pick most common, arbitrary for equal numbers</span>
+            <span class="n">remaining_errors</span><span class="p">[</span><span class="n">rp</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">ref</span><span class="p">,</span> <span class="n">Counter</span><span class="p">(</span><span class="n">alts</span><span class="p">)</span><span class="o">.</span><span class="n">most_common</span><span class="p">()[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">])</span>
+
+    <span class="c1"># write fasta of ref scuffed with just common errors</span>
+    <span class="n">ref_scuffed</span> <span class="o">=</span> <span class="n">scuff_ref</span><span class="p">(</span><span class="n">ref_seq</span><span class="p">,</span> <span class="n">remaining_errors</span><span class="p">)</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1">.fasta&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">output_prefix</span><span class="p">),</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fh</span><span class="p">:</span>
+        <span class="n">fh</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;&gt;</span><span class="si">{}</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">output_prefix</span><span class="p">))</span>
+        <span class="n">fh</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">ref_scuffed</span><span class="p">)</span>
+
+    <span class="n">remaining_counts</span> <span class="o">=</span> <span class="n">count_errors</span><span class="p">(</span><span class="n">remaining_errors</span><span class="p">)</span>
+    <span class="n">qscores</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s1">&#39;common_errors&#39;</span><span class="p">,</span> <span class="n">get_qscores</span><span class="p">(</span><span class="n">remaining_counts</span><span class="p">,</span> <span class="n">ref_len</span><span class="p">)))</span>
+
+    <span class="c1"># print qscores of individual reads and overlapping errors</span>
+    <span class="n">cols</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;Q(acc)&#39;</span><span class="p">,</span> <span class="s1">&#39;Q(iden)&#39;</span><span class="p">,</span> <span class="s1">&#39;Q(del)&#39;</span><span class="p">,</span> <span class="s1">&#39;Q(ins)&#39;</span><span class="p">]</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1">.txt&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">output_prefix</span><span class="p">),</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fh</span><span class="p">:</span>
+        <span class="n">fh</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\t</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="s1">&#39;name&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="n">cols</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">qscores</span><span class="p">:</span>
+            <span class="n">fh</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\t</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">name</span><span class="p">]</span> <span class="o">+</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">d</span><span class="p">[</span><span class="n">c</span><span class="p">])</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">cols</span><span class="p">])</span> <span class="o">+</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span></div>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">main</span><span class="p">()</span>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &#169; Copyright 2017, Oxford Nanopore Technologies.
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

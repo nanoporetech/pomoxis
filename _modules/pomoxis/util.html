@@ -1,0 +1,623 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <title>pomoxis.util &mdash; Pomoxis 0.3.6 documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+
+  
+  
+
+  
+  
+
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> Pomoxis
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.3.6
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../programs.html">Pomoxis Programs</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../pomoxis.html">pomoxis package</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Pomoxis</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+        
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+          <li><a href="../pomoxis.html">pomoxis</a> &raquo;</li>
+        
+      <li>pomoxis.util</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for pomoxis.util</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">argparse</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">namedtuple</span><span class="p">,</span> <span class="n">defaultdict</span>
+<span class="kn">import</span> <span class="nn">itertools</span>
+<span class="kn">import</span> <span class="nn">shutil</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+
+<span class="kn">import</span> <span class="nn">intervaltree</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">pysam</span>
+
+<span class="n">Region</span> <span class="o">=</span> <span class="n">namedtuple</span><span class="p">(</span><span class="s1">&#39;Region&#39;</span><span class="p">,</span> <span class="s1">&#39;ref_name start end&#39;</span><span class="p">)</span>
+<span class="n">AlignPos</span> <span class="o">=</span> <span class="n">namedtuple</span><span class="p">(</span><span class="s1">&#39;AlignPos&#39;</span><span class="p">,</span> <span class="p">(</span><span class="s1">&#39;qpos&#39;</span><span class="p">,</span> <span class="s1">&#39;qbase&#39;</span><span class="p">,</span> <span class="s1">&#39;rpos&#39;</span><span class="p">,</span> <span class="s1">&#39;rbase&#39;</span><span class="p">))</span>
+
+
+<div class="viewcode-block" id="FastxWrite"><a class="viewcode-back" href="../../pomoxis.html#pomoxis.util.FastxWrite">[docs]</a><span class="k">class</span> <span class="nc">FastxWrite</span><span class="p">:</span>
+    <span class="k">def</span>  <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fname</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;w&#39;</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="mi">80</span><span class="p">,</span> <span class="n">force_q</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">mock_q</span><span class="o">=</span><span class="mi">10</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fname</span> <span class="o">=</span> <span class="n">fname</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mode</span> <span class="o">=</span> <span class="n">mode</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">width</span> <span class="o">=</span> <span class="n">width</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">force_q</span> <span class="o">=</span> <span class="n">force_q</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mock_q</span> <span class="o">=</span> <span class="nb">chr</span><span class="p">(</span><span class="mi">33</span> <span class="o">+</span> <span class="n">mock_q</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">aq</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span> <span class="fm">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">fname</span> <span class="o">==</span> <span class="s1">&#39;-&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fh</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fh</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">fname</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">mode</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="k">def</span> <span class="fm">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">type</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">traceback</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">fname</span> <span class="o">!=</span> <span class="s1">&#39;-&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fh</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+<div class="viewcode-block" id="FastxWrite.write"><a class="viewcode-back" href="../../pomoxis.html#pomoxis.util.FastxWrite.write">[docs]</a>    <span class="k">def</span> <span class="nf">write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">seq</span><span class="p">,</span> <span class="n">qual</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">comment</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">comment</span> <span class="o">!=</span> <span class="s1">&#39;&#39;</span><span class="p">:</span>
+            <span class="n">comment</span> <span class="o">=</span> <span class="s1">&#39; </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">comment</span><span class="p">)</span>
+        <span class="k">if</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">aq</span> <span class="o">==</span> <span class="s1">&#39;a&#39;</span> <span class="ow">and</span> <span class="n">qual</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> \
+                <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">aq</span> <span class="o">==</span> <span class="s1">&#39;q&#39;</span> <span class="ow">and</span> <span class="n">qual</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Type of records changed whilst writing.&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">qual</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">force_q</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">qual</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">qual</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mock_q</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">seq</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">aq</span> <span class="o">=</span> <span class="s1">&#39;q&#39;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fh</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;@</span><span class="si">{}{}</span><span class="se">\n</span><span class="si">{}</span><span class="se">\n</span><span class="s2">+</span><span class="se">\n</span><span class="si">{}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">comment</span><span class="p">,</span> <span class="n">seq</span><span class="p">,</span> <span class="n">qual</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">aq</span> <span class="o">=</span> <span class="s1">&#39;a&#39;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fh</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;&gt;</span><span class="si">{}{}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">comment</span><span class="p">))</span>
+            <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">chunks</span><span class="p">(</span><span class="n">seq</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">width</span><span class="p">)):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">fh</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{}</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">chunk</span><span class="p">)))</span></div></div>
+
+
+<div class="viewcode-block" id="chunks"><a class="viewcode-back" href="../../pomoxis.html#pomoxis.util.chunks">[docs]</a><span class="k">def</span> <span class="nf">chunks</span><span class="p">(</span><span class="n">iterable</span><span class="p">,</span> <span class="n">n</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Generate fixed length chunks of an interable.</span>
+
+<span class="sd">    :param iterable: input sequence.</span>
+<span class="sd">    :param n: chunk size.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">it</span> <span class="o">=</span> <span class="nb">iter</span><span class="p">(</span><span class="n">iterable</span><span class="p">)</span>
+    <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="n">chunk_it</span> <span class="o">=</span> <span class="n">itertools</span><span class="o">.</span><span class="n">islice</span><span class="p">(</span><span class="n">it</span><span class="p">,</span> <span class="n">n</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">first_el</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">chunk_it</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">StopIteration</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="k">yield</span> <span class="n">itertools</span><span class="o">.</span><span class="n">chain</span><span class="p">((</span><span class="n">first_el</span><span class="p">,),</span> <span class="n">chunk_it</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="cat"><a class="viewcode-back" href="../../pomoxis.html#pomoxis.util.cat">[docs]</a><span class="k">def</span> <span class="nf">cat</span><span class="p">(</span><span class="n">files</span><span class="p">,</span> <span class="n">output</span><span class="p">,</span> <span class="n">chunks</span><span class="o">=</span><span class="mi">1024</span><span class="o">*</span><span class="mi">1024</span><span class="o">*</span><span class="mi">10</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Concatenate a set of files.</span>
+
+<span class="sd">    :param files: input filenames.</span>
+<span class="sd">    :param output: output filenames.</span>
+<span class="sd">    :param chunks: buffersize for filecopy.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="s1">&#39;wb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">wfd</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">files</span><span class="p">:</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fd</span><span class="p">:</span>
+                <span class="n">shutil</span><span class="o">.</span><span class="n">copyfileobj</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="n">wfd</span><span class="p">,</span> <span class="n">chunks</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="split_fastx"><a class="viewcode-back" href="../../pomoxis.html#pomoxis.util.split_fastx">[docs]</a><span class="k">def</span> <span class="nf">split_fastx</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">output</span><span class="p">,</span> <span class="n">chunksize</span><span class="o">=</span><span class="mi">10000</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Split records in a fasta/q into fixed lengths.</span>
+
+<span class="sd">    :param fname: input filename.</span>
+<span class="sd">    :param output: output filename.</span>
+<span class="sd">    :param chunksize: (maximum) length of output records.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">with</span> <span class="n">FastxWrite</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fout</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">pysam</span><span class="o">.</span><span class="n">FastxFile</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">persist</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="k">as</span> <span class="n">fin</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">rec</span> <span class="ow">in</span> <span class="n">fin</span><span class="p">:</span>
+                <span class="n">name</span> <span class="o">=</span> <span class="n">rec</span><span class="o">.</span><span class="n">name</span>
+                <span class="n">seq</span> <span class="o">=</span> <span class="n">rec</span><span class="o">.</span><span class="n">sequence</span>
+                <span class="n">qual</span> <span class="o">=</span> <span class="n">rec</span><span class="o">.</span><span class="n">quality</span>
+                <span class="k">if</span> <span class="n">rec</span><span class="o">.</span><span class="n">comment</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">comment</span> <span class="o">=</span> <span class="s1">&#39;chunk_length=</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">chunksize</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">comment</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">{}</span><span class="s1"> chunk_length=</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">rec</span><span class="o">.</span><span class="n">comment</span><span class="p">,</span> <span class="n">chunksize</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">qual</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">s</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">chunks</span><span class="p">(</span><span class="n">seq</span><span class="p">,</span> <span class="n">chunksize</span><span class="p">)):</span>
+                        <span class="n">chunk_name</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">{}</span><span class="s1">_chunk</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span>
+                        <span class="n">fout</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">chunk_name</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">comment</span><span class="o">=</span><span class="n">comment</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">q</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">chunks</span><span class="p">(</span><span class="n">seq</span><span class="p">,</span> <span class="n">chunksize</span><span class="p">),</span> <span class="n">chunks</span><span class="p">(</span><span class="n">qual</span><span class="p">,</span> <span class="n">chunksize</span><span class="p">))):</span>
+                        <span class="n">chunk_name</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">{}</span><span class="s1">_chunk</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span>
+                        <span class="n">fout</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">chunk_name</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">q</span><span class="p">,</span> <span class="n">comment</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="split_fastx_cmdline"><a class="viewcode-back" href="../../pomoxis.html#pomoxis.util.split_fastx_cmdline">[docs]</a><span class="k">def</span> <span class="nf">split_fastx_cmdline</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;Split records in a fasta/q file into chunks of a maximum size.&quot;&quot;&quot;</span>
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span>
+        <span class="n">prog</span><span class="o">=</span><span class="s1">&#39;split_fastx&#39;</span><span class="p">,</span>
+        <span class="n">description</span><span class="o">=</span><span class="s1">&#39;Split records in a fasta/q file into chunks of a maximum size.&#39;</span><span class="p">,</span>
+        <span class="n">formatter_class</span><span class="o">=</span><span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentDefaultsHelpFormatter</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;input&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Input fastax/q file.&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;output&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Output fastax/q file.&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;chunksize&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Maximum size of output sequences.&#39;</span><span class="p">)</span>
+    <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+    <span class="n">split_fastx</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">input</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">output</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">chunksize</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="fast_convert"><a class="viewcode-back" href="../../pomoxis.html#pomoxis.util.fast_convert">[docs]</a><span class="k">def</span> <span class="nf">fast_convert</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;Convert between fasta&lt;-&gt;fastq.&quot;&quot;&quot;</span>
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span>
+        <span class="n">prog</span><span class="o">=</span><span class="s1">&#39;fast_convert&#39;</span><span class="p">,</span>
+        <span class="n">description</span><span class="o">=</span><span class="s1">&#39;Convert between fasta&lt;-&gt;fastq.&#39;</span><span class="p">,</span>
+        <span class="n">formatter_class</span><span class="o">=</span><span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentDefaultsHelpFormatter</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;convert&#39;</span><span class="p">,</span> <span class="n">choices</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;qq&#39;</span><span class="p">,</span> <span class="s1">&#39;aa&#39;</span><span class="p">,</span> <span class="s1">&#39;aq&#39;</span><span class="p">,</span> <span class="s1">&#39;qa&#39;</span><span class="p">],</span>
+        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Conversion code: from-&gt;to.&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--discard_q&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store_true&#39;</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Discard quality information from fastq, use with --mock_q.&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--mock_q&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Mock quality value, valid for convert=aq|qq.&#39;</span><span class="p">)</span>
+    <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+
+    <span class="n">in_fmt</span> <span class="o">=</span> <span class="s1">&#39;fastq&#39;</span>
+    <span class="n">out_fmt</span><span class="o">=</span> <span class="s1">&#39;fasta&#39;</span>
+    <span class="n">qflag</span> <span class="o">=</span> <span class="kc">False</span> <span class="c1"># controls quality manipulation</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">convert</span> <span class="o">==</span> <span class="s1">&#39;qq&#39;</span><span class="p">:</span>
+        <span class="n">out_fmt</span> <span class="o">=</span> <span class="s1">&#39;fastq&#39;</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">discard_q</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">qflag</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="k">elif</span> <span class="n">args</span><span class="o">.</span><span class="n">convert</span> <span class="o">==</span> <span class="s1">&#39;aa&#39;</span><span class="p">:</span>
+        <span class="n">in_fmt</span> <span class="o">=</span> <span class="s1">&#39;fasta&#39;</span>
+    <span class="k">elif</span> <span class="n">args</span><span class="o">.</span><span class="n">convert</span> <span class="o">==</span> <span class="s1">&#39;aq&#39;</span><span class="p">:</span>
+        <span class="n">in_fmt</span> <span class="o">=</span> <span class="s1">&#39;fasta&#39;</span>
+        <span class="n">out_fmt</span> <span class="o">=</span> <span class="s1">&#39;fastq&#39;</span>
+        <span class="n">qflag</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="k">elif</span> <span class="n">args</span><span class="o">.</span><span class="n">convert</span> <span class="o">==</span> <span class="s1">&#39;qa&#39;</span><span class="p">:</span>
+        <span class="k">pass</span> <span class="c1"># default</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;convert must be &#39;qq&#39;, &#39;aq&#39;, &#39;qa&#39;, or &#39;aa&#39;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">with</span> <span class="n">FastxWrite</span><span class="p">(</span><span class="s1">&#39;-&#39;</span><span class="p">,</span> <span class="n">force_q</span><span class="o">=</span><span class="n">out_fmt</span><span class="o">==</span><span class="s1">&#39;fastq&#39;</span><span class="p">,</span> <span class="n">mock_q</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">mock_q</span><span class="p">)</span> <span class="k">as</span> <span class="n">fh_out</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">pysam</span><span class="o">.</span><span class="n">FastxFile</span><span class="p">(</span><span class="s1">&#39;-&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fh_in</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">rec</span> <span class="ow">in</span> <span class="n">fh_in</span><span class="p">:</span>
+                <span class="n">qual</span> <span class="o">=</span> <span class="n">rec</span><span class="o">.</span><span class="n">quality</span>
+                <span class="k">if</span> <span class="n">qflag</span> <span class="ow">and</span> <span class="p">(</span><span class="n">in_fmt</span><span class="o">==</span><span class="s1">&#39;fasta&#39;</span> <span class="ow">or</span> <span class="n">args</span><span class="o">.</span><span class="n">discard_q</span><span class="p">):</span>
+                    <span class="n">qual</span> <span class="o">=</span> <span class="nb">chr</span><span class="p">(</span><span class="mi">33</span> <span class="o">+</span> <span class="n">args</span><span class="o">.</span><span class="n">mock_q</span><span class="p">)</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">rec</span><span class="o">.</span><span class="n">sequence</span><span class="p">)</span>
+                <span class="n">fh_out</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">rec</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">rec</span><span class="o">.</span><span class="n">sequence</span><span class="p">,</span> <span class="n">qual</span><span class="p">,</span> <span class="n">rec</span><span class="o">.</span><span class="n">comment</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="extract_long_reads"><a class="viewcode-back" href="../../pomoxis.html#pomoxis.util.extract_long_reads">[docs]</a><span class="k">def</span> <span class="nf">extract_long_reads</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;Filter fastq to longest reads.&quot;&quot;&quot;</span>
+
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s1">&#39;Extract longest reads from a fastq.&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;input&#39;</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Input .fasta/q file.&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;output&#39;</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Output .fasta file.&#39;</span><span class="p">)</span>
+    <span class="n">filt</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">add_mutually_exclusive_group</span><span class="p">(</span><span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">filt</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--longest&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Percentage of longest reads to partition.&#39;</span><span class="p">)</span>
+    <span class="n">filt</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--bases&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Maximum number of bases (subject to at least one read.)&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--others&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Write all other reads to file.&#39;</span><span class="p">)</span>
+    <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+
+    <span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;Loading reads...</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">record_dict</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">rec</span> <span class="ow">in</span> <span class="n">pysam</span><span class="o">.</span><span class="n">FastxFile</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">input</span><span class="p">):</span>
+        <span class="n">record_dict</span><span class="p">[</span><span class="n">rec</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">rec</span><span class="o">.</span><span class="n">sequence</span><span class="p">,</span> <span class="n">rec</span><span class="o">.</span><span class="n">quality</span><span class="p">,</span> <span class="n">rec</span><span class="o">.</span><span class="n">comment</span><span class="p">)</span>
+
+    <span class="n">ids</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">record_dict</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+    <span class="n">lengths</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fromiter</span><span class="p">(</span>
+        <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">record_dict</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">0</span><span class="p">])</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">ids</span><span class="p">),</span>
+        <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">count</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">ids</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;Sorting reads...</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">bases</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># partial sort will do fine here</span>
+        <span class="n">max_reads</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">ids</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">longest</span> <span class="o">/</span> <span class="mi">100</span><span class="p">))</span>
+        <span class="n">longest</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argpartition</span><span class="p">(</span><span class="n">lengths</span><span class="p">,</span> <span class="o">-</span><span class="n">max_reads</span><span class="p">)[</span><span class="o">-</span><span class="n">max_reads</span><span class="p">:]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># need a full sort</span>
+        <span class="n">order</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">lengths</span><span class="p">)[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">cumsum</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">last</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">order</span><span class="p">,</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="n">cumsum</span> <span class="o">+=</span> <span class="n">lengths</span><span class="p">[</span><span class="n">j</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">cumsum</span> <span class="o">&gt;</span> <span class="n">args</span><span class="o">.</span><span class="n">bases</span><span class="p">:</span>
+                <span class="k">break</span>
+            <span class="n">last</span> <span class="o">=</span> <span class="n">i</span>
+        <span class="n">longest</span> <span class="o">=</span> <span class="n">order</span><span class="p">[:</span><span class="n">last</span><span class="p">]</span>
+
+    <span class="k">with</span> <span class="n">FastxWrite</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">output</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">out</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">longest</span><span class="p">:</span>
+            <span class="n">name</span> <span class="o">=</span> <span class="n">ids</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="n">rec</span> <span class="o">=</span> <span class="n">record_dict</span><span class="p">[</span><span class="n">ids</span><span class="p">[</span><span class="n">i</span><span class="p">]]</span>
+            <span class="n">out</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="o">*</span><span class="n">rec</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="parse_regions"><a class="viewcode-back" href="../../pomoxis.html#pomoxis.util.parse_regions">[docs]</a><span class="k">def</span> <span class="nf">parse_regions</span><span class="p">(</span><span class="n">regions</span><span class="p">,</span> <span class="n">ref_lengths</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Parse region strings into `Region` objects.</span>
+
+<span class="sd">    :param regions: iterable of str</span>
+<span class="sd">    :param ref_lengths: {str ref_names: int ref_lengths}, if provided Region.end</span>
+<span class="sd">        will default to the reference length instead of None.</span>
+
+<span class="sd">    &gt;&gt;&gt; parse_regions([&#39;Ecoli&#39;])[0]</span>
+<span class="sd">    Region(ref_name=&#39;Ecoli&#39;, start=0, end=None)</span>
+<span class="sd">    &gt;&gt;&gt; parse_regions([&#39;Ecoli:1000-2000&#39;])[0]</span>
+<span class="sd">    Region(ref_name=&#39;Ecoli&#39;, start=1000, end=2000)</span>
+<span class="sd">    &gt;&gt;&gt; parse_regions([&#39;Ecoli:-1000&#39;])[0]</span>
+<span class="sd">    Region(ref_name=&#39;Ecoli&#39;, start=0, end=1000)</span>
+<span class="sd">    &gt;&gt;&gt; parse_regions([&#39;Ecoli:500-&#39;])[0]</span>
+<span class="sd">    Region(ref_name=&#39;Ecoli&#39;, start=500, end=None)</span>
+<span class="sd">    &gt;&gt;&gt; parse_regions([&#39;Ecoli&#39;], ref_lengths={&#39;Ecoli&#39;:4800000})[0]</span>
+<span class="sd">    Region(ref_name=&#39;Ecoli&#39;, start=0, end=4800000)</span>
+<span class="sd">    &gt;&gt;&gt; parse_regions([&#39;NC_000921.1:10000-20000&#39;])[0]</span>
+<span class="sd">    Region(ref_name=&#39;NC_000921.1&#39;, start=10000, end=20000)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">_get_end</span><span class="p">(</span><span class="n">end</span><span class="p">,</span> <span class="n">ref_name</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">end</span> <span class="k">if</span> <span class="n">end</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">(</span>
+            <span class="n">ref_lengths</span><span class="p">[</span><span class="n">ref_name</span><span class="p">]</span> <span class="k">if</span> <span class="n">ref_lengths</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="p">)</span>
+
+    <span class="n">decoded</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">region</span> <span class="ow">in</span> <span class="n">regions</span><span class="p">:</span>
+        <span class="k">if</span> <span class="s1">&#39;:&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">region</span><span class="p">:</span>
+            <span class="n">ref_name</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span> <span class="o">=</span> <span class="n">region</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="kc">None</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">start</span><span class="p">,</span> <span class="n">end</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="kc">None</span>
+            <span class="n">ref_name</span><span class="p">,</span> <span class="n">bounds</span> <span class="o">=</span> <span class="n">region</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;:&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">bounds</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;-&#39;</span><span class="p">:</span>
+                <span class="n">start</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="n">end</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">bounds</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span>
+            <span class="k">elif</span> <span class="n">bounds</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;-&#39;</span><span class="p">:</span>
+                <span class="n">start</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">bounds</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+                <span class="n">end</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">start</span><span class="p">,</span> <span class="n">end</span> <span class="o">=</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">b</span><span class="p">)</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">bounds</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;-&#39;</span><span class="p">)]</span>
+        <span class="n">decoded</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Region</span><span class="p">(</span><span class="n">ref_name</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">_get_end</span><span class="p">(</span><span class="n">end</span><span class="p">,</span> <span class="n">ref_name</span><span class="p">)))</span>
+    <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">decoded</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="SeqLen"><a class="viewcode-back" href="../../pomoxis.html#pomoxis.util.SeqLen">[docs]</a><span class="k">class</span> <span class="nc">SeqLen</span><span class="p">(</span><span class="n">argparse</span><span class="o">.</span><span class="n">Action</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Parse a sequence length from str such as 4.8mb or from fastx.&quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parser</span><span class="p">,</span> <span class="n">namespace</span><span class="p">,</span> <span class="n">values</span><span class="p">,</span> <span class="n">option_string</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">seq_len</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">seq_len</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">values</span><span class="p">)</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="n">suffixes</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s1">&#39;kb&#39;</span><span class="p">:</span> <span class="mi">10</span> <span class="o">**</span> <span class="mi">3</span><span class="p">,</span>
+                <span class="s1">&#39;mb&#39;</span><span class="p">:</span> <span class="mi">10</span> <span class="o">**</span> <span class="mi">6</span><span class="p">,</span>
+                <span class="s1">&#39;gb&#39;</span><span class="p">:</span> <span class="mi">10</span> <span class="o">**</span> <span class="mi">9</span><span class="p">,</span>
+            <span class="p">}</span>
+            <span class="k">for</span> <span class="n">suffix</span><span class="p">,</span> <span class="n">multiplier</span> <span class="ow">in</span> <span class="n">suffixes</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">suffix</span> <span class="ow">in</span> <span class="n">values</span><span class="o">.</span><span class="n">lower</span><span class="p">():</span>
+                    <span class="n">seq_len</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">multiplier</span> <span class="o">*</span> <span class="nb">float</span><span class="p">(</span><span class="n">values</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">suffix</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)))</span>
+                    <span class="k">break</span>
+            <span class="k">if</span> <span class="n">seq_len</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">seq_len</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">get_seq_lens</span><span class="p">(</span><span class="n">values</span><span class="p">))</span>
+                <span class="k">except</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Could not get sequence length from </span><span class="si">{}</span><span class="s1">.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">values</span><span class="p">))</span>
+
+        <span class="nb">setattr</span><span class="p">(</span><span class="n">namespace</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dest</span><span class="p">,</span> <span class="n">seq_len</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="get_seq_lens"><a class="viewcode-back" href="../../pomoxis.html#pomoxis.util.get_seq_lens">[docs]</a><span class="k">def</span> <span class="nf">get_seq_lens</span><span class="p">(</span><span class="n">fastx</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Get sequence lengths from fastx file&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">sequence</span><span class="p">)</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">pysam</span><span class="o">.</span><span class="n">FastxFile</span><span class="p">(</span><span class="n">fastx</span><span class="p">)]</span></div>
+
+
+<div class="viewcode-block" id="coverage_from_fastx"><a class="viewcode-back" href="../../pomoxis.html#pomoxis.util.coverage_from_fastx">[docs]</a><span class="k">def</span> <span class="nf">coverage_from_fastx</span><span class="p">():</span>
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span>
+        <span class="n">prog</span><span class="o">=</span><span class="s1">&#39;coverage_from_fastx&#39;</span><span class="p">,</span>
+        <span class="n">description</span><span class="o">=</span><span class="s1">&#39;Estimate coverage from summed basecall and reference lengths&#39;</span><span class="p">,</span>
+        <span class="n">formatter_class</span><span class="o">=</span><span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentDefaultsHelpFormatter</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;basecalls&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;input fastx file.&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;ref_len&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="n">SeqLen</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;reference length (e.g. 4.8kb/mb/gb) or reference fastx from which to calculate length.&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--coverage&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Calculate fraction of reads required for this coverage.&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--longest&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store_true&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Use the longest reads when calculating fraction reads required for a given coverage.&#39;</span><span class="p">)</span>
+
+    <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+
+    <span class="n">basecall_lens</span> <span class="o">=</span> <span class="n">get_seq_lens</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">basecalls</span><span class="p">)</span>
+    <span class="n">total_basecalls_len</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">basecall_lens</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Total length of basecalls: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">total_basecalls_len</span><span class="p">))</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Total ref length: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">ref_len</span><span class="p">))</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Estimated coverage: </span><span class="si">{:.2f}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">total_basecalls_len</span> <span class="o">/</span> <span class="n">args</span><span class="o">.</span><span class="n">ref_len</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">coverage</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">longest</span><span class="p">:</span>
+            <span class="n">basecall_lens</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">cum_len</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">basecall_lens</span><span class="p">)</span>
+            <span class="n">required_len</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">coverage</span> <span class="o">*</span> <span class="n">args</span><span class="o">.</span><span class="n">ref_len</span>
+            <span class="n">n_required</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">searchsorted</span><span class="p">(</span><span class="n">cum_len</span><span class="p">,</span> <span class="n">required_len</span><span class="p">,</span> <span class="n">side</span><span class="o">=</span><span class="s1">&#39;right&#39;</span><span class="p">)</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">% o</span><span class="s1">f longest reads required to achieve </span><span class="si">{}</span><span class="s1">X coverage: </span><span class="si">{}</span><span class="s1">&#39;</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">msg</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">coverage</span><span class="p">,</span> <span class="mi">100</span> <span class="o">*</span> <span class="n">n_required</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">cum_len</span><span class="p">)))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">% o</span><span class="s1">f randomly-selected reads required to achieve </span><span class="si">{}</span><span class="s1">X coverage: </span><span class="si">{}</span><span class="s1">&#39;</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">msg</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">coverage</span><span class="p">,</span> <span class="mi">100</span> <span class="o">*</span> <span class="n">args</span><span class="o">.</span><span class="n">coverage</span>  <span class="o">*</span> <span class="n">args</span><span class="o">.</span><span class="n">ref_len</span> <span class="o">/</span> <span class="n">total_basecalls_len</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="get_pairs"><a class="viewcode-back" href="../../pomoxis.html#pomoxis.util.get_pairs">[docs]</a><span class="k">def</span> <span class="nf">get_pairs</span><span class="p">(</span><span class="n">aln</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Return generator of pairs.</span>
+
+<span class="sd">    :param aln: `pysam.AlignedSegment` object.</span>
+<span class="sd">    :returns: generator of `AlignPos` objects.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">seq</span> <span class="o">=</span> <span class="n">aln</span><span class="o">.</span><span class="n">query_sequence</span>
+    <span class="n">pairs</span> <span class="o">=</span> <span class="p">(</span><span class="n">AlignPos</span><span class="p">(</span><span class="n">qpos</span><span class="o">=</span><span class="n">qp</span><span class="p">,</span>
+                      <span class="n">qbase</span><span class="o">=</span><span class="n">seq</span><span class="p">[</span><span class="n">qp</span><span class="p">]</span> <span class="k">if</span> <span class="n">qp</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="s1">&#39;-&#39;</span><span class="p">,</span>
+                      <span class="n">rpos</span><span class="o">=</span><span class="n">rp</span><span class="p">,</span>
+                      <span class="n">rbase</span><span class="o">=</span><span class="n">rb</span> <span class="k">if</span> <span class="n">rp</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="s1">&#39;-&#39;</span>
+                      <span class="p">)</span>
+             <span class="k">for</span> <span class="n">qp</span><span class="p">,</span> <span class="n">rp</span><span class="p">,</span> <span class="n">rb</span> <span class="ow">in</span> <span class="n">aln</span><span class="o">.</span><span class="n">get_aligned_pairs</span><span class="p">(</span><span class="n">with_seq</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+             <span class="p">)</span>
+    <span class="k">return</span> <span class="n">pairs</span></div>
+
+
+<div class="viewcode-block" id="get_trimmed_pairs"><a class="viewcode-back" href="../../pomoxis.html#pomoxis.util.get_trimmed_pairs">[docs]</a><span class="k">def</span> <span class="nf">get_trimmed_pairs</span><span class="p">(</span><span class="n">aln</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Trim aligned pairs to the alignment.</span>
+
+<span class="sd">    :param aln: `pysam.AlignedSegment` object</span>
+<span class="sd">    :yields pairs:</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">pairs</span> <span class="o">=</span> <span class="n">get_pairs</span><span class="p">(</span><span class="n">aln</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">pair</span> <span class="ow">in</span> <span class="n">itertools</span><span class="o">.</span><span class="n">dropwhile</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">rpos</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">x</span><span class="o">.</span><span class="n">qpos</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">,</span> <span class="n">pairs</span><span class="p">):</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">pair</span><span class="o">.</span><span class="n">rpos</span> <span class="o">==</span> <span class="n">aln</span><span class="o">.</span><span class="n">reference_end</span> <span class="ow">or</span> <span class="n">pair</span><span class="o">.</span><span class="n">qpos</span> <span class="o">==</span> <span class="n">aln</span><span class="o">.</span><span class="n">query_alignment_end</span><span class="p">):</span>
+            <span class="k">break</span>
+        <span class="k">yield</span> <span class="n">pair</span></div>
+
+
+<div class="viewcode-block" id="yield_from_bed"><a class="viewcode-back" href="../../pomoxis.html#pomoxis.util.yield_from_bed">[docs]</a><span class="k">def</span> <span class="nf">yield_from_bed</span><span class="p">(</span><span class="n">bedfile</span><span class="p">):</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">bedfile</span><span class="p">)</span> <span class="k">as</span> <span class="n">fh</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">fh</span><span class="p">:</span>
+            <span class="n">split_line</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">split_line</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">in</span> <span class="p">{</span><span class="s1">&#39;browser&#39;</span><span class="p">,</span> <span class="s1">&#39;track&#39;</span><span class="p">}</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">split_line</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="n">chrom</span> <span class="o">=</span> <span class="n">split_line</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">start</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">split_line</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+            <span class="n">stop</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">split_line</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+            <span class="k">yield</span> <span class="n">chrom</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">stop</span></div>
+
+
+<div class="viewcode-block" id="intervaltrees_from_bed"><a class="viewcode-back" href="../../pomoxis.html#pomoxis.util.intervaltrees_from_bed">[docs]</a><span class="k">def</span> <span class="nf">intervaltrees_from_bed</span><span class="p">(</span><span class="n">path_to_bed</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Created dict of intervaltrees from a .bed file, indexed by chrom.</span>
+
+<span class="sd">    :param path_to_bed: str, path to .bed file.</span>
+<span class="sd">    :returns: { str chrom: `intervaltree.IntervalTree` obj }.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">trees</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="n">intervaltree</span><span class="o">.</span><span class="n">IntervalTree</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">chrom</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">stop</span> <span class="ow">in</span> <span class="n">yield_from_bed</span><span class="p">(</span><span class="n">path_to_bed</span><span class="p">):</span>
+        <span class="n">trees</span><span class="p">[</span><span class="n">chrom</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">intervaltree</span><span class="o">.</span><span class="n">Interval</span><span class="p">(</span><span class="n">begin</span><span class="o">=</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="n">stop</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">trees</span></div>
+
+
+<div class="viewcode-block" id="tag_bam"><a class="viewcode-back" href="../../pomoxis.html#pomoxis.util.tag_bam">[docs]</a><span class="k">def</span> <span class="nf">tag_bam</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;Command line tool to add tags to a bam.&quot;&quot;&quot;</span>
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span>
+        <span class="n">prog</span><span class="o">=</span><span class="s1">&#39;tag_bam&#39;</span><span class="p">,</span>
+        <span class="n">description</span><span class="o">=</span><span class="s1">&#39;Add a tag to all alignments in a bam.&#39;</span><span class="p">,</span>
+        <span class="n">formatter_class</span><span class="o">=</span><span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentDefaultsHelpFormatter</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;input&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Input bam file.&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;output&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Output output file.&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;tag_name&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Tag name.&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;tag_value&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Tag value.&#39;</span><span class="p">)</span>
+    <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+    <span class="k">with</span> <span class="n">pysam</span><span class="o">.</span><span class="n">AlignmentFile</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">input</span><span class="p">)</span> <span class="k">as</span> <span class="n">bam_in</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">pysam</span><span class="o">.</span><span class="n">AlignmentFile</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">output</span><span class="p">,</span> <span class="s1">&#39;wb&#39;</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="n">bam_in</span><span class="o">.</span><span class="n">header</span><span class="p">)</span> <span class="k">as</span> <span class="n">bam_out</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">bam_in</span><span class="p">:</span>
+                <span class="n">r</span><span class="o">.</span><span class="n">set_tag</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">tag_name</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">tag_value</span><span class="p">)</span>
+                <span class="n">bam_out</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">r</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="reverse_bed"><a class="viewcode-back" href="../../pomoxis.html#pomoxis.util.reverse_bed">[docs]</a><span class="k">def</span> <span class="nf">reverse_bed</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;Convert bed-file coordinates to coordinates on the reverse strand.&quot;&quot;&quot;</span>
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span>
+        <span class="n">prog</span><span class="o">=</span><span class="s1">&#39;reverse_bed&#39;</span><span class="p">,</span>
+        <span class="n">description</span><span class="o">=</span><span class="s1">&#39;Convert bed-file coordinates to coordinates on the reverse strand.&#39;</span><span class="p">,</span>
+        <span class="n">formatter_class</span><span class="o">=</span><span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentDefaultsHelpFormatter</span><span class="p">)</span>
+
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;bed_in&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Input bed file.&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;ref_fasta&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Input reference fasta file.&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;bed_out&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Output bed file.&#39;</span><span class="p">)</span>
+    <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+
+    <span class="n">fasta</span> <span class="o">=</span> <span class="n">pysam</span><span class="o">.</span><span class="n">FastaFile</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">ref_fasta</span><span class="p">)</span>
+    <span class="n">lengths</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">fasta</span><span class="o">.</span><span class="n">references</span><span class="p">,</span> <span class="n">fasta</span><span class="o">.</span><span class="n">lengths</span><span class="p">))</span>
+    <span class="n">d</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">bed_in</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s1">&#39;</span><span class="se">\t</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">names</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;chrom&#39;</span><span class="p">,</span> <span class="s1">&#39;start&#39;</span><span class="p">,</span> <span class="s1">&#39;stop&#39;</span><span class="p">])</span>
+
+    <span class="n">d</span><span class="p">[</span><span class="s1">&#39;chrom_length&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">d</span><span class="p">[</span><span class="s1">&#39;chrom&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">lengths</span><span class="p">[</span><span class="n">x</span><span class="p">])</span>
+    <span class="n">d</span><span class="p">[</span><span class="s1">&#39;rc_stop&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">d</span><span class="p">[</span><span class="s1">&#39;chrom_length&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">d</span><span class="p">[</span><span class="s1">&#39;start&#39;</span><span class="p">]</span>
+    <span class="n">d</span><span class="p">[</span><span class="s1">&#39;rc_start&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">d</span><span class="p">[</span><span class="s1">&#39;chrom_length&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">d</span><span class="p">[</span><span class="s1">&#39;stop&#39;</span><span class="p">]</span>
+    <span class="n">d</span><span class="p">[</span><span class="s1">&#39;chrom_rc&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">d</span><span class="p">[</span><span class="s1">&#39;chrom&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="s1">&#39;_rc&#39;</span>
+    <span class="n">d</span><span class="p">[[</span><span class="s1">&#39;chrom_rc&#39;</span><span class="p">,</span> <span class="s1">&#39;rc_start&#39;</span><span class="p">,</span> <span class="s1">&#39;rc_stop&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">bed_out</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s1">&#39;</span><span class="se">\t</span><span class="s1">&#39;</span><span class="p">)</span></div>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &#169; Copyright 2017, Oxford Nanopore Technologies.
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

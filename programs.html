@@ -1,0 +1,416 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <title>Pomoxis Programs &mdash; Pomoxis 0.3.6 documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+
+  
+  
+
+  
+  
+
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="pomoxis package" href="pomoxis.html" />
+    <link rel="prev" title="Pomoxis - bioinformatics tools for nanopore research" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html" class="icon icon-home"> Pomoxis
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.3.6
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Pomoxis Programs</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#assess-assembly">assess_assembly</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#assess-homopolymers">assess_homopolymers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#catalogue-errors">catalogue_errors</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#common-errors-from-bam">common_errors_from_bam</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#coverage-from-bam">coverage_from_bam</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#coverage-from-fastx">coverage_from_fastx</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#fast-convert">fast_convert</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#find-indels">find_indels</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#intersect-assembly-errors">intersect_assembly_errors</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#long-fastx">long_fastx</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#mini-align">mini_align</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#mini-assemble">mini_assemble</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#pomoxis-path">pomoxis_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#qscores-from-summary">qscores_from_summary</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#ref-seqs-from-bam">ref_seqs_from_bam</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#reverse-bed">reverse_bed</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#split-fastx">split_fastx</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#stats-from-bam">stats_from_bam</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#subsample-bam">subsample_bam</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#summary-from-stats">summary_from_stats</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#tag-bam">tag_bam</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#trim-alignments">trim_alignments</a></li>
+</ul>
+</li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="pomoxis.html">pomoxis package</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Pomoxis</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+        
+      <li>Pomoxis Programs</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="_sources/programs.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="pomoxis-programs">
+<h1>Pomoxis Programs<a class="headerlink" href="#pomoxis-programs" title="Permalink to this headline">¶</a></h1>
+<p>Below you will find a listing with brief description of all the tools
+within pomoxis. For more information concerning each tool simply run
+it on the command line with the <code class="docutils literal notranslate"><span class="pre">--help</span></code> option.</p>
+<p>More complex workflows (using tools from pomoxis) can be found within the
+<a class="reference external" href="https://github.com/nanoporetech/katuali">katuali</a> software package.</p>
+<div class="section" id="assess-assembly">
+<h2>assess_assembly<a class="headerlink" href="#assess-assembly" title="Permalink to this headline">¶</a></h2>
+<p>Calculate accuracy statistics for an assembly.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>assess_assembly <span class="o">[</span>-h<span class="o">]</span> -r &lt;reference&gt; -i &lt;fastq&gt;
+</pre></div>
+</div>
+</div>
+<div class="section" id="assess-homopolymers">
+<h2>assess_homopolymers<a class="headerlink" href="#assess-homopolymers" title="Permalink to this headline">¶</a></h2>
+<p>Analyse homopolymer query and reference lengths.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>homopolymer <span class="o">[</span>-h<span class="o">]</span> <span class="o">{</span>count,analyse<span class="o">}</span> ...
+</pre></div>
+</div>
+</div>
+<div class="section" id="catalogue-errors">
+<h2>catalogue_errors<a class="headerlink" href="#catalogue-errors" title="Permalink to this headline">¶</a></h2>
+<p>Create a catalogue of all query errors in a bam.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>catalogue_errors <span class="o">[</span>-h<span class="o">]</span> <span class="o">[</span>--bed BED<span class="o">]</span> <span class="o">[</span>-t THREADS<span class="o">]</span> <span class="o">[</span>-o OUTDIR<span class="o">]</span> bam
+</pre></div>
+</div>
+</div>
+<div class="section" id="common-errors-from-bam">
+<h2>common_errors_from_bam<a class="headerlink" href="#common-errors-from-bam" title="Permalink to this headline">¶</a></h2>
+<p>Get errors common to multiple assemblies aligned to ref.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>common_errors_from_bam <span class="o">[</span>-h<span class="o">]</span> <span class="o">[</span>-o OUTPUT_PREFIX<span class="o">]</span> bam ref_fasta
+</pre></div>
+</div>
+</div>
+<div class="section" id="coverage-from-bam">
+<h2>coverage_from_bam<a class="headerlink" href="#coverage-from-bam" title="Permalink to this headline">¶</a></h2>
+<p>Calculate read coverage depth from a bam.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>coverage_from_bam <span class="o">[</span>-h<span class="o">]</span> <span class="o">[</span>-r REGIONS <span class="o">[</span>REGIONS ...<span class="o">]]</span>
+                         <span class="o">[</span>-p PREFIX <span class="p">|</span> -o ONE_FILE<span class="o">]</span> <span class="o">[</span>-s STRIDE<span class="o">]</span>
+                         <span class="o">[</span>--summary_only<span class="o">]</span>
+                         bam
+</pre></div>
+</div>
+</div>
+<div class="section" id="coverage-from-fastx">
+<h2>coverage_from_fastx<a class="headerlink" href="#coverage-from-fastx" title="Permalink to this headline">¶</a></h2>
+<p>Estimate coverage from summed basecall and reference lengths</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>coverage_from_fastx <span class="o">[</span>-h<span class="o">]</span> <span class="o">[</span>--coverage COVERAGE<span class="o">]</span> <span class="o">[</span>--longest<span class="o">]</span>
+                           basecalls ref_len
+</pre></div>
+</div>
+</div>
+<div class="section" id="fast-convert">
+<h2>fast_convert<a class="headerlink" href="#fast-convert" title="Permalink to this headline">¶</a></h2>
+<p>Convert between fasta&lt;-&gt;fastq.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>fast_convert <span class="o">[</span>-h<span class="o">]</span> <span class="o">[</span>--discard_q<span class="o">]</span> <span class="o">[</span>--mock_q MOCK_Q<span class="o">]</span> <span class="o">{</span>qq,aa,aq,qa<span class="o">}</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="find-indels">
+<h2>find_indels<a class="headerlink" href="#find-indels" title="Permalink to this headline">¶</a></h2>
+<p>Parse a bamfile and document indels.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>find_indels <span class="o">[</span>-h<span class="o">]</span> <span class="o">[</span>-m MIN_INDEL_LENGTH<span class="o">]</span> <span class="o">[</span>-a<span class="o">]</span> <span class="o">[</span>-o OUTPUT<span class="o">]</span> <span class="o">[</span>-b BED<span class="o">]</span>
+                   <span class="o">[</span>-t THREADS<span class="o">]</span>
+                   bam
+</pre></div>
+</div>
+</div>
+<div class="section" id="intersect-assembly-errors">
+<h2>intersect_assembly_errors<a class="headerlink" href="#intersect-assembly-errors" title="Permalink to this headline">¶</a></h2>
+<p>Assess errors which occur in the same reference position accross multiple assemblies.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>intersect_assembly_errors <span class="o">[</span>-h<span class="o">]</span> -r &lt;reference&gt; -i &lt;fasta&gt;
+</pre></div>
+</div>
+</div>
+<div class="section" id="long-fastx">
+<h2>long_fastx<a class="headerlink" href="#long-fastx" title="Permalink to this headline">¶</a></h2>
+<p>Extract longest reads from a fastq.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>long_fastx <span class="o">[</span>-h<span class="o">]</span> <span class="o">(</span>--longest LONGEST <span class="p">|</span> --bases BASES<span class="o">)</span> <span class="o">[</span>--others OTHERS<span class="o">]</span>
+                  input output
+</pre></div>
+</div>
+</div>
+<div class="section" id="mini-align">
+<h2>mini_align<a class="headerlink" href="#mini-align" title="Permalink to this headline">¶</a></h2>
+<p>Align fastq/a formatted reads to a genome using minimap2.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>mini_align <span class="o">[</span>-h<span class="o">]</span> -r &lt;reference&gt; -i &lt;fastq&gt;
+</pre></div>
+</div>
+</div>
+<div class="section" id="mini-assemble">
+<h2>mini_assemble<a class="headerlink" href="#mini-assemble" title="Permalink to this headline">¶</a></h2>
+<p>Assemble fastq/fasta formatted reads and perform POA consensus.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>mini_assemble <span class="o">[</span>-h<span class="o">]</span> -i &lt;fastq&gt;
+</pre></div>
+</div>
+</div>
+<div class="section" id="pomoxis-path">
+<h2>pomoxis_path<a class="headerlink" href="#pomoxis-path" title="Permalink to this headline">¶</a></h2>
+<p>Print the path of bundled executables.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pomoxis_path <span class="o">[</span>-h<span class="o">]</span> program
+</pre></div>
+</div>
+</div>
+<div class="section" id="qscores-from-summary">
+<h2>qscores_from_summary<a class="headerlink" href="#qscores-from-summary" title="Permalink to this headline">¶</a></h2>
+<p>Extract Q scores from summary_from_stats output</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>qscores_from_summary <span class="o">[</span>-h<span class="o">]</span> <span class="o">[</span>--median<span class="o">]</span> <span class="o">[</span>--ref REF<span class="o">]</span>
+                            summaries <span class="o">[</span>summaries ...<span class="o">]</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="ref-seqs-from-bam">
+<h2>ref_seqs_from_bam<a class="headerlink" href="#ref-seqs-from-bam" title="Permalink to this headline">¶</a></h2>
+<p>Extract reference sequence that queries are aligned to</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ref_seqs_from_bam <span class="o">[</span>-h<span class="o">]</span> bam
+</pre></div>
+</div>
+</div>
+<div class="section" id="reverse-bed">
+<h2>reverse_bed<a class="headerlink" href="#reverse-bed" title="Permalink to this headline">¶</a></h2>
+<p>Convert bed-file coordinates to coordinates on the reverse strand.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>reverse_bed <span class="o">[</span>-h<span class="o">]</span> bed_in ref_fasta bed_out
+</pre></div>
+</div>
+</div>
+<div class="section" id="split-fastx">
+<h2>split_fastx<a class="headerlink" href="#split-fastx" title="Permalink to this headline">¶</a></h2>
+<p>Split records in a fasta/q file into chunks of a maximum size.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>split_fastx <span class="o">[</span>-h<span class="o">]</span> input output chunksize
+</pre></div>
+</div>
+</div>
+<div class="section" id="stats-from-bam">
+<h2>stats_from_bam<a class="headerlink" href="#stats-from-bam" title="Permalink to this headline">¶</a></h2>
+<p>Parse a bamfile (from a stream) and output summary stats for each read.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>stats_from_bam <span class="o">[</span>-h<span class="o">]</span> <span class="o">[</span>--bed BED<span class="o">]</span> <span class="o">[</span>-m MIN_LENGTH<span class="o">]</span> <span class="o">[</span>-a<span class="o">]</span> <span class="o">[</span>-o OUTPUT<span class="o">]</span>
+                      <span class="o">[</span>-s SUMMARY<span class="o">]</span> <span class="o">[</span>-t THREADS<span class="o">]</span>
+                      bam
+</pre></div>
+</div>
+</div>
+<div class="section" id="subsample-bam">
+<h2>subsample_bam<a class="headerlink" href="#subsample-bam" title="Permalink to this headline">¶</a></h2>
+<p>Subsample a bam to uniform or proportional depth</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>subsample_bam <span class="o">[</span>-h<span class="o">]</span> <span class="o">[</span>-o OUTPUT_PREFIX<span class="o">]</span> <span class="o">[</span>-r REGIONS <span class="o">[</span>REGIONS ...<span class="o">]]</span>
+                     <span class="o">[</span>-p PROFILE<span class="o">]</span> <span class="o">[</span>-O <span class="o">{</span>fwd,rev<span class="o">}]</span> <span class="o">[</span>-t THREADS<span class="o">]</span> <span class="o">[</span>-q QUALITY<span class="o">]</span>
+                     <span class="o">[</span>-a ACCURACY<span class="o">]</span> <span class="o">[</span>-c COVERAGE<span class="o">]</span> <span class="o">[</span>-l LENGTH<span class="o">]</span>
+                     <span class="o">[</span>--any_fail <span class="p">|</span> --all_fail<span class="o">]</span> <span class="o">[</span>-x PATIENCE<span class="o">]</span> <span class="o">[</span>-s STRIDE<span class="o">]</span> <span class="o">[</span>-P<span class="o">]</span>
+                     <span class="o">[</span>-S SEED<span class="o">]</span>
+                     bam depth <span class="o">[</span>depth ...<span class="o">]</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="summary-from-stats">
+<h2>summary_from_stats<a class="headerlink" href="#summary-from-stats" title="Permalink to this headline">¶</a></h2>
+<p>Summarise output of <cite>stats_from_bam</cite>.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>summary_from_stats <span class="o">[</span>-h<span class="o">]</span> <span class="o">[</span>-i INPUT<span class="o">]</span> <span class="o">[</span>-o OUTPUT<span class="o">]</span>
+                          <span class="o">[</span>-p PERCENTILES <span class="o">[</span>PERCENTILES ...<span class="o">]]</span> <span class="o">[</span>-pr<span class="o">]</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="tag-bam">
+<h2>tag_bam<a class="headerlink" href="#tag-bam" title="Permalink to this headline">¶</a></h2>
+<p>Add a tag to all alignments in a bam.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>tag_bam <span class="o">[</span>-h<span class="o">]</span> input output tag_name tag_value
+</pre></div>
+</div>
+</div>
+<div class="section" id="trim-alignments">
+<h2>trim_alignments<a class="headerlink" href="#trim-alignments" title="Permalink to this headline">¶</a></h2>
+<p>Trim alignments in multiple bams to common overlap window.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>trim_alignments <span class="o">[</span>-h<span class="o">]</span> <span class="o">[</span>-r REF_NAME<span class="o">]</span> <span class="o">[</span>-o OUTPUT_PREFIX<span class="o">]</span>
+                       <span class="o">[</span>-f REFERENCE_FASTA<span class="o">]</span>
+                       bams <span class="o">[</span>bams ...<span class="o">]</span>
+</pre></div>
+</div>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+        <a href="pomoxis.html" class="btn btn-neutral float-right" title="pomoxis package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="index.html" class="btn btn-neutral float-left" title="Pomoxis - bioinformatics tools for nanopore research" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &#169; Copyright 2017, Oxford Nanopore Technologies.
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>
