@@ -3,7 +3,6 @@
 biopython >=1.63,<1.77  #  1.76 is last version to support python < 3.6
 intervaltree >= 3  # various bugs in 2.x
 matplotlib
-mappy
 numpy
 pandas
 pysam >= 0.15.4

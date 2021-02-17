@@ -43,6 +43,11 @@ def stats_from_aligned_read(read, references, lengths):
         raise IOError("Read is missing required 'NM' tag. Try running 'samtools fillmd -S - ref.fa'.")
 
     name = read.qname
+    start_offset = 0
+    if read.is_secondary or read.is_supplementary:
+        first_cig = read.cigartuples[0]
+        if first_cig[0] == 5:  # should always be true for minimap2
+            start_offset = first_cig[1]
     counts, _ = read.get_cigar_stats()
     match = counts[0] # alignment match (can be a sequence match or mismatch)
     ins = counts[1]
@@ -69,8 +74,8 @@ def stats_from_aligned_read(read, references, lengths):
         "sub": sub,
         "iden": iden,
         "acc": acc,
-        "qstart": read.query_alignment_start,
-        "qend": read.query_alignment_end,
+        "qstart": read.query_alignment_start + start_offset,
+        "qend": read.query_alignment_end + start_offset,
         "rstart": read.reference_start,
         "rend": read.reference_end,
         "ref": references[read.reference_id],
@@ -123,6 +128,12 @@ def masked_stats_from_aligned_read(read, references, lengths, tree):
     name = read.qname
     match = correct + sub
     length = match + ins + delt
+
+    if match == 0:
+        # no matches within bed regions - all bed ref positions were deleted.
+        # skip this alignment.
+        return None
+
     iden = 100 * float(match - sub) / match
     acc = 100 - 100 * float(sub + ins + delt) / length
 
@@ -180,6 +191,9 @@ def _process_reads(bam_fp, start_stop, all_alignments=False, min_length=None, be
                     continue
                 else:
                     result = masked_stats_from_aligned_read(read, bam.references, bam.lengths, trees[read.reference_name])
+                    if result is None:  # no matches within bed regions
+                        counts['all_matches_masked'] +=  1
+                        continue
             else:
                 result = stats_from_aligned_read(read, bam.references, bam.lengths)
 
@@ -240,9 +254,9 @@ def main(arguments=None):
         pool.shutdown(wait=True)
 
     if counts['total'] == 0:
-        raise ValueError('No alignments processed. Check your bam and filtering options.')
+        args.summary.write('No alignments processed. Check your bam and filtering options.\n')
 
-    args.summary.write('Mapped/Unmapped/Short/Masked: {total}/{unmapped}/{short}/{masked}\n'.format_map(counts))
+    args.summary.write('Mapped/Unmapped/Short/Masked/Skipped(all matches masked): {total}/{unmapped}/{short}/{masked}/{all_matches_masked}\n'.format_map(counts))
 
 
 if __name__ == '__main__':

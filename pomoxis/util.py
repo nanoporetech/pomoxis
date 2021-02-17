@@ -4,7 +4,6 @@ import itertools
 import shutil
 import sys
 
-from Bio import SeqIO
 import intervaltree
 import numpy as np
 import pandas as pd
@@ -12,6 +11,44 @@ import pysam
 
 Region = namedtuple('Region', 'ref_name start end')
 AlignPos = namedtuple('AlignPos', ('qpos', 'qbase', 'rpos', 'rbase'))
+
+
+class FastxWrite:
+    def  __init__(self, fname, mode='w', width=80, force_q=False, mock_q=10):
+        self.fname = fname
+        self.mode = mode
+        self.width = width
+        self.force_q = force_q
+        self.mock_q = chr(33 + mock_q)
+        self.aq = None
+
+    def __enter__(self):
+        if self.fname == '-':
+            self.fh = sys.stdout
+        else:
+            self.fh = open(self.fname, self.mode)
+        return self
+
+    def __exit__(self, type, value, traceback):
+        if self.fname != '-':
+            self.fh.close()
+
+    def write(self, name, seq, qual=None, comment=''):
+        if comment != '':
+            comment = ' {}'.format(comment)
+        if (self.aq == 'a' and qual is not None) or \
+                (self.aq == 'q' and qual is None):
+            raise ValueError("Type of records changed whilst writing.")
+        if qual or self.force_q:
+            if qual is None:
+                qual = self.mock_q * len(seq)
+            self.aq = 'q'
+            self.fh.write("@{}{}\n{}\n+\n{}\n".format(name, comment, seq, qual))
+        else:
+            self.aq = 'a'
+            self.fh.write(">{}{}\n".format(name, comment))
+            for _, chunk in enumerate(chunks(seq, self.width)):
+                self.fh.write('{}\n'.format(''.join(chunk)))
 
 
 def chunks(iterable, n):
@@ -50,7 +87,7 @@ def split_fastx(fname, output, chunksize=10000):
     :param output: output filename.
     :param chunksize: (maximum) length of output records.
     """
-    with open(output, 'w') as fout:
+    with FastxWrite(output, 'w') as fout:
         with pysam.FastxFile(fname, persist=False) as fin:
             for rec in fin:
                 name = rec.name
@@ -63,13 +100,11 @@ def split_fastx(fname, output, chunksize=10000):
                 if qual is None:
                     for i, s in enumerate(chunks(seq, chunksize)):
                         chunk_name = '{}_chunk{}'.format(name, i)
-                        fout.write(">{} {}\n{}\n".format(
-                            chunk_name, comment, ''.join(s)))
+                        fout.write(chunk_name, s, comment=comment)
                 else:
                     for i, (s, q) in enumerate(zip(chunks(seq, chunksize), chunks(qual, chunksize))):
                         chunk_name = '{}_chunk{}'.format(name, i)
-                        fout.write('@{} {}\n{}\n+\n{}\n'.format(
-                            chunk_name, comment, ''.join(s), ''.join(q)))
+                        fout.write(chunk_name, s, q, comment)
 
 
 def split_fastx_cmdline():
@@ -117,15 +152,13 @@ def fast_convert():
     else:
         raise ValueError("convert must be 'qq', 'aq', 'qa', or 'aa'\n")
 
-    if qflag:
-        def fq_gen(io):
-            for rec in SeqIO.parse(io, in_fmt):
-                rec.letter_annotations["phred_quality"] = [args.mock_q] * len(rec)
-                yield rec
-        sys.stderr.write('Creating/ignoring quality information in input.\n')
-        SeqIO.write(fq_gen(sys.stdin), sys.stdout, out_fmt)
-    else:
-        SeqIO.convert(sys.stdin, in_fmt, sys.stdout, out_fmt)
+    with FastxWrite('-', force_q=out_fmt=='fastq', mock_q=args.mock_q) as fh_out:
+        with pysam.FastxFile('-') as fh_in:
+            for rec in fh_in:
+                qual = rec.quality
+                if qflag and (in_fmt=='fasta' or args.discard_q):
+                    qual = chr(33 + args.mock_q) * len(rec.sequence)
+                fh_out.write(rec.name, rec.sequence, qual, rec.comment)
 
 
 def extract_long_reads():
@@ -133,9 +166,9 @@ def extract_long_reads():
 
     parser = argparse.ArgumentParser(description='Extract longest reads from a fastq.')
     parser.add_argument('input',
-        help='Input .fastq file.')
+        help='Input .fasta/q file.')
     parser.add_argument('output',
-        help='Output .fastq file.')
+        help='Output .fasta file.')
     filt = parser.add_mutually_exclusive_group(required=True)
     filt.add_argument('--longest', default=None, type=float,
         help='Percentage of longest reads to partition.')
@@ -146,17 +179,13 @@ def extract_long_reads():
     args = parser.parse_args()
 
     sys.stderr.write('Loading reads...\n')
-    fmt = 'fastq'
-    try:
-        record_dict = SeqIO.index(args.input, fmt)
-    except:
-        fmt = 'fasta'
-        record_dict = SeqIO.index(args.input, fmt)
-    sys.stderr.write('Format is {}.\n'.format(fmt))
+    record_dict = dict()
+    for rec in pysam.FastxFile(args.input):
+        record_dict[rec.name] = (rec.sequence, rec.quality, rec.comment)
 
     ids = list(record_dict.keys())
     lengths = np.fromiter(
-        (len(record_dict[i]) for i in ids),
+        (len(record_dict[i][0]) for i in ids),
         dtype=int, count=len(ids)
     )
     sys.stderr.write('Sorting reads...\n')
@@ -169,24 +198,18 @@ def extract_long_reads():
         order = np.argsort(lengths)[::-1]
         cumsum = 0
         last = 1
-        for i, j in enumerate(np.argsort(lengths), 1):
+        for i, j in enumerate(order, 1):
             cumsum += lengths[j]
             if cumsum > args.bases:
                 break
             last = i
         longest = order[:last]
 
-    SeqIO.write(
-        (record_dict[ids[i]] for i in longest),
-        args.output, fmt
-    )
-
-    if args.others is not None:
-        longest = set(longest)
-        SeqIO.write(
-            (record_dict[ids[i]] for i in range(len(ids)) if i not in longest),
-            args.others, fmt
-        )
+    with FastxWrite(args.output, 'w') as out:
+        for i in longest:
+            name = ids[i]
+            rec = record_dict[ids[i]]
+            out.write(name, *rec)
 
 
 def parse_regions(regions, ref_lengths=None):
