@@ -39,10 +39,14 @@ def main():
     parser = argparse.ArgumentParser(
         prog='coverage_from_bam',
         description='Calculate read coverage depth from a bam.',
+        epilog='By default a file is written per reference sequence, this can be changed with the `--one_file` '
+        'option. If overlapping regions are specified, `--one_file` should not be used.',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('bam', help='.fasta/fastq file.')
     parser.add_argument('-r', '--regions', nargs='+', help='Only process given regions.')
-    parser.add_argument('-p', '--prefix', help='Prefix for output, defaults to basename of bam.')
+    grp = parser.add_mutually_exclusive_group()
+    grp.add_argument('-p', '--prefix', help='Prefix for output, defaults to basename of bam.')
+    grp.add_argument('-o', '--one_file', help='Single output file with "region" column.')
     parser.add_argument('-s', '--stride', type=int, default=1000, help='Stride in genomic coordinate.')
     parser.add_argument('--summary_only', action='store_true',
                         help='Output only the depth_summary.txt file')
@@ -58,9 +62,10 @@ def main():
         regions = [Region(ref_name=r, start=0, end=ref_lengths[r]) for r in bam.references]
 
     summary = {}
+    first = True
+    if args.one_file is not None:
+        args.one_file = open(args.one_file, 'w')
     for region in regions:
-
-        # write final depth
         prefix = args.prefix
         if prefix is None:
             prefix = os.path.splitext(os.path.basename(args.bam))[0]
@@ -70,8 +75,15 @@ def main():
         summary[region_str] = df['depth'].describe()
 
         if not args.summary_only:
-            depth_fp = '{}_{}.depth.txt'.format(prefix, region_str)
-            df.to_csv(depth_fp, sep='\t', index=False)
+            if args.one_file is not None:
+                df['rname'] = region.ref_name
+                df.to_csv(args.one_file, sep='\t', index=False, header=first)
+            else:
+                depth_fp = '{}_{}.depth.txt'.format(prefix, region_str)
+                df.to_csv(depth_fp, sep='\t', index=False)
+        first = False
+    if args.one_file is not None:
+        args.one_file.close()
 
 
     summary_fp = '{}_depth_summary.txt'.format(prefix)
