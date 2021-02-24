@@ -12,7 +12,7 @@ homopolymer_flag=false
 trim_flag=false
 ALIGN_OPTS=""
 BED=""
-MIN_INDEL_LEN=50
+MIN_INDEL_LEN=0
 exclude_indel_flag=false
 
 usage="$(basename "$0") [-h] -r <reference> -i <fastq>
