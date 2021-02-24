@@ -1,25 +1,6 @@
 #!/bin/bash
 set -eo pipefail
 
-usage="$(basename "$0") [-h] -r <reference> -i <fastq>
-
-Calculate accuracy statistics for an assembly. 
-
-    -h  show this help text.
-    -r  reference, should be a fasta file. If correspondng minimap2 indices
-        do not exist they will be created. (required).
-    -i  fastq/a input assembly (required).
-    -c  chunk size. Input reads/contigs will be broken into chunks
-        prior to alignment, 0 will not chunk (default 100000).
-    -C  catalogue errors.
-    -H  count homopolymers. 
-    -t  alignment threads (default: 1).
-    -p  output file prefix (default: assm).
-    -T  trim consensus to primary alignments of truth to assembly.
-    -b  .bed file of reference regions to assess.
-    -l  list all indels at least this long (default: 100).  
-    -e  use with -l option to create a .bed file to exclude indels. If the -b option is used, the two bed files will be combined."
-
 PREFIX="assm"
 THREADS=1
 CHUNK="100000"
@@ -31,8 +12,28 @@ homopolymer_flag=false
 trim_flag=false
 ALIGN_OPTS=""
 BED=""
-MIN_INDEL_LEN=100
+MIN_INDEL_LEN=50
 exclude_indel_flag=false
+
+usage="$(basename "$0") [-h] -r <reference> -i <fastq>
+
+Calculate accuracy statistics for an assembly. 
+
+    -h  show this help text.
+    -r  reference, should be a fasta file. If correspondng minimap2 indices
+        do not exist they will be created. (required).
+    -i  fastq/a input assembly (required).
+    -c  chunk size. Input reads/contigs will be broken into chunks
+        prior to alignment, 0 will not chunk (default ${CHUNK}).
+    -C  catalogue errors.
+    -H  count homopolymers. 
+    -t  alignment threads (default: ${THREADS}).
+    -p  output file prefix (default: ${PREFIX}).
+    -T  trim consensus to primary alignments of truth to assembly.
+    -b  .bed file of reference regions to assess.
+    -l  list all indels at least this long (default: ${MIN_INDEL_LEN}, set to 0 to skip searching for indels). 
+    -e  use with -l option to create a .bed file to exclude indels. If the -b option is used, the two bed files will be combined."
+
 
 
 while getopts ':hr:i:p:c:CHTt:b:l:e' option; do
@@ -78,24 +79,26 @@ fi
 
 mini_align -i $INPUT -r $REFERENCE -p $PREFIX -t $THREADS $ALIGN_OPTS 
 
-echo "Writing list of indels ${MIN_INDEL_LEN} bases and longer to ${PREFIX}_indel_ge${MIN_INDEL_LEN}.txt."
-# find indels and write to a .bed file
-find_indels -m ${MIN_INDEL_LEN} ${PREFIX}.bam -o ${PREFIX}_indel_ge${MIN_INDEL_LEN}.txt -b ${PREFIX}_indel_ge${MIN_INDEL_LEN}.bed
+if (($MIN_INDEL_LEN > 0)); then
+    echo "Writing list of indels ${MIN_INDEL_LEN} bases and longer to ${PREFIX}_indel_ge${MIN_INDEL_LEN}.txt."
+    # find indels and write to a .bed file
+    find_indels -m ${MIN_INDEL_LEN} ${PREFIX}.bam -o ${PREFIX}_indel_ge${MIN_INDEL_LEN}.txt -b ${PREFIX}_indel_ge${MIN_INDEL_LEN}.bed
 
-if $exclude_indel_flag; then
-    if ! $bed_flag; then  
-        # if no bedfile has been given, create one spanning the genome
-        BEDFILE=${PREFIX}_ref_contigs.bed
-        samtools idxstats ${PREFIX}.bam | awk '{if(!/\*/){print $1"\t0\t"$2}}' > ${BEDFILE}
-        echo "Creating bed file to mask out indels ${MIN_INDEL_LEN} bases and longer."
-    else
-        echo "Subtracting indels ${MIN_INDEL_LEN} bases and longer from provided bed file."
-        # strip --bed prefix from $BED
-        BEDFILE=$(echo $BED | sed 's/--bed//')
+    if $exclude_indel_flag; then
+        if ! $bed_flag; then  
+            # if no bedfile has been given, create one spanning the genome
+            BEDFILE=${PREFIX}_ref_contigs.bed
+            samtools idxstats ${PREFIX}.bam | awk '{if(!/\*/){print $1"\t0\t"$2}}' > ${BEDFILE}
+            echo "Creating bed file to mask out indels ${MIN_INDEL_LEN} bases and longer."
+        else
+            echo "Subtracting indels ${MIN_INDEL_LEN} bases and longer from provided bed file."
+            # strip --bed prefix from $BED
+            BEDFILE=$(echo $BED | sed 's/--bed//')
+        fi
+        # if a bedfile has been given, subtract indel intervals from it
+        bedtools subtract -a ${BEDFILE} -b ${PREFIX}_indel_ge${MIN_INDEL_LEN}.bed > ${PREFIX}.bed
+        BED="--bed ${PREFIX}.bed"
     fi
-    # if a bedfile has been given, subtract indel intervals from it
-    bedtools subtract -a ${BEDFILE} -b ${PREFIX}_indel_ge${MIN_INDEL_LEN}.bed > ${PREFIX}.bed
-    BED="--bed ${PREFIX}.bed"
 fi
 
 
