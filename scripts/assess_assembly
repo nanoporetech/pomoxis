@@ -122,7 +122,7 @@ grep 'Q Scores' -A 7 -m 1 ${PREFIX}_summ.txt
 if $homopolymer_flag; then
     OUTDIR=${PREFIX}_homopolymer
     echo "Running homopolymer count, saving data to ${OUTDIR}"
-    assess_homopolymers count ${PREFIX}.bam -o ${OUTDIR} 
+    assess_homopolymers count ${PREFIX}.bam -o ${OUTDIR}
 fi
 
 
