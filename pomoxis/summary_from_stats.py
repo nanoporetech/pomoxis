@@ -46,8 +46,8 @@ def summarise_stats(d, percentiles=(10, 50, 90)):
     f = OrderedDict()
     f['err_ont'] = (lambda d: np.sum(d['sub'] + d['ins'] + d['del']) / np.sum(d['length']), # weighted
                     lambda d: (d['sub'] + d['ins'] + d['del'])/ d['length']) # per alignment
-    f['err_bal'] = (lambda d: np.sum(d['sub'] + d['ins'] + d['del']) / np.sum(d['rend'] - d['rstart']),
-                    lambda d: (d['sub'] + d['ins'] + d['del'])/ (d['rend'] - d['rstart']))
+    f['err_bal'] = (lambda d: np.sum(d['sub'] + d['ins'] + d['del']) / np.sum(d['aligned_ref_len']),
+                    lambda d: (d['sub'] + d['ins'] + d['del'])/ (d['aligned_ref_len']))
     f['iden'] = (lambda d: np.sum(d['sub']) / (np.sum(d['rend'] - d['rstart'] - d['del'])),
                  lambda d: d['sub'] / (d['rend'] - d['rstart'] - d['del']))
     f['del'] = (lambda d: np.sum(d['del']) / (np.sum(d['rend'] - d['rstart'])),
