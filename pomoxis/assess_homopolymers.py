@@ -411,6 +411,9 @@ def process_bam(input_file, out_fh, homo_len, score):
                     call_len, offset = get_longest_homopolymer(query_region, base)
                     query_start += offset
                 except ValueError:
+                    # If we are at the end of the alignment, skip this hp
+                    if align_start == 0 or align_start + ref_hp_len == len(align_pairs):
+                        continue
                     # If we don't find any matching base then we return the
                     # next query position that aligns
                     query_start = get_next_aligned_base(align_pairs, align_start)

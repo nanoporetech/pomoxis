@@ -73,6 +73,7 @@ def get_errors(aln, tree=None):
     pos = None
     n_masked = 0
     aligned_ref_len = 0
+    match = 0
     for (qi, qb, ri, rb) in aln:
         if tree is not None:
             pos = ri if ri is not None else pos
@@ -95,6 +96,13 @@ def get_errors(aln, tree=None):
             if qb != rb:
                 err.append((ri, qi, 'S', (last_ri, last_qi)))
             aligned_ref_len += 1
+            match += 1
+
+    if match == 0:
+        # no matches within bed regions - all bed ref positions were deleted.
+        # skip this alignment.
+        return None
+    
     return err, aligned_ref_len, n_masked
 
 
@@ -596,7 +604,13 @@ def _process_seg(seg, tree=None):
     """
     error_count = Counter()
     errors = []
-    pos_and_errors, aligned_ref_len, n_masked = get_errors(seg.pairs, tree)
+    err_result = get_errors(seg.pairs, tree)
+    if err_result is None:  # no matches within bed regions
+        logging.debug('Skipping {} since all bed regions were deleted'.format(
+                      seg.qname))
+        return None
+
+    pos_and_errors, aligned_ref_len, n_masked = err_result
     for ri, qi, error, approx_pos in pos_and_errors:
         ref, match, read, counts, klass = classify_error(preprocess_error(
             ri if ri is not None else qi, seg.pairs, search_by_q=(ri is None)
