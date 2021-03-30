@@ -113,7 +113,7 @@ summary_from_stats -i ${PREFIX}_stats.txt -pr -o ${PREFIX}_summ.txt
 if $catalogue_flag; then
     OUTDIR=${PREFIX}_error_catalogue
     echo "Running catalogue_errors, saving data to ${OUTDIR}"
-    catalogue_errors ${PREFIX}.bam -t $THREADS -o ${OUTDIR} ${BED}
+    catalogue_errors count ${PREFIX}.bam -t $THREADS -o ${OUTDIR} ${BED}
 fi
 
 grep 'Percentage Errors' -A 7 -m 1 ${PREFIX}_summ.txt
