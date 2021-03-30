@@ -702,20 +702,34 @@ def get_aggr_klass(klass):
     return aggr_klass
 
 
-def main():
-    logging.basicConfig(format='[%(asctime)s - %(name)s] %(message)s', datefmt='%H:%M:%S', level=logging.INFO)
-    parser = argparse.ArgumentParser(
-        prog='catalogue_errors',
-        description='Create a catalogue of all query errors in a bam.',
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('bam', help='Input alignments (aligned to ref).')
-    parser.add_argument('--bed', default=None, help='.bed file of reference regions to include.')
-    parser.add_argument('-t', '--threads', type=int, default=1, help='Number of threads for parallel execution.')
-    parser.add_argument('-o', '--outdir', default='error_catalogue', help='Output directory.')
 
-    args = parser.parse_args()
-    os.mkdir(args.outdir)
+def analyse_errors(args):
+    # load and merge existing counts
+    error_count = defaultdict(Counter)
+    total_ref_length = Counter()
+    total_n_ref_sites_masked = Counter()
+    for pkl in args.pkl:
+        with open(pkl, 'rb') as fh:
+            counts = pickle.load(fh)
+        
+        # pkl format:
+        # {'ref_lengths': total_ref_length,
+        #  'n_ref_sites_masked': total_n_ref_sites_masked,
+        #  'counts': {'by_ref': error_count,
+        #             'by_ref_aggr': aggr_by_ref,
+        #             'total': total_counts,
+        #             'total_aggr': aggregate_counts,
+        #            }
+        # }
+        for ref, d_counts in counts['counts']['by_ref'].items():
+            error_count[ref].update(d_counts)
+        total_ref_length.update(counts['ref_lengths'])
+        total_n_ref_sites_masked.update(counts['n_ref_sites_masked'])
 
+    aggr_and_output(args, error_count, total_ref_length, total_n_ref_sites_masked)
+
+
+def count_errors(args):
     with pysam.AlignmentFile(args.bam, 'rb') as bam:
         n_reads = bam.count()
 
@@ -762,7 +776,13 @@ def main():
                 txt_fh.write(e.match + "\n")
                 txt_fh.write(e.read + "\n")
                 txt_fh.write(".\n")
+    db_fh.close()
+    txt_fh.close()
 
+    aggr_and_output(args, error_count, total_ref_length, total_n_ref_sites_masked)
+
+
+def aggr_and_output(args, error_count, total_ref_length, total_n_ref_sites_masked):
     total_counts = Counter()
     aggr_by_ref = {}
     for ref_name, counts in error_count.items():
@@ -802,9 +822,38 @@ def main():
     with open(os.path.join(args.outdir, 'counts.pkl'), 'wb') as fh:
          pickle.dump(to_save, fh)
 
-    db_fh.close()
-    txt_fh.close()
 
+def main():
+    logging.basicConfig(format='[%(asctime)s - %(name)s] %(message)s', datefmt='%H:%M:%S', level=logging.INFO)
+    parser = argparse.ArgumentParser(
+        prog='catalogue_errors',
+        description='Create a catalogue of all query errors in a bam.',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    subparsers = parser.add_subparsers(
+        title='subcommands', description='valid commands',
+        help='additional help', dest='command')
+    subparsers.required = True
+    
+    cparser = subparsers.add_parser('count',
+        help='Count homopolymers starting from a bam. ',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    cparser.set_defaults(func=count_errors)
+    cparser.add_argument('bam', help='Input alignments (aligned to ref).')
+    cparser.add_argument('--bed', default=None, help='.bed file of reference regions to include.')
+    cparser.add_argument('-t', '--threads', type=int, default=1, help='Number of threads for parallel execution.')
+    cparser.add_argument('-o', '--outdir', default='error_catalogue', help='Output directory.')
+
+    aparser = subparsers.add_parser('analyse',
+        help='Analyse existing counts, optionally merging multiple counters.',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    aparser.set_defaults(func=analyse_errors)
+    aparser.add_argument('pkl', nargs='+', help='Input .pkl file(s).')
+    aparser.add_argument('-o', '--outdir', default='error_catalogue',
+        help="Output directory (will be created).")
+
+    args = parser.parse_args()
+    os.mkdir(args.outdir)
+    args.func(args)
     logging.info('All done, check {} for output.'.format(args.outdir))
 
 
