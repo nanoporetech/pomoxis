@@ -14,8 +14,8 @@ import pandas as pd
 import pysam
 
 from pomoxis import bio
+import pomoxis.util
 from pomoxis.summary_from_stats import qscore
-
 
 class AverageScore:
     """Keep track of a simple average of inputs."""
@@ -230,9 +230,16 @@ def count_homopolymers(args):
         'ref_base', 'query_base', 'ref_len', 'query_len']
 
     prefix = os.path.join(args.output_dir, 'hp')
+
+    if args.bed is not None:
+        filter_trees = pomoxis.util.intervaltrees_from_bed(args.bed)
+    else:
+        filter_trees = None
+
     with open(prefix + '_catalogue.txt', 'w') as txt_fh:
         txt_fh.write('\t'.join(headers) + "\n")
-        score, counts, aligned_length = process_bam(args.bam, txt_fh, args.homo_len, score)
+        score, counts, aligned_length = process_bam(args.bam, txt_fh, args.homo_len, score,
+                                                    filter_trees=filter_trees)
     print("Found {} homopolymers in {}. Average score: {}".format(
         score.count, args.bam, score))
     counts['length'] = aligned_length
@@ -373,7 +380,7 @@ def counts_factory():
     return collections.defaultdict(collections.Counter)
 
 
-def process_bam(input_file, out_fh, homo_len, score):
+def process_bam(input_file, out_fh, homo_len, score, filter_trees=None):
     # counts[query_base][ref_len][query_len]
     counts = collections.defaultdict(counts_factory)
 
@@ -382,7 +389,12 @@ def process_bam(input_file, out_fh, homo_len, score):
         for seq in bam:
             if seq.is_secondary or seq.is_supplementary or seq.is_unmapped:
                 continue
-            aligned_ref_len += seq.reference_end - seq.reference_start
+            seq_reference_start = seq.reference_start  # avoid recomputing for each HP
+            seq_reference_end = seq.reference_end  # avoid recomputing for each HP
+
+            if (filter_trees is not None and not
+                filter_trees[seq.reference_name].overlaps(seq_reference_start, seq_reference_end)):
+                continue
 
             refseq = seq.get_reference_sequence().upper()
             align_pairs = seq.get_aligned_pairs(with_seq=True)
@@ -424,11 +436,28 @@ def process_bam(input_file, out_fh, homo_len, score):
                     query_start = seq.query_length - query_start - call_len
                     base = bio.comp[base]
 
+                ref_hp_pos = seq_reference_start + ref_start
+
+                # skip hps at the end of a segment since we don't know their true length
+                if ref_hp_pos == seq_reference_start or ref_hp_pos + ref_hp_len == seq_reference_end:
+                    continue
+
+                if filter_trees is not None:
+                    # skip hps that at the end of an interval or spanning multiple intervals
+                    # since we don't know their true length
+                    interval_left_end = filter_trees[seq.reference_name][ref_hp_pos - 1]
+                    interval_right_end = filter_trees[seq.reference_name][ref_hp_pos + ref_hp_len]
+                    if (len(interval_left_end) == 0 or len(interval_right_end) == 0 or
+                        interval_left_end != interval_right_end):
+                        continue
+
+                aligned_ref_len += ref_hp_len
+
                 score += min((call_len - ref_hp_len) ** 2, 1000)
                 out_str = '\t'.join([str(i) for i in (
                     seq.query_name,
                     seq.reference_name,
-                    seq.reference_start + ref_start,
+                    ref_hp_pos,
                     '-' if seq.is_reverse else '+',
                     query_start,
                     orginal_base,
@@ -461,6 +490,8 @@ def main():
         help="Output directory (will be created).")
     cparser.add_argument('-l', '--homo_len', default=3, type=int,
         help='Minimum homopolymer length, default 3')
+    cparser.add_argument('-b', '--bed',
+        help='Bed file to limit search.')
 
     aparser = subparsers.add_parser('analyse',
         help='Analyse existing counts, optionally merging multiple counters.',
