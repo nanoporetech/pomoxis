@@ -62,11 +62,6 @@ if ! $iflag || ! $rflag; then
   exit 1;
 fi
 
-if $bed_flag && $homopolymer_flag; then
-    echo "Using a .bed file for homopolymer analysis is not currently supported."
-    exit 1;
-fi
-
 if (($CHUNK > 0)); then
     ALIGN_OPTS="$ALIGN_OPTS -c $CHUNK"
 fi
@@ -122,7 +117,11 @@ grep 'Q Scores' -A 7 -m 1 ${PREFIX}_summ.txt
 if $homopolymer_flag; then
     OUTDIR=${PREFIX}_homopolymer
     echo "Running homopolymer count, saving data to ${OUTDIR}"
-    assess_homopolymers count ${PREFIX}.bam -o ${OUTDIR}
+    if $bed_flag; then
+        assess_homopolymers count ${PREFIX}.bam -o ${OUTDIR} ${BED}
+    else
+        assess_homopolymers count ${PREFIX}.bam -o ${OUTDIR}
+    fi
 fi
 
 
