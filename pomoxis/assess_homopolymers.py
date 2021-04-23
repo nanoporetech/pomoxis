@@ -473,7 +473,7 @@ def process_bam(input_file, out_fh, homo_len, score, filter_trees=None):
 def main():
     """Entry point for homopolymer accuracy counting."""
     parser = argparse.ArgumentParser(
-        prog='homopolymer',
+        prog='assess_homopolymers',
         description='Analyse homopolymer query and reference lengths.',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     subparsers = parser.add_subparsers(
