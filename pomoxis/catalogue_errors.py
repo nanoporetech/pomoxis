@@ -835,7 +835,7 @@ def main():
     subparsers.required = True
     
     cparser = subparsers.add_parser('count',
-        help='Count homopolymers starting from a bam. ',
+        help='Count query errors in a bam. ',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     cparser.set_defaults(func=count_errors)
     cparser.add_argument('bam', help='Input alignments (aligned to ref).')
