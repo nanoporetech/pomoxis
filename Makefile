@@ -7,7 +7,7 @@ PYTHON      ?= python3
 CONDA       ?= ~/miniconda3/
 
 # Builds a cache of binaries which can just be copied for CI
-BINARIES=minimap2 miniasm racon samtools bcftools paftools.js seqkit bedtools bgzip tabix
+BINARIES=minimap2 miniasm racon samtools bcftools k8 paftools.js seqkit bedtools bgzip tabix
 
 BINCACHEDIR=bincache
 $(BINCACHEDIR):
@@ -78,6 +78,17 @@ $(BINCACHEDIR)/tabix: | $(BINCACHEDIR)/samtools
 
 $(BINCACHEDIR)/bgzip: | $(BINCACHEDIR)/samtools
 	cp ${BINBUILDDIR}/samtools-${SAMVER}/htslib-${SAMVER}/$(@F) $@
+
+K8VER=0.2.5
+$(BINCACHEDIR)/k8: | $(BINCACHEDIR) $(BINBUILDDIR)
+	@echo Making $(@F)
+	if [ ! -e ${BINBUILDDIR}/k8-${K8VER}.tar.bz2 ]; then \
+	  cd ${BINBUILDDIR}; \
+	  wget https://github.com/attractivechaos/k8/releases/download/${K8VER}/k8-${K8VER}.tar.bz2; \
+	  tar -xjf k8-${K8VER}.tar.bz2; \
+	fi
+	cp ${BINBUILDDIR}/k8-${K8VER}/k8-Linux $@
+
 
 $(BINCACHEDIR)/paftools.js: | $(BINCACHEDIR)/minimap2
 	cp ${BINBUILDDIR}/minimap2-${MAPVER}/misc/$(@F) $@
