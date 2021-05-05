@@ -7,7 +7,7 @@ PYTHON      ?= python3
 CONDA       ?= ~/miniconda3/
 
 # Builds a cache of binaries which can just be copied for CI
-BINARIES=minimap2 miniasm racon samtools bcftools seqkit bedtools bgzip tabix
+BINARIES=minimap2 miniasm racon samtools bcftools paftools.js seqkit bedtools bgzip tabix
 
 BINCACHEDIR=bincache
 $(BINCACHEDIR):
@@ -78,6 +78,9 @@ $(BINCACHEDIR)/tabix: | $(BINCACHEDIR)/samtools
 
 $(BINCACHEDIR)/bgzip: | $(BINCACHEDIR)/samtools
 	cp ${BINBUILDDIR}/samtools-${SAMVER}/htslib-${SAMVER}/$(@F) $@
+
+$(BINCACHEDIR)/paftools.js: | $(BINCACHEDIR)/minimap2
+	cp ${BINBUILDDIR}/minimap2-${MAPVER}/misc/$(@F) $@
 
 
 BCFVER=1.7
