@@ -118,12 +118,12 @@ minimap_exts=('.mmi' '.fai')
 num_minimap_exts=${#minimap_exts[@]}
 missing=0
 for ext in "${minimap_exts[@]}"; do
-  minimap_index=${REFERENCE}${ext}
+  minimap_index="${REFERENCE}${ext}"
   if ${FORCE_INDEX}; then
     echo "Removing previous index file ${minimap_index}"
-    rm -rf ${minimap_index}
+    rm -rf "${minimap_index}"
   fi
-  if [[ ! -e ${minimap_index} ]]; then
+  if [[ ! -e "${minimap_index}" ]]; then
     ((missing+=1))
   fi
 done;
@@ -132,9 +132,9 @@ if [ "$missing" -eq 0 ]; then
   echo "Found minimap files." >&2
 elif [ "$missing" -eq "$num_minimap_exts" ]; then
   echo "Constructing minimap index." >&2
-  samtools faidx ${REFERENCE}
-  minimap2 -I ${INDEX_SIZE} ${ALIGN_OPTS} -d ${REFERENCE}.mmi ${REFERENCE} \
-      || (echo "Indexing draft failed" && exit 1)
+  samtools faidx "${REFERENCE}"
+  minimap2 -I "${INDEX_SIZE}" ${ALIGN_OPTS} -d "${REFERENCE}.mmi" "${REFERENCE}" \
+      || { echo "Indexing draft failed"; exit 1; }
 else
   echo "Missing ${missing} index files. Clean up any files named
 ${REFERENCE}<EXT> where <EXT> is one of ${minimap_exts[*]}." >&2
@@ -147,15 +147,15 @@ fi
 
 if [ "$CHUNK" != "" ]; then
   echo "Splitting input into ${CHUNK} chunks." >&2
-  split_fastx ${INPUT} ${INPUT}.chunks ${CHUNK} \
-      || (echo "Failed to split input into chunks.")
-  INPUT=${INPUT}.chunks
+  split_fastx "${INPUT}" "${INPUT}.chunks" "${CHUNK}" \
+      || { echo "Failed to split input into chunks."; exit 1; }
+  INPUT="${INPUT}.chunks"
 fi
 
-minimap2 ${ALIGN_OPTS} -t ${THREADS} -a ${REFERENCE}.mmi ${INPUT} \
-  -A ${MATCH_SCORE} -B ${MISMATCH_SCORE} -O ${GAP_OPEN} -E ${GAP_EXTEND} |
-  samtools view -@ ${THREADS} -T ${REFERENCE} ${FILTER} -bS - |
-  samtools sort -@ ${THREADS} ${SORT} -l 9 -o ${PREFIX}.bam - \
-    || (echo "Alignment pipeline failed." && exit 1)
-samtools index -@ ${THREADS} ${PREFIX}.bam ${PREFIX}.bam.bai \
-    || (echo "Failed to index alignment file." && exit 1)
+minimap2 ${ALIGN_OPTS} -t "${THREADS}" -a "${REFERENCE}.mmi" "${INPUT}" \
+  -A "${MATCH_SCORE}" -B "${MISMATCH_SCORE}" -O "${GAP_OPEN}" -E "${GAP_EXTEND}" |
+  samtools view -@ "${THREADS}" -T "${REFERENCE}" ${FILTER} -bS - |
+  samtools sort -@ "${THREADS}" ${SORT} -l 9 -o "${PREFIX}.bam" - \
+    || { echo "Alignment pipeline failed."; exit 1; }
+samtools index -@ "${THREADS}" "${PREFIX}.bam" "${PREFIX}.bam.bai" \
+    || { echo "Failed to index alignment file."; exit 1; }
