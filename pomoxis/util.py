@@ -372,6 +372,8 @@ def intervaltrees_from_bed(path_to_bed):
     trees = defaultdict(intervaltree.IntervalTree)
     for chrom, start, stop in yield_from_bed(path_to_bed):
         trees[chrom].add(intervaltree.Interval(begin=start, end=stop))
+    for chrom in trees:
+        trees[chrom].merge_overlaps()
     return trees
 
 
