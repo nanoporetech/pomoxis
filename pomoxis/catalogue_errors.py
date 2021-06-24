@@ -4,6 +4,7 @@ import concurrent.futures
 from functools import partial
 import itertools
 import logging
+import shutil
 from math import ceil
 from operator import attrgetter
 import os
@@ -829,14 +830,11 @@ def count_errors(args):
     aggr_and_output(args, error_count, total_ref_length, total_n_ref_sites_masked)
 
 
-def merge_catalogues(outfh, filenames):
+def merge_catalogues(outfile, filenames):
     for f in filenames:
         try:
             with open(f, 'r') as infile:
-                # doing this line by line to avoid loading the entire catalogue
-                # file into memory, as these can be very large
-                for line in infile:
-                    outfh.write(line)
+                shutil.copyfileobj(infile, outfile)
         except:
             logging.info("Error merging file {}".format(f))
         else:
