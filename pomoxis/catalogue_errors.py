@@ -4,6 +4,7 @@ import concurrent.futures
 from functools import partial
 import itertools
 import logging
+from math import ceil
 from operator import attrgetter
 import os
 import pickle
@@ -557,11 +558,11 @@ def _get_size(n, sizes):
     return size
 
 
-def _process_read(bam, read_num, bed_file=None):
+def _process_read(bam, read_range, bed_file=None):
     """Load an alignment from bam and return result of `_process_seg`.
 
     :param bam: str, bam file.
-    :param read_num: int, index of alignment to process.
+    :param read_range: (int, int), range of alignments to process.
     :param bed_file: path to .bed file of regions to include in analysis.
     :returns: result of `_process_seg`.
     """
@@ -569,27 +570,47 @@ def _process_read(bam, read_num, bed_file=None):
     if bed_file is not None:
         trees = intervaltrees_from_bed(bed_file)
 
+    total_ref_length = defaultdict(int)
+    total_n_ref_sites_masked = defaultdict(int)
+    error_count = defaultdict(Counter)
+    errors = []
+
     with pysam.AlignmentFile(bam, 'rb') as bam_obj:
-        gen = (r for r in bam_obj)
-        for i in range(read_num + 1):
-            rec = next(gen)
-        if rec.is_unmapped or rec.is_supplementary or rec.is_secondary:
-            return
+        for i, rec in enumerate(bam_obj.fetch(until_eof=True)):
+            if i < read_range[0]:
+                continue
+            elif i == read_range[1]:
+                break
 
-        if bed_file is not None:
-            tree = trees[rec.reference_name]
-
-            if not tree.overlaps(rec.reference_start, rec.reference_end):
-                #sys.stderr.write('read {} does not overlap with any regions in bedfile\n'.format(rec.query_name))
+            if rec.is_unmapped or rec.is_supplementary or rec.is_secondary:
                 return
-        else:
-            tree = None
 
-        seg = AlignSeg(rname=rec.reference_name, qname=rec.query_name,
-                       pairs=list(get_trimmed_pairs(rec)), rlen=rec.reference_length
-                      )
-        logging.debug('Loaded query {}'.format(seg.qname))
-        return _process_seg(seg, tree)
+            if bed_file is not None:
+                tree = trees[rec.reference_name]
+
+                if not tree.overlaps(rec.reference_start, rec.reference_end):
+                    #sys.stderr.write('read {} does not overlap with any regions in bedfile\n'.format(rec.query_name))
+                    continue
+            else:
+                tree = None
+
+            seg = AlignSeg(rname=rec.reference_name, qname=rec.query_name,
+                           pairs=list(get_trimmed_pairs(rec)), rlen=rec.reference_length
+                          )
+            logging.debug('Loaded query {}'.format(seg.qname))
+
+            seg_result = _process_seg(seg, tree)
+            if seg_result is None:
+                continue
+
+            ref_name, ref_length, counts, e, n_masked = seg_result
+            
+            errors += e
+            error_count[ref_name].update(counts)
+            total_ref_length[ref_name] += ref_length
+            total_n_ref_sites_masked[ref_name] += n_masked
+
+    return errors, error_count, total_ref_length, total_n_ref_sites_masked
 
 
 def _process_seg(seg, tree=None):
@@ -730,8 +751,15 @@ def analyse_errors(args):
 
 
 def count_errors(args):
-    with pysam.AlignmentFile(args.bam, 'rb') as bam:
-        n_reads = bam.count()
+    # create a slice of reads to process in each thread to avoid looping through
+    # bam n read times and reduce mp overhead
+    ranges = [(0, float('inf'))]
+    if args.threads > 1:
+        with pysam.AlignmentFile(args.bam) as bam:
+            n_reads = bam.count(until_eof=True)
+        n_reads_per_proc = ceil(n_reads / args.threads)
+        ranges = [(start, min(start + n_reads_per_proc, n_reads))
+                   for start in range(0, n_reads, n_reads_per_proc)]
 
     total_ref_length = defaultdict(int)
     total_n_ref_sites_masked = defaultdict(int)
@@ -761,14 +789,17 @@ def count_errors(args):
     db_fh.write(_sep_.join((h[0] for h in headers)) + '\n')
 
     with concurrent.futures.ProcessPoolExecutor(max_workers=args.threads) as ex:
-        for returned in ex.map(f, range(n_reads)):
+        for returned in ex.map(f, ranges):
             if returned is None:
                 continue
             else:
-                ref_name, ref_length, counts, errors, n_masked = returned
-            error_count[ref_name].update(counts)
-            total_ref_length[ref_name] += ref_length
-            total_n_ref_sites_masked[ref_name] += n_masked
+                errors, counts, ref_length, n_masked = returned
+
+            for ref_name in counts:
+                error_count[ref_name].update(counts[ref_name])
+                total_ref_length[ref_name] += ref_length[ref_name]
+                total_n_ref_sites_masked[ref_name] += n_masked[ref_name]
+
             for e in errors:
                 db_fh.write(_sep_.join((str(h[1](e)) for h in headers)) + '\n')
                 txt_fh.write("Ref Pos: {}, {} Pos {}, {}, {}\n".format(e.rp, e.qname, e.qp, e.klass, e.aggr_klass))
