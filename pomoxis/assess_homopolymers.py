@@ -1,8 +1,12 @@
 import argparse
 import collections
+import concurrent.futures
+from functools import partial
+from math import ceil
 import os
 import pickle
 import re
+import shutil
 
 import matplotlib
 matplotlib.use('Agg', force=True)
@@ -224,27 +228,62 @@ def plot_errors_by_length(e, fname):
 def count_homopolymers(args):
     os.mkdir(args.output_dir)
 
-    score = AverageScore()
-    headers = [
-        'query_name', 'ref_name', 'ref_start', 'rev_comp', 'query_start',
-        'ref_base', 'query_base', 'ref_len', 'query_len']
+    # create a slice of reads to process in each thread to avoid looping through
+    # bam n read times and reduce mp overhead
+    ranges = [(0, 0, float('inf'))]
+    if args.threads > 1:
+        with pysam.AlignmentFile(args.bam) as bam:
+            n_reads = bam.count(until_eof=True)
+        n_reads_per_proc = ceil(n_reads / args.threads)
+        ranges = [(thread, thread * n_reads_per_proc, min((thread + 1) * n_reads_per_proc, n_reads))
+                   for thread in range(args.threads)]
+
+    headers = ['query_name', 'ref_name', 'ref_start', 'rev_comp', 'query_start',
+               'ref_base', 'query_base', 'ref_len', 'query_len']
 
     prefix = os.path.join(args.output_dir, 'hp')
+
+    total_score = AverageScore()
+    total_counts = collections.defaultdict(counts_factory)
+    total_aligned_length = 0
 
     if args.bed is not None:
         filter_trees = pomoxis.util.intervaltrees_from_bed(args.bed)
     else:
         filter_trees = None
 
+    f = partial(process_bam, args.bam, prefix, args.homo_len, filter_trees=filter_trees)
+
+    with concurrent.futures.ProcessPoolExecutor(max_workers=args.threads) as ex:
+        for returned in ex.map(f, ranges):
+            if returned is None:
+                continue
+            else:
+                score, counts, aligned_length = returned
+                for base in counts:
+                    for rlen in counts[base]:
+                        total_counts[base][rlen].update(counts[base][rlen])
+                total_score += score
+                total_aligned_length += aligned_length
+
+    print("Found {} homopolymers in {}. Average score: {}".format(
+        total_score.count, args.bam, total_score))
+    total_counts['length'] = total_aligned_length
+
     with open(prefix + '_catalogue.txt', 'w') as txt_fh:
         txt_fh.write('\t'.join(headers) + "\n")
-        score, counts, aligned_length = process_bam(args.bam, txt_fh, args.homo_len, score,
-                                                    filter_trees=filter_trees)
-    print("Found {} homopolymers in {}. Average score: {}".format(
-        score.count, args.bam, score))
-    counts['length'] = aligned_length
-    save_counts(counts, prefix + '_counts.pkl')
-    analyse_counts(counts, prefix, aligned_length)
+        for f in [prefix + '_catalogue_{}.txt'.format(n) for n in range(args.threads)]:
+            try:
+                with open(f, 'r') as infile:
+                    shutil.copyfileobj(infile, txt_fh)
+            except:
+                print("Error merging file {}".format(f))
+            else:
+                print("Merged file {}, deleting".format(f))
+                os.remove(f)
+
+    save_counts(total_counts, prefix + '_counts.pkl')
+    analyse_counts(total_counts, prefix, total_aligned_length)
 
 
 def save_counts(counts, fp):
@@ -380,13 +419,35 @@ def counts_factory():
     return collections.defaultdict(collections.Counter)
 
 
-def process_bam(input_file, out_fh, homo_len, score, filter_trees=None):
-    # counts[query_base][ref_len][query_len]
-    counts = collections.defaultdict(counts_factory)
+def process_bam(bam, prefix, homo_len, read_range, filter_trees=None):
+    """Count HPs in a chunk of reads.
 
-    with pysam.AlignmentFile(input_file, 'r') as bam:
+    :param bam: str, path to bam file
+    :param prefix: str, prefix for output paths
+    :param homo_len: int, minimum ref length of HPs to count
+    :param read_range: (int, int, int), chunk number, read index start and end
+    :param filter_trees: intervalTree, regions to analyse
+    :returns: score, counts, aligned_ref_len
+        score, AverageScore object
+        counts, defaultdict of defaultdicts of Counters, counts by contig, ref length,
+            query length
+        aligned_ref_len, int
+    """
+    counts = collections.defaultdict(counts_factory)
+    score = AverageScore()
+    aligned_ref_len = 0
+
+    catalogue_path = prefix + '_catalogue_{}.txt'.format(read_range[0])
+    out_fh = open(catalogue_path, 'w')
+
+    with pysam.AlignmentFile(bam, 'r') as bam_obj:
         aligned_ref_len = 0
-        for seq in bam:
+        for i, seq in enumerate(bam_obj.fetch(until_eof=True)):
+            if i < read_range[1]:
+                continue
+            elif i == read_range[2]:
+                break
+
             if seq.is_secondary or seq.is_supplementary or seq.is_unmapped:
                 continue
             seq_reference_start = seq.reference_start  # avoid recomputing for each HP
@@ -467,6 +528,9 @@ def process_bam(input_file, out_fh, homo_len, score, filter_trees=None):
                 out_fh.write(out_str + '\n')
                 # update counts of calls
                 counts[base][ref_hp_len][call_len] += 1
+
+    out_fh.close()
+
     return score, counts, aligned_ref_len
 
 
@@ -488,6 +552,8 @@ def main():
     cparser.add_argument('bam', help='Input bam file.')
     cparser.add_argument('-o', '--output_dir', default='homopolymers',
         help="Output directory (will be created).")
+    cparser.add_argument('-t', '--threads', type=int, default=1,
+        help='Number of threads for parallel execution.')
     cparser.add_argument('-l', '--homo_len', default=3, type=int,
         help='Minimum homopolymer length, default 3')
     cparser.add_argument('-b', '--bed',
