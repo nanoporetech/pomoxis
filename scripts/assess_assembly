@@ -118,9 +118,9 @@ if $homopolymer_flag; then
     OUTDIR=${PREFIX}_homopolymer
     echo "Running homopolymer count, saving data to ${OUTDIR}"
     if $bed_flag; then
-        assess_homopolymers count ${PREFIX}.bam -o ${OUTDIR} ${BED}
+        assess_homopolymers count ${PREFIX}.bam -t $THREADS -o ${OUTDIR} ${BED}
     else
-        assess_homopolymers count ${PREFIX}.bam -o ${OUTDIR}
+        assess_homopolymers count ${PREFIX}.bam -t $THREADS -o ${OUTDIR}
     fi
 fi
 
