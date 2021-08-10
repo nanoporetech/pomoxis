@@ -155,9 +155,13 @@ def fast_convert():
     with FastxWrite('-', force_q=out_fmt=='fastq', mock_q=args.mock_q) as fh_out:
         with pysam.FastxFile('-') as fh_in:
             for rec in fh_in:
-                qual = rec.quality
-                if qflag and (in_fmt=='fasta' or args.discard_q):
+                if out_fmt == 'fasta':
+                    qual = None
+                elif qflag:
                     qual = chr(33 + args.mock_q) * len(rec.sequence)
+                else:
+                    qual = rec.quality
+
                 fh_out.write(rec.name, rec.sequence, qual, rec.comment)
 
 
@@ -210,6 +214,18 @@ def extract_long_reads():
             name = ids[i]
             rec = record_dict[ids[i]]
             out.write(name, *rec)
+
+    if args.others is not None:
+        if args.bases is None:
+            others = np.argpartition(lengths, -max_reads)[:-max_reads]
+        else:
+            others = order[last:]
+
+        with FastxWrite(args.others, 'w') as out:
+            for i in others:
+                name = ids[i]
+                rec = record_dict[ids[i]]
+                out.write(name, *rec)
 
 
 def parse_regions(regions, ref_lengths=None):

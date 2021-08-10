@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Fixed
 - Reduced memory consumption of `catalogue_errors`.
+- `fast_convert qa` now properly outputs a fasta file
+- Fixed `long_fastx` `--others` option
 ### Added
 - `assess_homopolymers` can use multiple threads
 
