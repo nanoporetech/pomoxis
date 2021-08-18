@@ -104,7 +104,7 @@ def split_fastx(fname, output, chunksize=10000):
                 else:
                     for i, (s, q) in enumerate(zip(chunks(seq, chunksize), chunks(qual, chunksize))):
                         chunk_name = '{}_chunk{}'.format(name, i)
-                        fout.write(chunk_name, s, q, comment)
+                        fout.write(chunk_name, ''.join(s), ''.join(q), comment)
 
 
 def split_fastx_cmdline():
