@@ -4,6 +4,8 @@ import concurrent.futures
 from functools import partial
 import itertools
 import logging
+import shutil
+from math import ceil
 from operator import attrgetter
 import os
 import pickle
@@ -557,11 +559,12 @@ def _get_size(n, sizes):
     return size
 
 
-def _process_read(bam, read_num, bed_file=None):
+def _process_read(bam, outdir, read_range, bed_file=None):
     """Load an alignment from bam and return result of `_process_seg`.
 
     :param bam: str, bam file.
-    :param read_num: int, index of alignment to process.
+    :param outdir: str, output path
+    :param read_range: (int, int, int), process number, range of alignments to process.
     :param bed_file: path to .bed file of regions to include in analysis.
     :returns: result of `_process_seg`.
     """
@@ -569,41 +572,69 @@ def _process_read(bam, read_num, bed_file=None):
     if bed_file is not None:
         trees = intervaltrees_from_bed(bed_file)
 
+    total_ref_length = defaultdict(int)
+    total_n_ref_sites_masked = defaultdict(int)
+    error_count = defaultdict(Counter)
+
+    db_path = os.path.join(outdir, 'error_catalogue_db_{}.txt'.format(read_range[0]))
+    txt_path = os.path.join(outdir, 'error_catalogue_{}.txt'.format(read_range[0]))
+    db_fh = open(db_path, 'w')
+    txt_fh = open(txt_path, 'w')
+    headers = get_headers()
+
     with pysam.AlignmentFile(bam, 'rb') as bam_obj:
-        gen = (r for r in bam_obj)
-        for i in range(read_num + 1):
-            rec = next(gen)
-        if rec.is_unmapped or rec.is_supplementary or rec.is_secondary:
-            return
+        for i, rec in enumerate(bam_obj.fetch(until_eof=True)):
+            if i < read_range[1]:
+                continue
+            elif i == read_range[2]:
+                break
 
-        if bed_file is not None:
-            tree = trees[rec.reference_name]
-
-            if not tree.overlaps(rec.reference_start, rec.reference_end):
-                #sys.stderr.write('read {} does not overlap with any regions in bedfile\n'.format(rec.query_name))
+            if rec.is_unmapped or rec.is_supplementary or rec.is_secondary:
                 return
-        else:
-            tree = None
 
-        seg = AlignSeg(rname=rec.reference_name, qname=rec.query_name,
-                       pairs=list(get_trimmed_pairs(rec)), rlen=rec.reference_length
-                      )
-        logging.debug('Loaded query {}'.format(seg.qname))
-        return _process_seg(seg, tree)
+            if bed_file is not None:
+                tree = trees[rec.reference_name]
+
+                if not tree.overlaps(rec.reference_start, rec.reference_end):
+                    #sys.stderr.write('read {} does not overlap with any regions in bedfile\n'.format(rec.query_name))
+                    continue
+            else:
+                tree = None
+
+            seg = AlignSeg(rname=rec.reference_name, qname=rec.query_name,
+                           pairs=list(get_trimmed_pairs(rec)), rlen=rec.reference_length
+                          )
+            logging.debug('Loaded query {}'.format(seg.qname))
+
+            seg_result = _process_seg(seg, db_fh, txt_fh, headers, tree)
+            if seg_result is None:
+                continue
+
+            ref_name, ref_length, counts, n_masked = seg_result
+            
+            error_count[ref_name].update(counts)
+            total_ref_length[ref_name] += ref_length
+            total_n_ref_sites_masked[ref_name] += n_masked
+
+    db_fh.close()
+    txt_fh.close()
+
+    return error_count, total_ref_length, total_n_ref_sites_masked
 
 
-def _process_seg(seg, tree=None):
+def _process_seg(seg, db_fh, txt_fh, headers, tree=None):
     """Classify and count errors within an `AlignSeg` object.
 
     :param seg: `AlignSeg` object.
+    :param db_fh: file object, catalogue db file
+    :param txt_fh: file object, catalogue file
+    :param headers: list of tuples, error properties and their label ids
     :param tree: `intervaltree.IntervalTree` object of regions to analyse.
-    :returns: (seg.rname, aligned_ref_len, error_count, errors, n_masked)
+    :returns: (seg.rname, aligned_ref_len, error_count, n_masked)
         error_count: `Counter` of error classes
-        errors: list of `Error` objects
         n_masked: number of reference positions excluded by tree.
     """
     error_count = Counter()
-    errors = []
     err_result = get_errors(seg.pairs, tree)
     if err_result is None:  # no matches within bed regions
         logging.debug('Skipping {} since all bed regions were deleted'.format(
@@ -622,16 +653,24 @@ def _process_seg(seg, tree=None):
             rp = "~{}".format(approx_pos[0])
         if qp is None:
             qp = "~{}".format(approx_pos[1])
-        errors.append(Error(rp=rp, rname=seg.rname, qp=qp, qname=seg.qname, ref=ref,
-                            match=match, read=read, counts=counts, klass=klass,
-                            aggr_klass=get_aggr_klass(klass)))
+
+        e = Error(rp=rp, rname=seg.rname, qp=qp, qname=seg.qname, ref=ref,
+                  match=match, read=read, counts=counts, klass=klass,
+                  aggr_klass=get_aggr_klass(klass))
         error_count[klass] += 1
+
+        db_fh.write(_sep_.join((str(h[1](e)) for h in headers)) + '\n')
+        txt_fh.write("Ref Pos: {}, {} Pos {}, {}, {}\n".format(e.rp, e.qname, e.qp, e.klass, e.aggr_klass))
+        txt_fh.write(e.ref + "\n")
+        txt_fh.write(e.match + "\n")
+        txt_fh.write(e.read + "\n")
+        txt_fh.write(".\n")
 
     if tree is None:
         assert seg.rlen == aligned_ref_len
 
     logging.debug('Done processing {} aligned to {}'.format(seg.qname, seg.rname))
-    return seg.rname, aligned_ref_len, error_count, errors, n_masked
+    return seg.rname, aligned_ref_len, error_count, n_masked
 
 
 def qscore(d):
@@ -702,7 +741,6 @@ def get_aggr_klass(klass):
     return aggr_klass
 
 
-
 def analyse_errors(args):
     # load and merge existing counts
     error_count = defaultdict(Counter)
@@ -729,57 +767,79 @@ def analyse_errors(args):
     aggr_and_output(args, error_count, total_ref_length, total_n_ref_sites_masked)
 
 
+def get_headers():
+    # make an approximate position into int
+    helper = lambda x: int(x.replace('~','')) if isinstance(x, str) else x
+
+    return [('ref_name', attrgetter('rname')),
+            ('ref_pos', helper(attrgetter('rp'))),
+            ('ref_context', attrgetter('ref')),
+            ('query_name', attrgetter('qname')),
+            ('query_pos', helper(attrgetter('qp'))),
+            ('query_context', attrgetter('read')),
+            ('class', attrgetter('klass')),
+            ('aggr_class', attrgetter('aggr_klass')),
+            ('n_ins', lambda e: len(e.counts['ins'])),
+            ('n_del', lambda e: len(e.counts['del'])),
+            ('n_sub', lambda e: len(e.counts['sub'])),
+            ('context_len', lambda e: len(e.ref)),
+    ]
+
+
 def count_errors(args):
-    with pysam.AlignmentFile(args.bam, 'rb') as bam:
-        n_reads = bam.count()
+    # create a slice of reads to process in each thread to avoid looping through
+    # bam n read times and reduce mp overhead
+    ranges = [(0, 0, float('inf'))]
+    if args.threads > 1:
+        with pysam.AlignmentFile(args.bam) as bam:
+            n_reads = bam.count(until_eof=True)
+        n_reads_per_proc = ceil(n_reads / args.threads)
+        ranges = [(thread, thread * n_reads_per_proc, min((thread + 1) * n_reads_per_proc, n_reads))
+                   for thread in range(args.threads)]
 
     total_ref_length = defaultdict(int)
     total_n_ref_sites_masked = defaultdict(int)
     error_count = defaultdict(Counter)
-    f = partial(_process_read, args.bam, bed_file=args.bed)
 
     # record draft start position of each long multi indel
     multi_errs = {}
-    # make an approximate position into int
-    helper = lambda x: int(x.replace('~','')) if isinstance(x, str) else x
-    db_fh = open(os.path.join(args.outdir, 'error_catalogue_db.txt'), 'w')
-    txt_fh = open(os.path.join(args.outdir, 'error_catalogue.txt'), 'w')
 
-    headers = [('ref_name', attrgetter('rname')),
-                ('ref_pos', helper(attrgetter('rp'))),
-                ('ref_context', attrgetter('ref')),
-                ('query_name', attrgetter('qname')),
-                ('query_pos', helper(attrgetter('qp'))),
-                ('query_context', attrgetter('read')),
-                ('class', attrgetter('klass')),
-                ('aggr_class', attrgetter('aggr_klass')),
-                ('n_ins', lambda e: len(e.counts['ins'])),
-                ('n_del', lambda e: len(e.counts['del'])),
-                ('n_sub', lambda e: len(e.counts['sub'])),
-                ('context_len', lambda e: len(e.ref)),
-    ]
-    db_fh.write(_sep_.join((h[0] for h in headers)) + '\n')
+    f = partial(_process_read, args.bam, args.outdir, bed_file=args.bed)
 
     with concurrent.futures.ProcessPoolExecutor(max_workers=args.threads) as ex:
-        for returned in ex.map(f, range(n_reads)):
+        for returned in ex.map(f, ranges):
             if returned is None:
                 continue
             else:
-                ref_name, ref_length, counts, errors, n_masked = returned
-            error_count[ref_name].update(counts)
-            total_ref_length[ref_name] += ref_length
-            total_n_ref_sites_masked[ref_name] += n_masked
-            for e in errors:
-                db_fh.write(_sep_.join((str(h[1](e)) for h in headers)) + '\n')
-                txt_fh.write("Ref Pos: {}, {} Pos {}, {}, {}\n".format(e.rp, e.qname, e.qp, e.klass, e.aggr_klass))
-                txt_fh.write(e.ref + "\n")
-                txt_fh.write(e.match + "\n")
-                txt_fh.write(e.read + "\n")
-                txt_fh.write(".\n")
+                counts, ref_length, n_masked = returned
+
+            for ref_name in counts:
+                error_count[ref_name].update(counts[ref_name])
+                total_ref_length[ref_name] += ref_length[ref_name]
+                total_n_ref_sites_masked[ref_name] += n_masked[ref_name]
+
+    db_fh = open(os.path.join(args.outdir, 'error_catalogue_db.txt'), 'w')
+    db_fh.write(_sep_.join((h[0] for h in get_headers())) + '\n')
+    merge_catalogues(db_fh, [os.path.join(args.outdir, 'error_catalogue_db_{}.txt'.format(n)) for n in range(args.threads)])
     db_fh.close()
+
+    txt_fh = open(os.path.join(args.outdir, 'error_catalogue.txt'), 'w')
+    merge_catalogues(txt_fh, [os.path.join(args.outdir, 'error_catalogue_{}.txt'.format(n)) for n in range(args.threads)])
     txt_fh.close()
 
     aggr_and_output(args, error_count, total_ref_length, total_n_ref_sites_masked)
+
+
+def merge_catalogues(outfile, filenames):
+    for f in filenames:
+        try:
+            with open(f, 'r') as infile:
+                shutil.copyfileobj(infile, outfile)
+        except:
+            logging.info("Error merging file {}".format(f))
+        else:
+            logging.info("Merged file {}, deleting".format(f))
+            os.remove(f)
 
 
 def aggr_and_output(args, error_count, total_ref_length, total_n_ref_sites_masked):
