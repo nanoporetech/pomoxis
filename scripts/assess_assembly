@@ -62,6 +62,8 @@ if ! $iflag || ! $rflag; then
   exit 1;
 fi
 
+echo "Assessing $INPUT against $REFERENCE."
+
 if (($CHUNK > 0)); then
     ALIGN_OPTS="$ALIGN_OPTS -c $CHUNK"
 fi
