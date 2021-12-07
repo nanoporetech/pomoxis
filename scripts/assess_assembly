@@ -11,6 +11,7 @@ catalogue_flag=false
 homopolymer_flag=false
 trim_flag=false
 ALIGN_OPTS=""
+STATS_OPTS=""
 BED=""
 MIN_INDEL_LEN=0
 exclude_indel_flag=false
@@ -32,24 +33,26 @@ Calculate accuracy statistics for an assembly.
     -T  trim consensus to primary alignments of truth to assembly.
     -b  .bed file of reference regions to assess.
     -l  list all indels at least this long (default: ${MIN_INDEL_LEN}, set to 0 to skip searching for indels). 
-    -e  use with -l option to create a .bed file to exclude indels. If the -b option is used, the two bed files will be combined."
+    -e  use with -l option to create a .bed file to exclude indels. If the -b option is used, the two bed files will be combined.
+    -y  include supplementary alignments."
 
 
 
-while getopts ':hr:i:p:c:CHTt:b:l:e' option; do
+while getopts ':hr:i:p:c:CHTt:b:l:e:y' option; do
   case "$option" in
     h  ) echo "$usage" >&2; exit;;
     r  ) rflag=true; REFERENCE=$OPTARG;;
     i  ) iflag=true; INPUT=$OPTARG;;
     p  ) PREFIX=$OPTARG;;
     c  ) CHUNK=$OPTARG;;
-    C  ) catalogue_flag=true; ALIGN_OPTS="-m";;
-    H  ) homopolymer_flag=true; ALIGN_OPTS="-m";;
-    T  ) trim_flag=true; ALIGN_OPTS="-m";;
+    C  ) catalogue_flag=true;;
+    H  ) homopolymer_flag=true;;
+    T  ) trim_flag=true;;
     t  ) THREADS=$OPTARG;;
-    b  ) bed_flag=true; BED="--bed $OPTARG"; ALIGN_OPTS="-m";;
+    b  ) bed_flag=true; BED="--bed $OPTARG";;
     l  ) MIN_INDEL_LEN="$OPTARG";;
-    e  ) exclude_indel_flag=true; ALIGN_OPTS="-m";;
+    e  ) exclude_indel_flag=true;;
+    y  ) ALIGN_OPTS="-y"; STATS_OPTS="-a";;
     \? ) echo "Invalid option: -${OPTARG}." >&2; exit 1;;
     :  ) echo "Option -$OPTARG requires an argument." >&2; exit 1;;
   esac
@@ -63,6 +66,10 @@ if ! $iflag || ! $rflag; then
 fi
 
 echo "Assessing $INPUT against $REFERENCE."
+
+if $catalogue_flag || $homopolymer_flag || $trim_flag || $bed_flag || $exclude_indel_flag; then
+    ALIGN_OPTS="$ALIGN_OPTS -m"
+fi
 
 if (($CHUNK > 0)); then
     ALIGN_OPTS="$ALIGN_OPTS -c $CHUNK"
@@ -103,7 +110,7 @@ STATS_THREADS=1
 if [[ "$BED" != "" ]]; then
     STATS_THREADS=$THREADS
 fi
-stats_from_bam ${PREFIX}.bam -o ${PREFIX}_stats.txt -t ${STATS_THREADS} ${BED} 
+stats_from_bam ${STATS_OPTS} ${PREFIX}.bam -o ${PREFIX}_stats.txt -t ${STATS_THREADS} ${BED}
 
 summary_from_stats -i ${PREFIX}_stats.txt -pr -o ${PREFIX}_summ.txt
 
