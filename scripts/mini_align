@@ -15,7 +15,8 @@ Align fastq/a formatted reads to a genome using minimap2.
     -a  aggressively extend gaps (sets -A1 -B2 -O2 -E1 for minimap2).
     -P  filter to only primary alignments (i.e. run samtools view -F 2308).
         Deprecated: this filter is now default and can be disabled with -A.
-    -A  do not filter alignments to primary alignments, output all.
+    -y  filter to primary and supplementary alignments (i.e. run samtools view -F 260)
+    -A  do not filter alignments, output all.
     -n  sort bam by read name.
     -c  chunk size. Input reads/contigs will be broken into chunks
         prior to alignment.
@@ -52,7 +53,7 @@ MISMATCH_SCORE="4"
 GAP_OPEN="4,24"
 GAP_EXTEND="2,1"
 
-while getopts ':hr:i:I:M:S:O:E:fPAmsnp:ac:t:Xx' option; do
+while getopts ':hr:i:I:M:S:O:E:fPAymsnp:ac:t:Xx' option; do
   case "$option" in
     h  ) echo "$usage" >&2; exit;;
     r  ) rflag=true; REFERENCE=$OPTARG;;
@@ -61,6 +62,7 @@ while getopts ':hr:i:I:M:S:O:E:fPAmsnp:ac:t:Xx' option; do
     f  ) FORCE_INDEX=true;;
     P  ) filter_set=$(($filter_set + 1)); echo "-P option is deprecated";;
     A  ) filter_set=$(($filter_set + 1)); FILTER="";;
+    y  ) filter_set=$(($filter_set + 1)); FILTER="-F 260";;
     m  ) csmd_set=$(($csmd_set + 1)); ALIGN_OPTS="${ALIGN_OPTS} --MD";;
     s  ) csmd_set=$(($csmd_set + 1)); ALIGN_OPTS="${ALIGN_OPTS} --cs=long";;
     n  ) SORT="${SORT} -n";;
@@ -82,7 +84,7 @@ shift $(($OPTIND - 1))
 
 if [ "$filter_set" -gt 1 ]; then
     echo "$usage" >&2;
-    echo "Both -A and -P were specified (-P is deprecated)." >&2;
+    echo "More than one filtering setting [-A, -P, -y] was specified; these are mutually incompatible (-P is deprecated)." >&2;
     exit 1;
 fi
 
