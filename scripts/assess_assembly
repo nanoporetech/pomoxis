@@ -12,47 +12,50 @@ homopolymer_flag=false
 trim_flag=false
 ALIGN_OPTS=""
 STATS_OPTS=""
+SUMM_OPTS="-pr"
 BED=""
 MIN_INDEL_LEN=0
 exclude_indel_flag=false
 
 usage="$(basename "$0") [-h] -r <reference> -i <fastq>
 
-Calculate accuracy statistics for an assembly. 
+Calculate accuracy statistics for an assembly.
 
     -h  show this help text.
     -r  reference, should be a fasta file. If correspondng minimap2 indices
         do not exist they will be created. (required).
     -i  fastq/a input assembly (required).
+    -d  set the minimap2 preset, e.g. map-ont, asm5, asm10, asm20 [default: map-ont].
     -c  chunk size. Input reads/contigs will be broken into chunks
         prior to alignment, 0 will not chunk (default ${CHUNK}).
     -C  catalogue errors.
-    -H  count homopolymers. 
+    -H  count homopolymers.
     -t  alignment threads (default: ${THREADS}).
     -p  output file prefix (default: ${PREFIX}).
-    -T  trim consensus to primary alignments of truth to assembly.
     -b  .bed file of reference regions to assess.
-    -l  list all indels at least this long (default: ${MIN_INDEL_LEN}, set to 0 to skip searching for indels). 
+    -l  list all indels at least this long (default: ${MIN_INDEL_LEN}, set to 0 to skip searching for indels).
     -e  use with -l option to create a .bed file to exclude indels. If the -b option is used, the two bed files will be combined.
-    -y  include supplementary alignments."
+    -y  include supplementary alignments.
+    -a  accumulate the stats over a number of chunks [default: 1 (don't accumulate)]."
 
 
 
-while getopts ':hr:i:p:c:CHTt:b:l:e:y' option; do
+while getopts ':hr:i:d:p:c:CHTt:b:l:e:ya:' option; do
   case "$option" in
     h  ) echo "$usage" >&2; exit;;
     r  ) rflag=true; REFERENCE=$OPTARG;;
     i  ) iflag=true; INPUT=$OPTARG;;
+    d  ) ALIGN_OPTS="${ALIGN_OPTS} -d ${OPTARG}";;
     p  ) PREFIX=$OPTARG;;
     c  ) CHUNK=$OPTARG;;
     C  ) catalogue_flag=true;;
     H  ) homopolymer_flag=true;;
-    T  ) trim_flag=true;;
     t  ) THREADS=$OPTARG;;
     b  ) bed_flag=true; BED="--bed $OPTARG";;
     l  ) MIN_INDEL_LEN="$OPTARG";;
     e  ) exclude_indel_flag=true;;
-    y  ) ALIGN_OPTS="-y"; STATS_OPTS="-a";;
+    y  ) ALIGN_OPTS="${ALIGN_OPTS} -y"; STATS_OPTS="-a";;
+    a  ) SUMM_OPTS="${SUMM_OPTS} -a ${OPTARG}";;
     \? ) echo "Invalid option: -${OPTARG}." >&2; exit 1;;
     :  ) echo "Option -$OPTARG requires an argument." >&2; exit 1;;
   esac
@@ -65,7 +68,7 @@ if ! $iflag || ! $rflag; then
   exit 1;
 fi
 
-echo "Assessing $INPUT against $REFERENCE."
+echo "Assessing $INPUT against $REFERENCE."  >&2
 
 if $catalogue_flag || $homopolymer_flag || $trim_flag || $bed_flag || $exclude_indel_flag; then
     ALIGN_OPTS="$ALIGN_OPTS -m"
@@ -75,27 +78,21 @@ if (($CHUNK > 0)); then
     ALIGN_OPTS="$ALIGN_OPTS -c $CHUNK"
 fi
 
-if $trim_flag; then
-    mini_align -i $REFERENCE -r $INPUT -p ${PREFIX}_trim -t $THREADS $ALIGN_OPTS
-    ref_seqs_from_bam ${PREFIX}_trim.bam > ${PREFIX}_trim.fasta
-    INPUT=${PREFIX}_trim.fasta
-fi
-
-mini_align -i $INPUT -r $REFERENCE -p $PREFIX -t $THREADS $ALIGN_OPTS 
+mini_align -i $INPUT -r $REFERENCE -p $PREFIX -t $THREADS $ALIGN_OPTS
 
 if (($MIN_INDEL_LEN > 0)); then
-    echo "Writing list of indels ${MIN_INDEL_LEN} bases and longer to ${PREFIX}_indel_ge${MIN_INDEL_LEN}.txt."
+    echo "Writing list of indels ${MIN_INDEL_LEN} bases and longer to ${PREFIX}_indel_ge${MIN_INDEL_LEN}.txt."  >&2
     # find indels and write to a .bed file
     find_indels -m ${MIN_INDEL_LEN} ${PREFIX}.bam -o ${PREFIX}_indel_ge${MIN_INDEL_LEN}.txt -b ${PREFIX}_indel_ge${MIN_INDEL_LEN}.bed
 
     if $exclude_indel_flag; then
-        if ! $bed_flag; then  
+        if ! $bed_flag; then
             # if no bedfile has been given, create one spanning the genome
             BEDFILE=${PREFIX}_ref_contigs.bed
             samtools idxstats ${PREFIX}.bam | awk '{if(!/\*/){print $1"\t0\t"$2}}' > ${BEDFILE}
-            echo "Creating bed file to mask out indels ${MIN_INDEL_LEN} bases and longer."
+            echo "Creating bed file to mask out indels ${MIN_INDEL_LEN} bases and longer."  >&2
         else
-            echo "Subtracting indels ${MIN_INDEL_LEN} bases and longer from provided bed file."
+            echo "Subtracting indels ${MIN_INDEL_LEN} bases and longer from provided bed file."  >&2
             # strip --bed prefix from $BED
             BEDFILE=$(echo $BED | sed 's/--bed//')
         fi
@@ -112,11 +109,11 @@ if [[ "$BED" != "" ]]; then
 fi
 stats_from_bam ${STATS_OPTS} ${PREFIX}.bam -o ${PREFIX}_stats.txt -t ${STATS_THREADS} ${BED}
 
-summary_from_stats -i ${PREFIX}_stats.txt -pr -o ${PREFIX}_summ.txt
+summary_from_stats -i ${PREFIX}_stats.txt -o ${PREFIX}_summ.txt ${SUMM_OPTS}
 
 if $catalogue_flag; then
     OUTDIR=${PREFIX}_error_catalogue
-    echo "Running catalogue_errors, saving data to ${OUTDIR}"
+    echo "Running catalogue_errors, saving data to ${OUTDIR}" >&2
     catalogue_errors count ${PREFIX}.bam -t $THREADS -o ${OUTDIR} ${BED}
 fi
 
@@ -125,7 +122,7 @@ grep 'Q Scores' -A 7 -m 1 ${PREFIX}_summ.txt
 
 if $homopolymer_flag; then
     OUTDIR=${PREFIX}_homopolymer
-    echo "Running homopolymer count, saving data to ${OUTDIR}"
+    echo "Running homopolymer count, saving data to ${OUTDIR}" >&2
     if $bed_flag; then
         assess_homopolymers count ${PREFIX}.bam -t $THREADS -o ${OUTDIR} ${BED}
     else
@@ -134,4 +131,4 @@ if $homopolymer_flag; then
 fi
 
 
-echo "All done, output written to ${PREFIX}_stats.txt, ${PREFIX}_summ.txt and ${PREFIX}_indel_ge${MIN_INDEL_LEN}.txt"
+echo "All done, output written to ${PREFIX}_stats.txt, ${PREFIX}_summ.txt and ${PREFIX}_indel_ge${MIN_INDEL_LEN}.txt"  >&2
