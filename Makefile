@@ -109,7 +109,8 @@ $(BINCACHEDIR)/bcftools: | $(BINCACHEDIR) $(BINBUILDDIR)
 	cp ${BINBUILDDIR}/bcftools-${BCFVER}/bcftools $@
 
 
-SEQKITVER=0.8.0
+#SEQKITVER=0.8.0 changed to 2.1.0 on 13 December 2021
+SEQKITVER=2.1.0
 $(BINCACHEDIR)/seqkit: | $(BINCACHEDIR) $(BINBUILDDIR)
 	@echo Making $(@F)
 	if [ ! -e ${BINBUILDDIR}/seqkit_${OS}_amd64.tar.gz ]; then \
