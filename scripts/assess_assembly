@@ -9,10 +9,10 @@ iflag=false
 bed_flag=false
 catalogue_flag=false
 homopolymer_flag=false
-trim_flag=false
 ALIGN_OPTS=""
 STATS_OPTS=""
 SUMM_OPTS="-pr"
+ACCUMULATE_OPTS="1,10,100"
 BED=""
 MIN_INDEL_LEN=0
 exclude_indel_flag=false
@@ -36,11 +36,12 @@ Calculate accuracy statistics for an assembly.
     -l  list all indels at least this long (default: ${MIN_INDEL_LEN}, set to 0 to skip searching for indels).
     -e  use with -l option to create a .bed file to exclude indels. If the -b option is used, the two bed files will be combined.
     -y  include supplementary alignments.
-    -a  accumulate the stats over a number of chunks [default: 1 (don't accumulate)]."
+    -a  accumulate the stats over a number of chunks, can include multiple values separated by comma,
+        one summary file will be generated for each value [default: 1,10,100]."
 
 
 
-while getopts ':hr:i:d:p:c:CHTt:b:l:e:ya:' option; do
+while getopts ':hr:i:d:p:c:CHt:b:l:e:ya:' option; do
   case "$option" in
     h  ) echo "$usage" >&2; exit;;
     r  ) rflag=true; REFERENCE=$OPTARG;;
@@ -55,7 +56,7 @@ while getopts ':hr:i:d:p:c:CHTt:b:l:e:ya:' option; do
     l  ) MIN_INDEL_LEN="$OPTARG";;
     e  ) exclude_indel_flag=true;;
     y  ) ALIGN_OPTS="${ALIGN_OPTS} -y"; STATS_OPTS="-a";;
-    a  ) SUMM_OPTS="${SUMM_OPTS} -a ${OPTARG}";;
+    a  ) ACCUMULATE_OPTS="${OPTARG}";;
     \? ) echo "Invalid option: -${OPTARG}." >&2; exit 1;;
     :  ) echo "Option -$OPTARG requires an argument." >&2; exit 1;;
   esac
@@ -68,9 +69,18 @@ if ! $iflag || ! $rflag; then
   exit 1;
 fi
 
+# Check if the homopolymer directory exists
+if $homopolymer_flag; then
+    OUTDIR=${PREFIX}_homopolymer
+    if [ -d "$OUTDIR" ]; then
+    echo "Directory ${OUTDIR} already exists, delete or rename it." >&2
+    exit 1
+    fi
+fi
+
 echo "Assessing $INPUT against $REFERENCE."  >&2
 
-if $catalogue_flag || $homopolymer_flag || $trim_flag || $bed_flag || $exclude_indel_flag; then
+if $catalogue_flag || $homopolymer_flag || $bed_flag || $exclude_indel_flag; then
     ALIGN_OPTS="$ALIGN_OPTS -m"
 fi
 
@@ -109,7 +119,22 @@ if [[ "$BED" != "" ]]; then
 fi
 stats_from_bam ${STATS_OPTS} ${PREFIX}.bam -o ${PREFIX}_stats.txt -t ${STATS_THREADS} ${BED}
 
-summary_from_stats -i ${PREFIX}_stats.txt -o ${PREFIX}_summ.txt ${SUMM_OPTS}
+# Generating summary files for each accumulation parameter
+for n in $(echo $ACCUMULATE_OPTS | tr "," " "); do
+
+    echo "======================> Accumulating over $n chunks"
+
+    if [[ $n == 1 ]]; then 
+	    output_file="${PREFIX}_summ.txt"
+    else
+	    output_file="${PREFIX}_summ_accm${n}.txt"
+    fi	
+	summary_from_stats -i ${PREFIX}_stats.txt -o ${output_file} -a $n ${SUMM_OPTS}
+# Print the main summary to stdout
+
+    grep 'Percentage Errors' -A 7 -m 1 ${output_file}
+    grep 'Q Scores' -A 7 -m 1 ${output_file}
+done
 
 if $catalogue_flag; then
     OUTDIR=${PREFIX}_error_catalogue
@@ -117,11 +142,7 @@ if $catalogue_flag; then
     catalogue_errors count ${PREFIX}.bam -t $THREADS -o ${OUTDIR} ${BED}
 fi
 
-grep 'Percentage Errors' -A 7 -m 1 ${PREFIX}_summ.txt
-grep 'Q Scores' -A 7 -m 1 ${PREFIX}_summ.txt
-
 if $homopolymer_flag; then
-    OUTDIR=${PREFIX}_homopolymer
     echo "Running homopolymer count, saving data to ${OUTDIR}" >&2
     if $bed_flag; then
         assess_homopolymers count ${PREFIX}.bam -t $THREADS -o ${OUTDIR} ${BED}

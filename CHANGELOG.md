@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Unreleased
 ### Added
 - Added an option (`-y`) to `assess_assembly` and `mini_align` to include supplementary alignments. 
+- Added an option (`-d`) to `mini_align` and `assess_assembly` to select minimap2 alignment preset.
+- Added accumulation of errors over a number of chunks (`-a` option in `summary_from_stats` and `assess_assembly`) to get better stats.
+- Use `-L` option for `minimap2`.
+- Updated versions of minimap2, samtools, bcftools, bedtools, seqkit in Makefile to the most recent ones.
 
 ## [v0.3.9] - 2021-08-18
 ### Fixed

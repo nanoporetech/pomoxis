@@ -27,7 +27,7 @@ Align fastq/a formatted reads to a genome using minimap2.
     -s  fill cs(=long) tag.
     -X  only create reference index files.
     -x  log all commands before running.
-    -M  match score
+    -M  match score 
     -S  mismatch score
     -O  open gap penalty
     -E  extend gap penalty."
@@ -35,7 +35,7 @@ Align fastq/a formatted reads to a genome using minimap2.
 
 PREFIX="reads"
 minimap_PRESET="map-ont"
-ALIGN_OUTPUT_OPTS="--secondary=no"  # Holder for --MD --cs=long --secondary=no options
+ALIGN_OUTPUT_OPTS="--secondary=no -L"  # Holder for --MD --cs=long --secondary=no -L options 
 INDEX_SIZE="16G"
 THREADS=1
 FILTER="-F 2308"
@@ -131,7 +131,7 @@ fi
 if [[ ! -e "${fai_index}" ]]; then
 	echo "Creating fai index file ${fai_index}" >&2
 	samtools faidx "${REFERENCE}"
-else
+else 
 	echo "Using the existing fai index file ${fai_index}" >&2
 fi
 
@@ -145,7 +145,7 @@ if [[ ! -e "${mmi_index}" ]]; then
 	echo "Creating mmi index file ${mmi_index}" >&2
 	minimap2 -I "${INDEX_SIZE}" -x ${minimap_PRESET} -d "${mmi_index}" "${REFERENCE}" \
       || { echo "Indexing draft failed" >&2; exit 1; }
-else
+else 
 	echo "Using the existing mmi index file ${mmi_index}" >&2
 fi
 
