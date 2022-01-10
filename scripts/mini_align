@@ -11,7 +11,7 @@ Align fastq/a formatted reads to a genome using minimap2.
     -i  fastq/a input reads (required).
     -I  split index every ~NUM input bases (default: 16G, this is larger
         than the usual minimap2 default).
-	-d  set the minimap2 preset, e.g. map-ont, asm5, asm10, asm20 [default: map-ont]
+    -d  set the minimap2 preset, e.g. map-ont, asm5, asm10, asm20 [default: map-ont]
     -f  force recreation of index file.
     -a  aggressively extend gaps (sets -A1 -B2 -O2 -E1 for minimap2).
     -P  filter to only primary alignments (i.e. run samtools view -F 2308).
@@ -61,12 +61,12 @@ while getopts ':hr:i:d:I:M:S:O:E:fPAymsnp:ac:t:Xx' option; do
     h  ) echo "$usage" >&2; exit;;
     r  ) rflag=true; REFERENCE=$OPTARG;;
     i  ) iflag=true; INPUT=$OPTARG;;
-	d  ) minimap_PRESET=$OPTARG;;
+    d  ) minimap_PRESET=$OPTARG;;
     I  ) INDEX_SIZE=$OPTARG;;
     f  ) FORCE_INDEX=true;;
     P  ) filter_set=$(($filter_set + 1)); echo "-P option is deprecated" >&2;;
     A  ) filter_set=$(($filter_set + 1)); FILTER=""; ALIGN_OUTPUT_OPTS=${ALIGN_OUTPUT_OPTS/--secondary=no/} ;;
-	y  ) filter_set=$(($filter_set + 1)); FILTER="-F 260";;
+    y  ) filter_set=$(($filter_set + 1)); FILTER="-F 260";;
     m  ) csmd_set=$(($csmd_set + 1)); ALIGN_OUTPUT_OPTS="${ALIGN_OUTPUT_OPTS} --MD";;
     s  ) csmd_set=$(($csmd_set + 1)); ALIGN_OUTPUT_OPTS="${ALIGN_OUTPUT_OPTS} --cs=long";;
     n  ) SORT="${SORT} -n";;
@@ -88,7 +88,7 @@ shift $(($OPTIND - 1))
 
 if [ "$filter_set" -gt 1 ]; then
     echo "$usage" >&2;
-	echo "More than one filtering setting [-A, -P, -y] was specified; these are mutually incompatible (-P is deprecated)." >&2;
+    echo "More than one filtering setting [-A, -P, -y] was specified; these are mutually incompatible (-P is deprecated)." >&2;
     exit 1;
 fi
 
