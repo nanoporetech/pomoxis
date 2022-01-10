@@ -125,11 +125,11 @@ for n in $(echo $ACCUMULATE_OPTS | tr "," " "); do
     echo "======================> Accumulating over $n chunks"
 
     if [[ $n == 1 ]]; then 
-	    output_file="${PREFIX}_summ.txt"
+        output_file="${PREFIX}_summ.txt"
     else
-	    output_file="${PREFIX}_summ_accm${n}.txt"
-    fi	
-	summary_from_stats -i ${PREFIX}_stats.txt -o ${output_file} -a $n ${SUMM_OPTS}
+        output_file="${PREFIX}_summ_accm${n}.txt"
+    fi
+    summary_from_stats -i ${PREFIX}_stats.txt -o ${output_file} -a $n ${SUMM_OPTS}
 # Print the main summary to stdout
 
     grep 'Percentage Errors' -A 7 -m 1 ${output_file}
