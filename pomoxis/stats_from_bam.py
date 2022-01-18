@@ -63,7 +63,7 @@ def stats_from_aligned_read(read, references, lengths):
 
     length = match + ins + delt
     iden = 100 * float(match - sub) / match
-    acc = 100 - 100 * float(NM) / length
+    acc = 100 * float(match - sub) / length
 
     read_length = read.infer_read_length()
     coverage = 100 * float(read.query_alignment_length) / read_length
