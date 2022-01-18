@@ -49,11 +49,18 @@ def stats_from_aligned_read(read, references, lengths):
         if first_cig[0] == 5:  # should always be true for minimap2
             start_offset = first_cig[1]
     counts, _ = read.get_cigar_stats()
-    match = counts[0] # alignment match (can be a sequence match or mismatch)
+    match = counts[0] + counts[7] + counts[8]  # total of M, =, and X
     ins = counts[1]
     delt = counts[2]
-    # NM is edit distance: NM = INS + DEL + SUB
-    sub = NM - ins - delt
+    if read.has_tag('NX'):
+        # likely from lra
+        # NM is number of matches
+        sub = counts[8]
+    else:
+        # likely from minimap2
+        # NM is edit distance: NM = INS + DEL + SUB
+        sub = NM - ins - delt
+
     length = match + ins + delt
     iden = 100 * float(match - sub) / match
     acc = 100 - 100 * float(NM) / length
