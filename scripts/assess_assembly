@@ -12,7 +12,7 @@ homopolymer_flag=false
 ALIGN_OPTS=""
 STATS_OPTS=""
 SUMM_OPTS="-pr"
-ACCUMULATE_OPTS="1,10,100"
+ACCUMULATE_OPTS="10,100"
 BED=""
 MIN_INDEL_LEN=0
 exclude_indel_flag=false
@@ -37,7 +37,7 @@ Calculate accuracy statistics for an assembly.
     -e  use with -l option to create a .bed file to exclude indels. If the -b option is used, the two bed files will be combined.
     -y  include supplementary alignments.
     -a  accumulate the stats over a number of chunks, can include multiple values separated by comma,
-        one summary file will be generated for each value [default: 1,10,100]."
+        one summary file will be generated for each value [default: ${ACCUMULATE_OPTS}]."
 
 
 
@@ -119,19 +119,19 @@ if [[ "$BED" != "" ]]; then
 fi
 stats_from_bam ${STATS_OPTS} ${PREFIX}.bam -o ${PREFIX}_stats.txt -t ${STATS_THREADS} ${BED}
 
+# Generate summary without accumulation
+output_file="${PREFIX}_summ.txt"
+summary_from_stats -i ${PREFIX}_stats.txt -o ${output_file} ${SUMM_OPTS}
+# Print the main summary to stdout
+grep 'Percentage Errors' -A 7 -m 1 ${output_file}
+grep 'Q Scores' -A 7 -m 1 ${output_file}
+
 # Generating summary files for each accumulation parameter
 for n in $(echo $ACCUMULATE_OPTS | tr "," " "); do
-
     echo "======================> Accumulating over $n chunks"
-
-    if [[ $n == 1 ]]; then 
-        output_file="${PREFIX}_summ.txt"
-    else
-        output_file="${PREFIX}_summ_accm${n}.txt"
-    fi
+    output_file="${PREFIX}_summ_accm${n}.txt"
     summary_from_stats -i ${PREFIX}_stats.txt -o ${output_file} -a $n ${SUMM_OPTS}
-# Print the main summary to stdout
-
+    # Print the main summary to stdout
     grep 'Percentage Errors' -A 7 -m 1 ${output_file}
     grep 'Q Scores' -A 7 -m 1 ${output_file}
 done
