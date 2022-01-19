@@ -52,10 +52,13 @@ def stats_from_aligned_read(read, references, lengths):
     match = counts[0] + counts[7] + counts[8]  # total of M, =, and X
     ins = counts[1]
     delt = counts[2]
+
+    lra_flag = False
     if read.has_tag('NX'):
         # likely from lra
         # NM is number of matches
         sub = counts[8]
+        lra_flag = True
     else:
         # likely from minimap2
         # NM is edit distance: NM = INS + DEL + SUB
@@ -91,7 +94,7 @@ def stats_from_aligned_read(read, references, lengths):
         "mapq": read.mapping_quality,
     }
 
-    return results
+    return results, lra_flag
 
 
 def masked_stats_from_aligned_read(read, references, lengths, tree):
@@ -193,6 +196,7 @@ def _process_reads(bam_fp, start_stop, all_alignments=False, min_length=None, be
             if not all_alignments and (read.is_secondary or read.is_supplementary):
                 continue
 
+            lra_flag = False
             if bed_file is not None:
                 if not trees[read.reference_name].overlaps(read.reference_start, read.reference_end):
                     sys.stderr.write('read {} does not overlap with any regions in bedfile\n'.format(read.query_name))
@@ -204,7 +208,7 @@ def _process_reads(bam_fp, start_stop, all_alignments=False, min_length=None, be
                         counts['all_matches_masked'] +=  1
                         continue
             else:
-                result = stats_from_aligned_read(read, bam.references, bam.lengths)
+                result, lra_flag = stats_from_aligned_read(read, bam.references, bam.lengths)
 
             if min_length is not None and result['length'] < min_length:
                 counts['short'] += 1
@@ -212,7 +216,7 @@ def _process_reads(bam_fp, start_stop, all_alignments=False, min_length=None, be
 
             results.append(result)
 
-    return counts, results
+    return counts, results, lra_flag
 
 
 def main(arguments=None):
@@ -252,16 +256,22 @@ def main(arguments=None):
                              all_alignments=args.all_alignments,
                              min_length=args.min_length, bed_file=args.bed)
 
+    detected_lra = False
     counts = Counter()
-    for batch_counts, results in mapper(func, ranges):
+    for batch_counts, results, lra_flag in mapper(func, ranges):
         counts.update(batch_counts)
         counts['total'] += len(results)
         for result in results:
             out_row = (str(result[x]) for x in headers)
             args.output.write('\t'.join(out_row))
             args.output.write('\n')
+        detected_lra = detected_lra or lra_flag
     if pool is not None:
         pool.shutdown(wait=True)
+
+    if detected_lra:
+        args.summary.write('Some reads contained an NX tag, assuming these were aligned with LRA.\n')
+        args.summary.write('If this is not the case, results may be wrong.\n')
 
     if counts['total'] == 0:
         args.summary.write('No alignments processed. Check your bam and filtering options.\n')
