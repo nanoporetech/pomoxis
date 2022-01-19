@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Unreleased
 ### Fixed
 - `stats_from_bam`: handle cigar strings using `=` and `X` instead of `M`.
+### Changed
+- Include mapping quality in `stats_from_bam` output.
 ### Added
 - Added an option (`-y`) to `assess_assembly` and `mini_align` to include supplementary alignments. 
 - Added an option (`-d`) to `mini_align` and `assess_assembly` to select minimap2 alignment preset.

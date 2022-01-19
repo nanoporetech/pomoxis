@@ -88,6 +88,7 @@ def stats_from_aligned_read(read, references, lengths):
         "ref": references[read.reference_id],
         "aligned_ref_len": read.reference_length,
         "ref_coverage": 100*float(read.reference_length) / lengths[read.reference_id],
+        "mapq": read.mapping_quality,
     }
 
     return results
@@ -168,6 +169,7 @@ def masked_stats_from_aligned_read(read, references, lengths, tree):
         "ref": references[read.reference_id],
         "aligned_ref_len": aligned_ref_len,
         "ref_coverage": 100 * float(aligned_ref_len) / lengths[read.reference_id],
+        "mapq": read.mapping_quality,
         "masked": masked,
     }
     return results
@@ -226,7 +228,8 @@ def main(arguments=None):
 
     headers = ['name', 'ref', 'coverage', 'ref_coverage', 'qstart', 'qend',
                'rstart', 'rend', 'aligned_ref_len', 'direction', 'length',
-               'read_length', 'match', 'ins', 'del', 'sub', 'iden', 'acc']
+               'read_length', 'match', 'ins', 'del', 'sub', 'iden', 'acc',
+               'mapq']
 
     masked_headers = ['masked']
     if args.bed is not None:
