@@ -56,7 +56,7 @@ def stats_from_aligned_read(read, references, lengths):
     lra_flag = False
     if read.has_tag('NX'):
         # likely from lra
-        # NM is number of matches
+        # NM is number of matches, see https://github.com/ChaissonLab/LRA/issues/32
         sub = counts[8]
         lra_flag = True
     else:
