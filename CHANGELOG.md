@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Include mapping quality in `stats_from_bam` output.
 ### Added
+- Handling of LRA bams in which NM tag is number of matches rather than edit distance. 
 - Added an option (`-y`) to `assess_assembly` and `mini_align` to include supplementary alignments. 
 - Added an option (`-d`) to `mini_align` and `assess_assembly` to select minimap2 alignment preset.
 - Added accumulation of errors over a number of chunks (`-a` option in `summary_from_stats` and `assess_assembly`) to get better stats.
