@@ -91,8 +91,8 @@ def main(arguments=None):
 
     # Sort by query chromosome and chunk
     if n>1:
-        qchr=[re.sub("_chunk.+","",str) for str in stats['name']]
-        chunk=[re.sub(".+_chunk","",str) for str in stats['name']]
+        qchr=[re.sub("_chunk.+","",s) for s in stats['name']]
+        chunk=[re.sub(".+_chunk","",s) for s in stats['name']]
         # If chunk numbers are present convert to integers for sorting
         if all([r.isdigit() for r in chunk]):
             chunk=[int(r) for r in chunk]
