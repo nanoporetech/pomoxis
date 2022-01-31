@@ -5,9 +5,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Unreleased
+### Fixed
+- `stats_from_bam`: handle cigar strings using `=` and `X` instead of `M`.
 ### Changed
 - Include mapping quality in `stats_from_bam` output.
 ### Added
+- Handling of LRA bams in which NM tag is number of matches rather than edit distance. 
 - Added an option (`-y`) to `assess_assembly` and `mini_align` to include supplementary alignments. 
 - Added an option (`-d`) to `mini_align` and `assess_assembly` to select minimap2 alignment preset.
 - Added accumulation of errors over a number of chunks (`-a` option in `summary_from_stats` and `assess_assembly`) to get better stats.
