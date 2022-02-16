@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Unreleased
 ### Fixed
+### Changed
+### Added
+
+## [v0.3.10] - 2022-02-22
+### Fixed
 - `stats_from_bam`: handle cigar strings using `=` and `X` instead of `M`.
 ### Changed
 - Include mapping quality in `stats_from_bam` output.
