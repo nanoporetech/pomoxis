@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 import warnings
 from collections import OrderedDict
+import re
 
 parser = argparse.ArgumentParser(
         description="""Summarise output of `stats_from_bam`.""",
@@ -20,6 +21,8 @@ parser.add_argument('-p', '--percentiles', type=int, nargs='+', default=(10,50,9
                     help='Percentiles for summary.')
 parser.add_argument('-pr', '--per_reference', action='store_true',
                     help='Also output a summary for each reference.')
+parser.add_argument('-a', '--accumulate', type=int, default=1,
+                    help='Accumulate chunks in the summary.')
 
 def qscore(d):
     with warnings.catch_warnings():
@@ -28,7 +31,10 @@ def qscore(d):
         q = -10 * np.log10(d)
     return q
 
-def summarise_stats(d, percentiles=(10, 50, 90)):
+def summarise_stats(d, percentiles=(10, 50, 90), accumulate=1):
+
+    def sum_every_n(x):
+        return np.add.reduceat(np.array(x), np.arange(0, len(x), accumulate))
 
     s = []
     def summarise_stat(name, f):
@@ -44,35 +50,59 @@ def summarise_stats(d, percentiles=(10, 50, 90)):
     # create functions to get overall length-weighted averages
     # and per-alignment errors from which to calculate percentiles
     f = OrderedDict()
+
+    if accumulate > 1:
+        per_align_func = sum_every_n
+    else:
+        per_align_func = lambda x: x
+
     f['err_ont'] = (lambda d: np.sum(d['sub'] + d['ins'] + d['del']) / np.sum(d['length']), # weighted
-                    lambda d: (d['sub'] + d['ins'] + d['del'])/ d['length']) # per alignment
+                    lambda d: per_align_func(d['sub'] + d['ins'] + d['del']) / per_align_func(d['length'])) # per n alignments
     f['err_bal'] = (lambda d: np.sum(d['sub'] + d['ins'] + d['del']) / np.sum(d['aligned_ref_len']),
-                    lambda d: (d['sub'] + d['ins'] + d['del'])/ (d['aligned_ref_len']))
+                    lambda d: per_align_func(d['sub'] + d['ins'] + d['del']) / per_align_func(d['aligned_ref_len']))
     f['iden'] = (lambda d: np.sum(d['sub']) / (np.sum(d['rend'] - d['rstart'] - d['del'])),
-                 lambda d: d['sub'] / (d['rend'] - d['rstart'] - d['del']))
+                 lambda d: per_align_func(d['sub']) / per_align_func(d['rend'] - d['rstart'] - d['del']))
     f['del'] = (lambda d: np.sum(d['del']) / (np.sum(d['rend'] - d['rstart'])),
-               lambda d: d['del'] / (d['rend'] - d['rstart']))
+               lambda d: per_align_func(d['del']) / per_align_func(d['rend'] - d['rstart']))
     f['ins'] = (lambda d: np.sum(d['ins']) / (np.sum(d['rend'] - d['rstart'])),
-                lambda d: d['ins'] / (d['rend'] - d['rstart']))
+               lambda d: per_align_func(d['ins']) / per_align_func(d['rend'] - d['rstart']))
 
     for name, f in f.items():
         s.append(summarise_stat(name, f))
 
     return s
 
-
 def main(arguments=None):
     args = parser.parse_args(arguments)
+    n=args.accumulate
+
+    if n<1:
+        raise ValueError('accumulate should be at least 1.')
 
     stats = pd.read_csv(args.input, sep='\t')
+    l=len(stats)
 
-    if len(stats) == 0:
+    if l == 0:
         raise ValueError('No alignments stats found.')
+        
+    # Warn if there are not many chunks to produce meaningful accumulated summary
+    if n>1 and l<10*n:
+        sys.stdout.write("WARNING! Accumulating "+str(l)+" chunks in groups of "+str(n)+" might not produce meaningful summary stats.\n")
 
+    # Sort by query chromosome and chunk
+    if n>1:
+        qchr=[re.sub("_chunk.+","",s) for s in stats['name']]
+        chunk=[re.sub(".+_chunk","",s) for s in stats['name']]
+        # If chunk numbers are present convert to integers for sorting
+        if all([r.isdigit() for r in chunk]):
+            chunk=[int(r) for r in chunk]
+        stats=stats.assign(qchr=qchr,chunk=chunk)
+        stats.sort_values(by=["qchr","chunk"],inplace=True)
 
     def output_summary(stats, prefix=''):
         to_str_opts = {'buf': args.output, 'col_space': 8, 'index':False, 'justify': 'center'}
-        errors = pd.DataFrame(summarise_stats(stats, percentiles=args.percentiles))
+        errors = pd.DataFrame(summarise_stats(stats, percentiles=args.percentiles, accumulate=n))
+
         pcnt_formatter = {}
         for col in errors.columns:
             if np.issubdtype(errors[col].dtype, np.number):
@@ -97,6 +127,8 @@ def main(arguments=None):
     if args.per_reference:
         for ref, grp in stats.groupby('ref'):
             output_summary(grp, prefix=ref)
+
+    args.output.write('\n')
 
 
 if __name__ == '__main__':

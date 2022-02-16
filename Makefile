@@ -19,7 +19,8 @@ $(BINBUILDDIR):
 	mkdir -p $(BINBUILDDIR)
 
 
-MAPVER=2.14
+#MAPVER=2.14  Changed to 2.23 on 6 December 2021
+MAPVER=2.23
 $(BINCACHEDIR)/minimap2: | $(BINCACHEDIR) $(BINBUILDDIR)
 	@echo Making $(@F)
 	if [ ! -e ${BINBUILDDIR}/minimap2-${MAPVER}.tar.bz2 ]; then \
@@ -58,7 +59,8 @@ $(BINCACHEDIR)/racon: | $(BINCACHEDIR) $(BINBUILDDIR)
 	cp ${BINBUILDDIR}/racon-v${RACONVER}/build/bin/racon $@
 
 
-SAMVER=1.8
+#SAMVER=1.8  Changed to 1.14 on 6 December 2021
+SAMVER=1.14
 $(BINCACHEDIR)/samtools: | $(BINCACHEDIR) $(BINBUILDDIR)
 	@echo Making $(@F)
 	# tar.bz is not a dependency, since that would cause it to be fetched
@@ -94,7 +96,8 @@ $(BINCACHEDIR)/paftools.js: | $(BINCACHEDIR)/minimap2
 	cp ${BINBUILDDIR}/minimap2-${MAPVER}/misc/$(@F) $@
 
 
-BCFVER=1.7
+#BCFVER=1.7  changed to 1.14 on 6 December 2021
+BCFVER=1.14
 $(BINCACHEDIR)/bcftools: | $(BINCACHEDIR) $(BINBUILDDIR)
 	@echo Making $(@F)
 	if [ ! -e ${BINBUILDDIR}/bcftools-${BCFVER}.tar.bz2 ]; then \
@@ -106,7 +109,8 @@ $(BINCACHEDIR)/bcftools: | $(BINCACHEDIR) $(BINBUILDDIR)
 	cp ${BINBUILDDIR}/bcftools-${BCFVER}/bcftools $@
 
 
-SEQKITVER=0.8.0
+#SEQKITVER=0.8.0 changed to 2.1.0 on 13 December 2021
+SEQKITVER=2.1.0
 $(BINCACHEDIR)/seqkit: | $(BINCACHEDIR) $(BINBUILDDIR)
 	@echo Making $(@F)
 	if [ ! -e ${BINBUILDDIR}/seqkit_${OS}_amd64.tar.gz ]; then \
@@ -117,7 +121,8 @@ $(BINCACHEDIR)/seqkit: | $(BINCACHEDIR) $(BINBUILDDIR)
 	cp ${BINBUILDDIR}/seqkit $@	
 
 
-BEDTOOLSVER=2.29.0
+#BEDTOOLSVER=2.29.0 Changed to 2.30.0 on 6 December 2021
+BEDTOOLSVER=2.30.0
 $(BINCACHEDIR)/bedtools: | $(BINCACHEDIR) $(BINBUILDDIR)
 	@echo Making $(@F)
 	if [ ! -e ${BINBUILDDIR}/bedtools-2.29.0.tar.gz	]; then \

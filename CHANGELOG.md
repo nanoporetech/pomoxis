@@ -4,6 +4,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+### Unreleased
+### Fixed
+### Changed
+### Added
+
+## [v0.3.10] - 2022-02-22
+### Fixed
+- `stats_from_bam`: handle cigar strings using `=` and `X` instead of `M`.
+### Changed
+- Include mapping quality in `stats_from_bam` output.
+### Added
+- Handling of LRA bams in which NM tag is number of matches rather than edit distance. 
+- Added an option (`-y`) to `assess_assembly` and `mini_align` to include supplementary alignments. 
+- Added an option (`-d`) to `mini_align` and `assess_assembly` to select minimap2 alignment preset.
+- Added accumulation of errors over a number of chunks (`-a` option in `summary_from_stats` and `assess_assembly`) to get better stats.
+- Use `-L` option for `minimap2`.
+- Updated versions of minimap2, samtools, bcftools, bedtools, seqkit in Makefile to the most recent ones.
+
 ## [v0.3.9] - 2021-08-18
 ### Fixed
 - Reduced memory consumption of `catalogue_errors`.
@@ -22,7 +40,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Speed improvements to several benchmarking and analysis scripts
 ### Fixed
 - Quoted all variables in `mini_align` to handle spaces in inputs.
-
 
 ## [v0.3.6] - 2020-02-17
 ### Changed

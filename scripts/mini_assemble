@@ -129,7 +129,7 @@ if $eflag; then
   echo "Correcting long reads..."
   LONG_PAF=long_corr.paf.gz
   CORR_READS=${NAME}_corrected.fa.gz
-  minimap2 ${OVLOPTS} -t ${THREADS} ${LONG_READS} ${READS} | gzip -1 > ${LONG_PAF}
+  minimap2 -L ${OVLOPTS} -t ${THREADS} ${LONG_READS} ${READS} | gzip -1 > ${LONG_PAF}
   racon ${BASERACONOPTS} -w ${WINDOW_LEN} -t ${THREADS} -f -q -1 ${READS} ${LONG_PAF} ${LONG_READS} | \
       cat - ${OTHERS} | gzip -1 > ${CORR_READS}
 
@@ -144,7 +144,7 @@ fi
 if ! $rflag; then 
   echo "Overlapping reads..."
   READSPAF=${NAME}.paf.gz
-  minimap2 ${OVLOPTS} -t ${THREADS} ${READS} ${READS} | gzip -1 > ${READSPAF}
+  minimap2 -L ${OVLOPTS} -t ${THREADS} ${READS} ${READS} | gzip -1 > ${READSPAF}
   echo "Assembling graph..."
   DRAFT=${NAME}.gfa.fa.gz
   miniasm ${ASMOPTS} -f ${READS} ${READSPAF} | awk '/^S/{print ">"$2"\n"$3}' | gzip -1 > ${DRAFT}
@@ -208,7 +208,7 @@ for SHUF in $(seq -w 1 ${SHUFFLES}); do
     READS2TIGS=reads2contigs_${SHUF}_${ROUND}.paf.gz
     NEWSCAF=racon_${SHUF}_${ROUND}.fa.gz
 
-    minimap2 -K ${MINIMAP_K} -t ${THREADS} ${SCAFFOLD} ${SHUFREADS} | gzip -1 > ${READS2TIGS}
+    minimap2 -L -K ${MINIMAP_K} -t ${THREADS} ${SCAFFOLD} ${SHUFREADS} | gzip -1 > ${READS2TIGS}
     racon ${BASERACONOPTS} ${ADDRACONOPTS} -w ${MOD_WINDOW_LEN} -t ${THREADS} -q -1 ${SHUFREADS} ${READS2TIGS} ${SCAFFOLD} | gzip -1 > ${NEWSCAF}
 
     if ! $kflag; then
@@ -235,7 +235,7 @@ else
   done
 
   READS2TIGS=combined2contigs.paf.gz
-  minimap2 -K ${MINIMAP_K} -t ${THREADS} ${SCAFFOLD} ${COMBINED} | gzip -1 > ${READS2TIGS}
+  minimap2 -L -K ${MINIMAP_K} -t ${THREADS} ${SCAFFOLD} ${COMBINED} | gzip -1 > ${READS2TIGS}
   # use a slightly longer window here for good measure
   racon ${RACONOPTS} -w $((3*WINDOW_LEN/2)) -t ${THREADS} -q -1 ${COMBINED} ${READS2TIGS} ${SCAFFOLD} > ${FINAL}
   if ! $kflag; then
