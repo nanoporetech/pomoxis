@@ -71,10 +71,10 @@ fi
 
 # Check if the homopolymer directory exists
 if $homopolymer_flag; then
-    OUTDIR=${PREFIX}_homopolymer
-    if [ -d "$OUTDIR" ]; then
-    echo "Directory ${OUTDIR} already exists, delete or rename it." >&2
-    exit 1
+    HP_OUTDIR=${PREFIX}_homopolymer
+    if [ -d "$HP_OUTDIR" ]; then
+        echo "Directory ${HP_OUTDIR} already exists, delete or rename it." >&2
+        exit 1
     fi
 fi
 
@@ -137,17 +137,17 @@ for n in $(echo $ACCUMULATE_OPTS | tr "," " "); do
 done
 
 if $catalogue_flag; then
-    OUTDIR=${PREFIX}_error_catalogue
-    echo "Running catalogue_errors, saving data to ${OUTDIR}" >&2
-    catalogue_errors count ${PREFIX}.bam -t $THREADS -o ${OUTDIR} ${BED}
+    CAT_OUTDIR=${PREFIX}_error_catalogue
+    echo "Running catalogue_errors, saving data to ${CAT_OUTDIR}" >&2
+    catalogue_errors count ${PREFIX}.bam -t $THREADS -o ${CAT_OUTDIR} ${BED}
 fi
 
 if $homopolymer_flag; then
-    echo "Running homopolymer count, saving data to ${OUTDIR}" >&2
+    echo "Running homopolymer count, saving data to ${HP_OUTDIR}" >&2
     if $bed_flag; then
-        assess_homopolymers count ${PREFIX}.bam -t $THREADS -o ${OUTDIR} ${BED}
+        assess_homopolymers count ${PREFIX}.bam -t $THREADS -o ${HP_OUTDIR} ${BED}
     else
-        assess_homopolymers count ${PREFIX}.bam -t $THREADS -o ${OUTDIR}
+        assess_homopolymers count ${PREFIX}.bam -t $THREADS -o ${HP_OUTDIR}
     fi
 fi
 
