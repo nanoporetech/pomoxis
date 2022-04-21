@@ -60,12 +60,14 @@ def summarise_stats(d, percentiles=(10, 50, 90), accumulate=1):
                     lambda d: per_align_func(d['sub'] + d['ins'] + d['del']) / per_align_func(d['length'])) # per n alignments
     f['err_bal'] = (lambda d: np.sum(d['sub'] + d['ins'] + d['del']) / np.sum(d['aligned_ref_len']),
                     lambda d: per_align_func(d['sub'] + d['ins'] + d['del']) / per_align_func(d['aligned_ref_len']))
-    f['iden'] = (lambda d: np.sum(d['sub']) / (np.sum(d['rend'] - d['rstart'] - d['del'])),
-                 lambda d: per_align_func(d['sub']) / per_align_func(d['rend'] - d['rstart'] - d['del']))
-    f['del'] = (lambda d: np.sum(d['del']) / (np.sum(d['rend'] - d['rstart'])),
-               lambda d: per_align_func(d['del']) / per_align_func(d['rend'] - d['rstart']))
-    f['ins'] = (lambda d: np.sum(d['ins']) / (np.sum(d['rend'] - d['rstart'])),
-               lambda d: per_align_func(d['ins']) / per_align_func(d['rend'] - d['rstart']))
+    f['iden'] = (lambda d: np.sum(d['sub']) / (np.sum(d['aligned_ref_len'] - d['del'])),
+                 lambda d: per_align_func(d['sub']) / per_align_func(d['aligned_ref_len'] - d['del']))
+    f['del'] = (lambda d: np.sum(d['del']) / (np.sum(d['aligned_ref_len'])),
+               lambda d: per_align_func(d['del']) / per_align_func(d['aligned_ref_len']))
+    f['ins'] = (lambda d: np.sum(d['ins']) / (np.sum(d['aligned_ref_len'])),
+               lambda d: per_align_func(d['ins']) / per_align_func(d['aligned_ref_len']))
+    f['sub'] = (lambda d: np.sum(d['sub']) / (np.sum(d['aligned_ref_len'])),
+               lambda d: per_align_func(d['sub']) / per_align_func(d['aligned_ref_len']))
 
     for name, f in f.items():
         s.append(summarise_stat(name, f))
@@ -84,7 +86,7 @@ def main(arguments=None):
 
     if l == 0:
         raise ValueError('No alignments stats found.')
-        
+
     # Warn if there are not many chunks to produce meaningful accumulated summary
     if n>1 and l<10*n:
         sys.stdout.write("WARNING! Accumulating "+str(l)+" chunks in groups of "+str(n)+" might not produce meaningful summary stats.\n")

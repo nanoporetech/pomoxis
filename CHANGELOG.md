@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - `assess_assembly -H` uses correct output directory.
 ### Changed
+- Added `Q(sub)` to summary output.
 ### Added
 
 ## [v0.3.10] - 2022-02-22
