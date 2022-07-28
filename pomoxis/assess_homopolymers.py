@@ -18,7 +18,7 @@ import pandas as pd
 import pysam
 
 from pomoxis import bio
-import pomoxis.util
+from pomoxis.util import intervaltrees_from_bed
 from pomoxis.summary_from_stats import qscore
 
 class AverageScore:
@@ -247,12 +247,7 @@ def count_homopolymers(args):
     total_counts = collections.defaultdict(counts_factory)
     total_aligned_length = 0
 
-    if args.bed is not None:
-        filter_trees = pomoxis.util.intervaltrees_from_bed(args.bed)
-    else:
-        filter_trees = None
-
-    f = partial(process_bam, args.bam, prefix, args.homo_len, filter_trees=filter_trees)
+    f = partial(process_bam, args.bam, prefix, args.homo_len, bed_file=args.bed)
 
     with concurrent.futures.ProcessPoolExecutor(max_workers=args.threads) as ex:
         for returned in ex.map(f, ranges):
@@ -419,14 +414,14 @@ def counts_factory():
     return collections.defaultdict(collections.Counter)
 
 
-def process_bam(bam, prefix, homo_len, read_range, filter_trees=None):
+def process_bam(bam, prefix, homo_len, read_range, bed_file=None):
     """Count HPs in a chunk of reads.
 
     :param bam: str, path to bam file
     :param prefix: str, prefix for output paths
     :param homo_len: int, minimum ref length of HPs to count
     :param read_range: (int, int, int), chunk number, read index start and end
-    :param filter_trees: intervalTree, regions to analyse
+    :param bed_file: path to .bed file, regions to analyse
     :returns: score, counts, aligned_ref_len
         score, AverageScore object
         counts, defaultdict of defaultdicts of Counters, counts by contig, ref length,
@@ -439,6 +434,10 @@ def process_bam(bam, prefix, homo_len, read_range, filter_trees=None):
 
     catalogue_path = prefix + '_catalogue_{}.txt'.format(read_range[0])
     out_fh = open(catalogue_path, 'w')
+
+    trees = None
+    if bed_file is not None:
+        trees = intervaltrees_from_bed(bed_file)
 
     with pysam.AlignmentFile(bam, 'r') as bam_obj:
         aligned_ref_len = 0
@@ -453,8 +452,8 @@ def process_bam(bam, prefix, homo_len, read_range, filter_trees=None):
             seq_reference_start = seq.reference_start  # avoid recomputing for each HP
             seq_reference_end = seq.reference_end  # avoid recomputing for each HP
 
-            if (filter_trees is not None and not
-                filter_trees[seq.reference_name].overlaps(seq_reference_start, seq_reference_end)):
+            if trees is not None and (seq.reference_name not in trees or not
+                trees[seq.reference_name].has_overlap(seq_reference_start, seq_reference_end)):
                 continue
 
             refseq = seq.get_reference_sequence().upper()
@@ -503,13 +502,13 @@ def process_bam(bam, prefix, homo_len, read_range, filter_trees=None):
                 if ref_hp_pos == seq_reference_start or ref_hp_pos + ref_hp_len == seq_reference_end:
                     continue
 
-                if filter_trees is not None:
+                if trees is not None:
                     # skip hps that at the end of an interval or spanning multiple intervals
                     # since we don't know their true length
-                    interval_left_end = filter_trees[seq.reference_name][ref_hp_pos - 1]
-                    interval_right_end = filter_trees[seq.reference_name][ref_hp_pos + ref_hp_len]
+                    interval_left_end = set(trees[seq.reference_name].find_overlap(ref_hp_pos - 1, ref_hp_pos))
+                    interval_right_end = set(trees[seq.reference_name].find_overlap(ref_hp_pos + ref_hp_len, ref_hp_pos + ref_hp_len + 1))
                     if (len(interval_left_end) == 0 or len(interval_right_end) == 0 or
-                        interval_left_end != interval_right_end):
+                        not bool(interval_left_end.intersection(interval_right_end))):
                         continue
 
                 aligned_ref_len += ref_hp_len

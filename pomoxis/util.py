@@ -4,7 +4,7 @@ import itertools
 import shutil
 import sys
 
-import intervaltree
+from ncls import NCLS
 import numpy as np
 import pandas as pd
 import pysam
@@ -370,6 +370,8 @@ def get_trimmed_pairs(aln):
 def yield_from_bed(bedfile):
     with open(bedfile) as fh:
         for line in fh:
+            if line.lstrip()[0] == '#':
+                continue
             split_line = line.split()
             if split_line[0] in {'browser', 'track'} or len(split_line) < 3:
                 continue
@@ -383,13 +385,15 @@ def intervaltrees_from_bed(path_to_bed):
     """Created dict of intervaltrees from a .bed file, indexed by chrom.
 
     :param path_to_bed: str, path to .bed file.
-    :returns: { str chrom: `intervaltree.IntervalTree` obj }.
+    :returns: { str chrom: `ncls.NCLS` obj }.
     """
-    trees = defaultdict(intervaltree.IntervalTree)
+    tmptrees = defaultdict(list)
+    trees = {}
     for chrom, start, stop in yield_from_bed(path_to_bed):
-        trees[chrom].add(intervaltree.Interval(begin=start, end=stop))
-    for chrom in trees:
-        trees[chrom].merge_overlaps()
+        tmptrees[chrom].append([start, stop])
+    for chrom, d in tmptrees.items():
+        a = np.array(d)
+        trees[chrom] = NCLS(a[:, 0], a[:, 1], np.arange(a.shape[0]))
     return trees
 
 
