@@ -7,8 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Unreleased
 ### Fixed
 - `assess_assembly -H` uses correct output directory.
+- Handling of comments in bed files.
 ### Changed
 - Added `Q(sub)` to summary output.
+- Ported bed file handling from `intervaltrees` to [`ncls`](https://github.com/biocore-ntnu/ncls), speeding up assessment and multithreading efficiency.
 ### Added
 
 ## [v0.3.10] - 2022-02-22

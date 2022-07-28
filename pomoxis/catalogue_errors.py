@@ -61,7 +61,7 @@ def get_errors(aln, tree=None):
 
     :param aln: iterable of `AlignPos` objects.
     :param bed_file: path to .bed file of regions to include in analysis.
-    :param tree: `intervaltree.IntervalTree` object of regions to analyse.
+    :param tree: `ncls.NCLS` object of regions to analyse.
     :returns: ( [(ri, qi, 'error_type', last_ri, last_qi)], aligned_ref_len)
         ri, qi: ref and query positions
         error_type: 'D', 'I' or 'S'
@@ -79,7 +79,7 @@ def get_errors(aln, tree=None):
     for (qi, qb, ri, rb) in aln:
         if tree is not None:
             pos = ri if ri is not None else pos
-            if not tree.overlaps(pos) or (ri is None and not tree.overlaps(pos + 1)):
+            if not tree.has_overlap(pos, pos + 1) or (ri is None and not tree.has_overlap(pos + 1, pos + 2)):
                 # if ri is None, we are in an insertion, check if pos + 1 overlaps
                 # (ref position of ins is arbitrary)
                 # print('Skipping ref {}:{}'.format(read.reference_name, pos))
@@ -593,11 +593,10 @@ def _process_read(bam, outdir, read_range, bed_file=None):
                 return
 
             if bed_file is not None:
-                tree = trees[rec.reference_name]
-
-                if not tree.overlaps(rec.reference_start, rec.reference_end):
+                if not rec.reference_name in trees or not trees[rec.reference_name].has_overlap(rec.reference_start, rec.reference_end):
                     #sys.stderr.write('read {} does not overlap with any regions in bedfile\n'.format(rec.query_name))
                     continue
+                tree = trees[rec.reference_name]
             else:
                 tree = None
 
@@ -629,7 +628,7 @@ def _process_seg(seg, db_fh, txt_fh, headers, tree=None):
     :param db_fh: file object, catalogue db file
     :param txt_fh: file object, catalogue file
     :param headers: list of tuples, error properties and their label ids
-    :param tree: `intervaltree.IntervalTree` object of regions to analyse.
+    :param tree: `ncls.NCLS` object of regions to analyse.
     :returns: (seg.rname, aligned_ref_len, error_count, n_masked)
         error_count: `Counter` of error classes
         n_masked: number of reference positions excluded by tree.
