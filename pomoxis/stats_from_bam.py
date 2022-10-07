@@ -182,6 +182,7 @@ def _process_reads(bam_fp, start_stop, all_alignments=False, min_length=None, be
     start, stop = start_stop
     counts = Counter()
     results = []
+    lra_flag = False
     with pysam.AlignmentFile(bam_fp, 'rb') as bam:
         if bed_file is not None:
             trees = intervaltrees_from_bed(bed_file)
