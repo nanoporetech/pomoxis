@@ -103,7 +103,7 @@ def main():
         errors = get_errors(aln, ref_seq)
         counts = count_errors(errors)
         # check we got the same error counts as stats_from_aligned_read
-        stats = stats_from_aligned_read(aln, list(ref_lengths.keys()), list(ref_lengths.values()))
+        stats, _ = stats_from_aligned_read(aln, list(ref_lengths.keys()), list(ref_lengths.values()))
         for k in counts.keys():
             if stats[k] != counts[k]:
                 msg = "Error counts {} don't match those from the CIGAR str {}."

@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Unreleased
 ### Fixed
+- Fix crashes in `subsample_bam` with alignment filtering and `common_errors_from_bam`
 - `assess_assembly -H` uses correct output directory.
 - Handling of comments in bed files.
 ### Changed
