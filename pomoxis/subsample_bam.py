@@ -160,7 +160,7 @@ def filter_read(r, bam, args, logger):
 
     # filter accuracy or alignment coverage
     if args.accuracy is not None or args.coverage is not None or args.length is not None:
-        stats = stats_from_aligned_read(r, bam.references, bam.lengths)
+        stats, _ = stats_from_aligned_read(r, bam.references, bam.lengths)
         if args.accuracy is not None and stats['acc'] < args.accuracy:
             logger.info("Filtering {} by accuracy ({:.2f}).".format(r.query_name, stats['acc']))
             return True
