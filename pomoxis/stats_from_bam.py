@@ -118,7 +118,7 @@ def masked_stats_from_aligned_read(read, references, lengths, tree):
         if rp == read.reference_end or (qp == read.query_alignment_end):
             break
         pos = rp if rp is not None else pos
-        if not tree.overlaps(pos) or (rp is None and not tree.overlaps(pos + 1)):
+        if not tree.has_overlap(pos, pos + 1) or (rp is None and not tree.has_overlap(pos + 1, pos + 2)):
             # if rp is None, we are in an insertion, check if pos + 1 overlaps
             # (ref position of ins is arbitrary)
             # print('Skipping ref {}:{}'.format(read.reference_name, pos))
@@ -182,6 +182,7 @@ def _process_reads(bam_fp, start_stop, all_alignments=False, min_length=None, be
     start, stop = start_stop
     counts = Counter()
     results = []
+    lra_flag = False
     with pysam.AlignmentFile(bam_fp, 'rb') as bam:
         if bed_file is not None:
             trees = intervaltrees_from_bed(bed_file)
@@ -198,7 +199,8 @@ def _process_reads(bam_fp, start_stop, all_alignments=False, min_length=None, be
 
             lra_flag = False
             if bed_file is not None:
-                if not trees[read.reference_name].overlaps(read.reference_start, read.reference_end):
+                if (read.reference_name not in trees or
+                    not trees[read.reference_name].has_overlap(read.reference_start, read.reference_end)):
                     sys.stderr.write('read {} does not overlap with any regions in bedfile\n'.format(read.query_name))
                     counts['masked'] += 1
                     continue

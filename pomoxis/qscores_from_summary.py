@@ -3,12 +3,12 @@ import argparse
 _field_name_map_ = {
     'del': 'Q(del)',
     'err_ont': 'Q(acc)',
-    'idel': 'Q(iden)',
     'ins': 'Q(ins)',
     'iden': 'Q(iden)',
+    'sub': 'Q(sub)',
 }
 
-_cols_ = ['name', 'ref', 'ref_cover', 'Q(acc)', 'Q(iden)', 'Q(del)', 'Q(ins)']
+_cols_ = ['name', 'ref', 'ref_cover', 'Q(acc)', 'Q(iden)', 'Q(del)', 'Q(ins)', 'Q(sub)']
 
 _format_str_ = '\t'.join(['{' + c + '}' for c in _cols_])
 
@@ -55,6 +55,8 @@ def qscore_from_summary(summaries, median, ref):
 
     print('\t'.join(_cols_))
 
+    row_period = len(_field_name_map_) + 3
+
     results = []
     for f in sorted(summaries):
         with open(f) as fh:
@@ -62,7 +64,7 @@ def qscore_from_summary(summaries, median, ref):
         if match not in lines:
             continue
         ind = lines.index(match)
-        vals = lines[ind + 2: ind + 7]
+        vals = lines[ind + 2: ind + row_period]
         data = extract_vals(vals, _field_name_map_, col_ind)
         data['name'] = f
         if ref is None:
