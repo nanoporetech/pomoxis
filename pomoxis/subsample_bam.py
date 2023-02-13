@@ -91,9 +91,6 @@ def main():
 
 
 def subsample_region_proportionally(region, args):
-    if args.quality is not None or args.coverage is not None or args.accuracy is not None:
-        raise NotImplemented('Read filtering is not currently supported for proportion subsampling')
-
     logger = logging.getLogger(region.ref_name)
     coverage_summary = coverage_summary_of_region(region, args.bam, args.stride)
     col = 'depth_{}'.format(args.orientation) if args.orientation is not None else 'depth'
@@ -139,6 +136,8 @@ def subsample_region_proportionally(region, args):
     return found_enough_depth
 
 
+QSCORES_TO_PROBS = 10 ** (-0.1 * np.array(np.arange(100)))
+
 def filter_read(r, bam, args, logger):
     """Decide whether a read should be filtered out, returning a bool"""
 
@@ -153,9 +152,9 @@ def filter_read(r, bam, args, logger):
 
     # filter quality
     if args.quality is not None:
-        mean_q = np.mean(r.query_qualities)
+        mean_q = -10 * np.log10(np.mean(QSCORES_TO_PROBS[r.query_qualities]))
         if mean_q < args.quality:
-            logger.debug("Filtering {} by quality ({:.2f}).".format(r.query_name, mean_q))
+            logger.debug(f"Filtering {r.query_name} with quality {mean_q:.2f}")
             return True
 
     # filter accuracy or alignment coverage
