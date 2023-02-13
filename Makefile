@@ -139,7 +139,7 @@ $(BINCACHEDIR)/bedtools: | $(BINCACHEDIR) $(BINBUILDDIR)
 venv: venv/bin/activate
 IN_VENV=. ./venv/bin/activate
 venv/bin/activate:
-	test -d venv || $(PYTHON) -m venv venv --prompt '(pomoxis) '
+	test -d venv || $(PYTHON) -m venv venv --prompt 'pomoxis'
 	${IN_VENV} && pip install pip --upgrade
 	${IN_VENV} && pip install -r requirements.txt
 
