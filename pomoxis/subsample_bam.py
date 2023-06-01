@@ -55,6 +55,8 @@ def main():
         help='Maximum iterations with no change in median coverage before aborting.')
     uparser.add_argument('-s', '--stride', type=int, default=1000,
         help='Stride in genomic coordinates when searching for new reads. Smaller can lead to more compact pileup.')
+    uparser.add_argument('--skip_low_depth', action='store_true',
+        help='Skip saving a sequence when it does not match the expected coverage.')
 
     pparser = parser.add_argument_group('Proportional sampling options')
     pparser.add_argument('-P', '--proportional', default=False, action='store_true',
@@ -227,6 +229,7 @@ def subsample_region_uniformly(region, args):
         if n_reads == len(reads):
             logger.warn("No reads added, finishing pileup.")
             found_enough_depth = False
+            if args.skip_low_depth: break
         n_reads = len(reads)
         # or if no change in depth
         if median_depth == last_depth:
@@ -236,6 +239,7 @@ def subsample_region_uniformly(region, args):
                     args.patience
                 ))
                 found_enough_depth = False
+                if args.skip_low_depth: break
         else:
             it_no_change == 0
         last_depth = median_depth
