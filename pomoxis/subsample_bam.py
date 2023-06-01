@@ -43,7 +43,7 @@ def main():
         help='Filter reads by coverage (what fraction of the read aligns).')
     parser.add_argument('-l', '--length', type=int, default=None,
         help='Filter reads by read length.')
-    parser.add_argument('--skip_low_depth', action='store_true',
+    parser.add_argument('--force_low_depth', action='store_true',
         help='Skip saving a sequence when it does not match the expected coverage.')
 
     eparser = parser.add_mutually_exclusive_group()
@@ -120,10 +120,11 @@ def subsample_region_proportionally(region, args):
 
     for target in targets:
         if target > median_coverage:
-            msg = 'Target depth {} exceeds median coverage {}, skipping this depth and higher depths.'
-            logger.info(msg.format(target, median_coverage))
             found_enough_depth = False
-            if args.skip_low_depth: break
+            if not args.force_low_depth:
+                msg = 'Target depth {} exceeds median coverage {}, skipping this depth and higher depths.'
+                logger.info(msg.format(target, median_coverage))
+                break
         fraction = target / median_coverage
         n_reads = int(round(fraction * len(read_data), 0))
         target_reads = np.random.choice(read_data, n_reads, replace=False)
@@ -227,19 +228,21 @@ def subsample_region_uniformly(region, args):
                 break
         # exit if nothing happened this iteration
         if n_reads == len(reads):
-            logger.warn("No reads added, finishing pileup.")
             found_enough_depth = False
-            if args.skip_low_depth: break
+            if not args.force_low_depth:
+                logger.warn("No reads added, finishing pileup.")
+                break
         n_reads = len(reads)
         # or if no change in depth
         if median_depth == last_depth:
             it_no_change += 1
             if it_no_change == args.patience:
-                logging.warn("Coverage not increased for {} iterations, finishing pileup.".format(
-                    args.patience
-                ))
                 found_enough_depth = False
-                if args.skip_low_depth: break
+                if not args.force_low_depth:
+                    logging.warn("Coverage not increased for {} iterations, finishing pileup.".format(
+                        args.patience
+                    ))
+                    break
         else:
             it_no_change == 0
         last_depth = median_depth
