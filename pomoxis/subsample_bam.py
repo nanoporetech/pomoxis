@@ -216,7 +216,7 @@ def subsample_region_uniformly(region, args):
         logger.debug(u'Iteration {}. reads: {}, depth: {:.0f}X (\u00B1{:.1f}).'.format(
             iteration, len(reads), median_depth, stdv_depth))
         # output when we hit a target
-        if median_depth >= target or found_enough_depth:
+        if median_depth >= target or not found_enough_depth:
             logger.info("Hit target depth {}.".format(target))
             prefix = '{}_{}X'.format(args.output_prefix, target)
             _write_bam(args.bam, prefix, region, reads)
