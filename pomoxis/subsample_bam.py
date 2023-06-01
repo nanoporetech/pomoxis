@@ -44,7 +44,7 @@ def main():
     parser.add_argument('-l', '--length', type=int, default=None,
         help='Filter reads by read length.')
     parser.add_argument('--force_low_depth', action='store_true',
-        help='Skip saving a sequence when it does not match the expected coverage.')
+        help='Force saving reads mapped to a sequence with coverage below the expected value.')
 
     eparser = parser.add_mutually_exclusive_group()
     eparser.add_argument('--any_fail', action='store_true',
