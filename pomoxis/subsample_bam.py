@@ -43,6 +43,8 @@ def main():
         help='Filter reads by coverage (what fraction of the read aligns).')
     parser.add_argument('-l', '--length', type=int, default=None,
         help='Filter reads by read length.')
+    parser.add_argument('--skip_low_depth', action='store_true',
+        help='Skip saving a sequence when it does not match the expected coverage.')
 
     eparser = parser.add_mutually_exclusive_group()
     eparser.add_argument('--any_fail', action='store_true',
@@ -55,8 +57,6 @@ def main():
         help='Maximum iterations with no change in median coverage before aborting.')
     uparser.add_argument('-s', '--stride', type=int, default=1000,
         help='Stride in genomic coordinates when searching for new reads. Smaller can lead to more compact pileup.')
-    uparser.add_argument('--skip_low_depth', action='store_true',
-        help='Skip saving a sequence when it does not match the expected coverage.')
 
     pparser = parser.add_argument_group('Proportional sampling options')
     pparser.add_argument('-P', '--proportional', default=False, action='store_true',
@@ -123,7 +123,7 @@ def subsample_region_proportionally(region, args):
             msg = 'Target depth {} exceeds median coverage {}, skipping this depth and higher depths.'
             logger.info(msg.format(target, median_coverage))
             found_enough_depth = False
-            break
+            if args.skip_low_depth: break
         fraction = target / median_coverage
         n_reads = int(round(fraction * len(read_data), 0))
         target_reads = np.random.choice(read_data, n_reads, replace=False)
