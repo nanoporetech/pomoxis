@@ -214,7 +214,7 @@ def subsample_region_uniformly(region, args):
         logger.debug(u'Iteration {}. reads: {}, depth: {:.0f}X (\u00B1{:.1f}).'.format(
             iteration, len(reads), median_depth, stdv_depth))
         # output when we hit a target
-        if median_depth >= target:
+        if median_depth >= target or found_enough_depth:
             logger.info("Hit target depth {}.".format(target))
             prefix = '{}_{}X'.format(args.output_prefix, target)
             _write_bam(args.bam, prefix, region, reads)
@@ -227,7 +227,6 @@ def subsample_region_uniformly(region, args):
         if n_reads == len(reads):
             logger.warn("No reads added, finishing pileup.")
             found_enough_depth = False
-            break
         n_reads = len(reads)
         # or if no change in depth
         if median_depth == last_depth:
@@ -237,7 +236,6 @@ def subsample_region_uniformly(region, args):
                     args.patience
                 ))
                 found_enough_depth = False
-                break
         else:
             it_no_change == 0
         last_depth = median_depth
