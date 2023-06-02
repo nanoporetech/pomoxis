@@ -235,7 +235,7 @@ def subsample_region_uniformly(region, args):
         # exit if nothing happened this iteration
         if n_reads == len(reads):
             # If forcing secondary, consider them before stopping
-            if args.force_non_primary and len(filtered) > 0:
+            if args.force_non_primary and len(filtered) > 0 and len(tree) == 0:
                 logger.info("Forcing secondary/supplementary regions...")
                 cursor = 0
                 tree = filtered
@@ -249,7 +249,7 @@ def subsample_region_uniformly(region, args):
         # or if no change in depth
         if median_depth == last_depth:
             # If forcing secondary, consider them before stopping
-            if args.force_non_primary and len(filtered) > 0:
+            if args.force_non_primary and len(filtered) > 0 and len(tree) == 0:
                 logger.info("Forcing secondary/supplementary regions...")
                 cursor = 0
                 tree = filtered
