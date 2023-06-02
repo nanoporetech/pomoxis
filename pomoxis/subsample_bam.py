@@ -45,6 +45,8 @@ def main():
         help='Filter reads by read length.')
     parser.add_argument('--force_low_depth', action='store_true',
         help='Force saving reads mapped to a sequence with coverage below the expected value.')
+    parser.add_argument('--force_non_primary', action='store_true',
+        help='Force saving non-primary alignments.')
 
     eparser = parser.add_mutually_exclusive_group()
     eparser.add_argument('--any_fail', action='store_true',
@@ -145,7 +147,7 @@ def filter_read(r, bam, args, logger):
     """Decide whether a read should be filtered out, returning a bool"""
 
     # primary alignments
-    if (r.is_secondary or r.is_supplementary):
+    if not args.force_non_primary and (r.is_secondary or r.is_supplementary):
         return True
 
     # filter orientation
