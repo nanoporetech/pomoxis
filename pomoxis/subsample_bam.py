@@ -147,7 +147,7 @@ def filter_read(r, bam, args, logger):
     """Decide whether a read should be filtered out, returning a bool"""
 
     # primary alignments
-    if not args.force_non_primary and (r.is_secondary or r.is_supplementary):
+    if r.is_secondary or r.is_supplementary:
         return True
 
     # filter orientation
@@ -182,10 +182,14 @@ def subsample_region_uniformly(region, args):
     logger = logging.getLogger(region.ref_name)
     logger.info("Building interval tree.")
     tree = IntervalTree()
+    filtered = IntervalTree()
     with pysam.AlignmentFile(args.bam) as bam:
         ref_lengths = dict(zip(bam.references, bam.lengths))
         for r in bam.fetch(region.ref_name, region.start, region.end):
             if filter_read(r, bam, args, logger):
+                filtered.add(Interval(
+                    max(r.reference_start, region.start), min(r.reference_end, region.end),
+                    r.query_name))
                 continue
             # trim reads to region
             tree.add(Interval(
@@ -230,6 +234,13 @@ def subsample_region_uniformly(region, args):
                 break
         # exit if nothing happened this iteration
         if n_reads == len(reads):
+            # If forcing secondary, consider them before stopping
+            if args.force_non_primary and len(filtered) > 0:
+                logger.info("Forcing secondary/supplementary regions...")
+                cursor = 0
+                tree = filtered
+                filtered = IntervalTree()
+                continue
             found_enough_depth = False
             if not args.force_low_depth:
                 logger.warn("No reads added, finishing pileup.")
@@ -237,6 +248,13 @@ def subsample_region_uniformly(region, args):
         n_reads = len(reads)
         # or if no change in depth
         if median_depth == last_depth:
+            # If forcing secondary, consider them before stopping
+            if args.force_non_primary and len(filtered) > 0:
+                logger.info("Forcing secondary/supplementary regions...")
+                cursor = 0
+                tree = filtered
+                filtered = IntervalTree()
+                continue
             it_no_change += 1
             if it_no_change == args.patience:
                 found_enough_depth = False
