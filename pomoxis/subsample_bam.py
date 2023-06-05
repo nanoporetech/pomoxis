@@ -187,9 +187,9 @@ def subsample_region_uniformly(region, args):
         ref_lengths = dict(zip(bam.references, bam.lengths))
         for r in bam.fetch(region.ref_name, region.start, region.end):
             if filter_read(r, bam, args, logger):
-                filtered.add(Interval(
-                    max(r.reference_start, region.start), min(r.reference_end, region.end),
-                    r.query_name))
+                if r.is_secondary or r.is_supplementary:
+                    filtered.add(
+                        Interval(max(r.reference_start, region.start), min(r.reference_end, region.end), r.query_name))
                 continue
             # trim reads to region
             tree.add(Interval(
