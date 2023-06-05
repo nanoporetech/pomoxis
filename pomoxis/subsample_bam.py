@@ -125,7 +125,7 @@ def subsample_region_proportionally(region, args):
             found_enough_depth = False
             if not args.force_low_depth:
                 msg = 'Target depth {} exceeds median coverage {}, skipping this depth and higher depths.'
-                logger.info(msg.format(target, median_coverage))
+                logger.warn(msg.format(target, median_coverage))
                 break
         fraction = target / median_coverage
         n_reads = int(round(fraction * len(read_data), 0))
@@ -152,7 +152,7 @@ def filter_read(r, bam, args, logger):
 
     # filter orientation
     if (r.is_reverse and args.orientation == 'fwd') or \
-        (not r.is_reverse and args.orientation == 'rev'):
+            (not r.is_reverse and args.orientation == 'rev'):
         return True
 
     # filter quality
@@ -236,7 +236,7 @@ def subsample_region_uniformly(region, args):
         if n_reads == len(reads):
             # If forcing secondary, consider them before stopping
             if args.force_non_primary and len(filtered) > 0 and len(tree) == 0:
-                logger.info("Forcing secondary/supplementary regions...")
+                logger.warn("Forcing secondary/supplementary regions...")
                 cursor = 0
                 tree = filtered
                 filtered = IntervalTree()
@@ -250,7 +250,7 @@ def subsample_region_uniformly(region, args):
         if median_depth == last_depth:
             # If forcing secondary, consider them before stopping
             if args.force_non_primary and len(filtered) > 0 and len(tree) == 0:
-                logger.info("Forcing secondary/supplementary regions...")
+                logger.warn("Forcing secondary/supplementary regions...")
                 cursor = 0
                 tree = filtered
                 filtered = IntervalTree()
