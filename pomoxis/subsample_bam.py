@@ -103,15 +103,36 @@ def subsample_region_proportionally(region, args):
         def _read_iter():
             for r in bam.fetch(region.ref_name, region.start, region.end):
                 if not filter_read(r, bam, args, logger):
-                    yield r
-
+                    yield (r, None)
+                else:
+                    if r.is_secondary or r.is_supplementary:
+                        yield (None, r)
+        # Prepare iterator
         reads = _read_iter()
         # query names cannot be longer than 251
-        dtype=[('name', 'U251'), ('start', int),('end',  int)]
+        dtype = [('name', 'U251'), ('start', int), ('end',  int)]
         read_data = np.fromiter(
-            ((r.query_name, r.reference_start, r.reference_end) for r in reads),
+            ((r.query_name, r.reference_start, r.reference_end) for (r, s) in reads if r is not None),
             dtype=dtype
         )
+        if len(read_data) == 0:
+            logger.warn(f'No primary reads found in {region.ref_name}.')
+            found_enough_depth = False
+            return found_enough_depth
+
+        # If we force the non-primary, import them
+        if args.force_non_primary:
+            # Re-use iterator
+            reads = _read_iter()
+            extra_reads = np.fromiter(
+               ((s.query_name, s.reference_start, s.reference_end) for (r, s) in reads if s),
+               dtype=dtype
+            )
+            # Get extra reads in normal reads
+            if len(extra_reads) != 0 and len(read_data) != 0:
+                extra_reads = extra_reads[
+                    np.in1d(extra_reads[:]['name'], read_data[:]['name'])
+                    ]
 
     targets = sorted(args.depth)
     found_enough_depth = True
@@ -124,19 +145,36 @@ def subsample_region_proportionally(region, args):
         if target > median_coverage:
             found_enough_depth = False
             if not args.force_low_depth:
-                msg = 'Target depth {} exceeds median coverage {}, skipping this depth and higher depths.'
-                logger.warn(msg.format(target, median_coverage))
+                msg = 'Target depth {} exceeds median coverage, limiting to {} and skipping higher depths.'
+                logger.warn(msg.format(target, int(median_coverage)))
                 break
         fraction = target / median_coverage
-        n_reads = int(round(fraction * len(read_data), 0))
-        target_reads = np.random.choice(read_data, n_reads, replace=False)
-        prefix = '{}_{}X'.format(args.output_prefix, target)
-        _write_bam(args.bam, prefix, region, target_reads['name'])
+        if fraction <= 1:
+            n_reads = int(round(fraction * len(read_data), 0))
+            target_reads = np.random.choice(read_data, n_reads, replace=False)
+            logger.info('Processing {}X: {} reads ({:.2f} %).'.format(target, n_reads, 100 * fraction))
+        else:
+            n_reads = len(read_data)
+            target_reads = read_data
+            found_enough_depth = False
+            logger.warn('Insufficient coverage: {} reads ({}X).'.format(n_reads, median_coverage))
+        # If asking for extra reads, apply subsampling to the non-primary too
+        if args.force_non_primary:
+            n_xtra = int(round(fraction * len(extra_reads), 0)) if fraction < 1 else len(extra_reads)
+            target_reads = np.concatenate((
+                target_reads,
+                np.random.choice(extra_reads, n_xtra, replace=False)
+            ), axis=0)
+        if found_enough_depth:
+            prefix = '{}_{}X'.format(args.output_prefix, target)
+        else:
+            prefix = '{}_{}X'.format(args.output_prefix, int(median_coverage))
+        if n_reads > 0:
+            _write_bam(args.bam, prefix, region, target_reads['name'])
         coverage.fill(0.0)  # reset coverage for each target depth
         for read in target_reads:
             coverage[read['start'] - region.start:read['end'] - region.start] += 1
         _write_coverage(prefix, region, coverage, args.profile)
-        logger.info('Processed {}X: {} reads ({:.2f} %).'.format(target, n_reads, 100 * fraction))
 
     return found_enough_depth
 
@@ -189,7 +227,9 @@ def subsample_region_uniformly(region, args):
             if filter_read(r, bam, args, logger):
                 if r.is_secondary or r.is_supplementary:
                     filtered.add(
-                        Interval(max(r.reference_start, region.start), min(r.reference_end, region.end), r.query_name))
+                        Interval(max(r.reference_start, region.start),
+                                 min(r.reference_end, region.end),
+                                 r.query_name))
                 continue
             # trim reads to region
             tree.add(Interval(
@@ -206,17 +246,26 @@ def subsample_region_uniformly(region, args):
     targets = iter(sorted(args.depth))
     target = next(targets)
     found_enough_depth = True
+    is_primary = True
     while True:
         cursor = 0
         while cursor < ref_lengths[region.ref_name]:
             read = _nearest_overlapping_point(tree, cursor)
             if read is None:
                 cursor += args.stride
-            else:
+                continue
+            if is_primary:
                 reads.add(read.data)
                 cursor = read.end
                 coverage[read.begin - region.start:read.end - region.start] += 1
                 tree.remove(read)
+            elif not is_primary and read.data in reads and args.force_non_primary:
+                cursor = read.end
+                coverage[read.begin - region.start:read.end - region.start] += 1
+                tree.remove(read)
+            else:
+                tree.remove(read)
+
         iteration += 1
         median_depth = np.median(coverage)
         stdv_depth = np.std(coverage)
@@ -224,13 +273,23 @@ def subsample_region_uniformly(region, args):
             iteration, len(reads), median_depth, stdv_depth))
         # output when we hit a target
         if median_depth >= target or not found_enough_depth:
-            logger.info("Hit target depth {}.".format(target))
-            prefix = '{}_{}X'.format(args.output_prefix, target)
-            _write_bam(args.bam, prefix, region, reads)
-            _write_coverage(prefix, region, coverage, args.profile)
-            try:
-                target = next(targets)
-            except StopIteration:
+            if found_enough_depth:
+                msg = "Hit target depth {}."
+                logger.info(msg.format(target))
+                prefix = '{}_{}X'.format(args.output_prefix, target)
+                _write_bam(args.bam, prefix, region, reads)
+                _write_coverage(prefix, region, coverage, args.profile)
+                try:
+                    target = next(targets)
+                except StopIteration:
+                    break
+            else:
+                msg = "Target depth {} exceeds median coverage, limiting to {} and skipping higher depths."
+                logger.warn(msg.format(target, int(median_depth)))
+                prefix = '{}_{}X'.format(args.output_prefix, int(median_depth))
+                if median_depth > 0:
+                    _write_bam(args.bam, prefix, region, reads)
+                    _write_coverage(prefix, region, coverage, args.profile)
                 break
         # exit if nothing happened this iteration
         if n_reads == len(reads):
@@ -240,6 +299,7 @@ def subsample_region_uniformly(region, args):
                 cursor = 0
                 tree = filtered
                 filtered = IntervalTree()
+                is_primary = False
                 continue
             found_enough_depth = False
             if not args.force_low_depth:
@@ -254,6 +314,7 @@ def subsample_region_uniformly(region, args):
                 cursor = 0
                 tree = filtered
                 filtered = IntervalTree()
+                is_primary = False
                 continue
             it_no_change += 1
             if it_no_change == args.patience:
