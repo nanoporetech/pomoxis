@@ -15,6 +15,9 @@ def coverage_of_region(region, bam_fp, stride):
     logging.info(msg.format(region.ref_name, bins[0], bins[-1]))
     coverage_by_is_rev = {True: np.zeros(len(bins)), False: np.zeros(len(bins))}
     for r_obj in pysam.AlignmentFile(bam_fp).fetch(contig=region.ref_name, start=region.start, end=region.end):
+        # Ignore secondary/supplementary maps when computing the median depth
+        if r_obj.is_secondary or r_obj.is_supplementary:
+            continue
         start_i = max((r_obj.reference_start - bins[0]) // stride, 0)
         end_i = min((r_obj.reference_end - bins[0]) // stride, len(bins))
         coverage_by_is_rev[r_obj.is_reverse][start_i: end_i] += 1
