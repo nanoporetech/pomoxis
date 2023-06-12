@@ -99,40 +99,24 @@ def subsample_region_proportionally(region, args):
     coverage_summary = coverage_summary_of_region(region, args.bam, args.stride)
     col = 'depth_{}'.format(args.orientation) if args.orientation is not None else 'depth'
     median_coverage = coverage_summary[col].T['50%']
+    logger.info(f'Median coverage {median_coverage}')
     with pysam.AlignmentFile(args.bam) as bam:
         def _read_iter():
             for r in bam.fetch(region.ref_name, region.start, region.end):
                 if not filter_read(r, bam, args, logger):
-                    yield (r, None)
-                else:
-                    if r.is_secondary or r.is_supplementary:
-                        yield (None, r)
+                    yield r
         # Prepare iterator
         reads = _read_iter()
         # query names cannot be longer than 251
         dtype = [('name', 'U251'), ('start', int), ('end',  int)]
         read_data = np.fromiter(
-            ((r.query_name, r.reference_start, r.reference_end) for (r, s) in reads if r is not None),
+            ((r.query_name, r.reference_start, r.reference_end) for r in reads),
             dtype=dtype
         )
         if len(read_data) == 0:
             logger.warn(f'No primary reads found in {region.ref_name}.')
             found_enough_depth = False
             return found_enough_depth
-
-        # If we force the non-primary, import them
-        if args.force_non_primary:
-            # Re-use iterator
-            reads = _read_iter()
-            extra_reads = np.fromiter(
-               ((s.query_name, s.reference_start, s.reference_end) for (r, s) in reads if s),
-               dtype=dtype
-            )
-            # Get extra reads in normal reads
-            if len(extra_reads) != 0 and len(read_data) != 0:
-                extra_reads = extra_reads[
-                    np.in1d(extra_reads[:]['name'], read_data[:]['name'])
-                    ]
 
     targets = sorted(args.depth)
     found_enough_depth = True
@@ -158,19 +142,12 @@ def subsample_region_proportionally(region, args):
             target_reads = read_data
             found_enough_depth = False
             logger.warn('Insufficient coverage: {} reads ({}X).'.format(n_reads, median_coverage))
-        # If asking for extra reads, apply subsampling to the non-primary too
-        if args.force_non_primary:
-            n_xtra = int(round(fraction * len(extra_reads), 0)) if fraction < 1 else len(extra_reads)
-            target_reads = np.concatenate((
-                target_reads,
-                np.random.choice(extra_reads, n_xtra, replace=False)
-            ), axis=0)
         if found_enough_depth:
             prefix = '{}_{}X'.format(args.output_prefix, target)
         else:
             prefix = '{}_{}X'.format(args.output_prefix, int(median_coverage))
         if n_reads > 0:
-            _write_bam(args.bam, prefix, region, target_reads['name'])
+            _write_bam(args.bam, prefix, region, target_reads['name'], secondary=args.force_non_primary)
         coverage.fill(0.0)  # reset coverage for each target depth
         for read in target_reads:
             coverage[read['start'] - region.start:read['end'] - region.start] += 1
@@ -220,16 +197,10 @@ def subsample_region_uniformly(region, args):
     logger = logging.getLogger(region.ref_name)
     logger.info("Building interval tree.")
     tree = IntervalTree()
-    filtered = IntervalTree()
     with pysam.AlignmentFile(args.bam) as bam:
         ref_lengths = dict(zip(bam.references, bam.lengths))
         for r in bam.fetch(region.ref_name, region.start, region.end):
             if filter_read(r, bam, args, logger):
-                if r.is_secondary or r.is_supplementary:
-                    filtered.add(
-                        Interval(max(r.reference_start, region.start),
-                                 min(r.reference_end, region.end),
-                                 r.query_name))
                 continue
             # trim reads to region
             tree.add(Interval(
@@ -246,7 +217,6 @@ def subsample_region_uniformly(region, args):
     targets = iter(sorted(args.depth))
     target = next(targets)
     found_enough_depth = True
-    is_primary = True
     while True:
         cursor = 0
         while cursor < ref_lengths[region.ref_name]:
@@ -254,16 +224,10 @@ def subsample_region_uniformly(region, args):
             if read is None:
                 cursor += args.stride
                 continue
-            if is_primary:
+            else:
                 reads.add(read.data)
                 cursor = read.end
                 coverage[read.begin - region.start:read.end - region.start] += 1
-                tree.remove(read)
-            elif not is_primary and read.data in reads and args.force_non_primary:
-                cursor = read.end
-                coverage[read.begin - region.start:read.end - region.start] += 1
-                tree.remove(read)
-            else:
                 tree.remove(read)
 
         iteration += 1
@@ -277,7 +241,7 @@ def subsample_region_uniformly(region, args):
                 msg = "Hit target depth {}."
                 logger.info(msg.format(target))
                 prefix = '{}_{}X'.format(args.output_prefix, target)
-                _write_bam(args.bam, prefix, region, reads)
+                _write_bam(args.bam, prefix, region, reads, secondary=args.force_non_primary)
                 _write_coverage(prefix, region, coverage, args.profile)
                 try:
                     target = next(targets)
@@ -288,19 +252,11 @@ def subsample_region_uniformly(region, args):
                 logger.warn(msg.format(target, int(median_depth)))
                 prefix = '{}_{}X'.format(args.output_prefix, int(median_depth))
                 if median_depth > 0:
-                    _write_bam(args.bam, prefix, region, reads)
+                    _write_bam(args.bam, prefix, region, reads, secondary=args.force_non_primary)
                     _write_coverage(prefix, region, coverage, args.profile)
                 break
         # exit if nothing happened this iteration
         if n_reads == len(reads):
-            # If forcing secondary, consider them before stopping
-            if args.force_non_primary and len(filtered) > 0 and len(tree) == 0:
-                logger.warn("Forcing secondary/supplementary regions...")
-                cursor = 0
-                tree = filtered
-                filtered = IntervalTree()
-                is_primary = False
-                continue
             found_enough_depth = False
             if not args.force_low_depth:
                 logger.warn("No reads added, finishing pileup.")
@@ -308,14 +264,6 @@ def subsample_region_uniformly(region, args):
         n_reads = len(reads)
         # or if no change in depth
         if median_depth == last_depth:
-            # If forcing secondary, consider them before stopping
-            if args.force_non_primary and len(filtered) > 0 and len(tree) == 0:
-                logger.warn("Forcing secondary/supplementary regions...")
-                cursor = 0
-                tree = filtered
-                filtered = IntervalTree()
-                is_primary = False
-                continue
             it_no_change += 1
             if it_no_change == args.patience:
                 found_enough_depth = False
@@ -347,7 +295,7 @@ def _nearest_overlapping_point(src, point):
     return items[0]
 
 
-def _write_bam(bam, prefix, region, sequences):
+def _write_bam(bam, prefix, region, sequences, secondary=False):
     # filtered bam
     sequences = set(sequences)
     taken = set()
@@ -355,9 +303,13 @@ def _write_bam(bam, prefix, region, sequences):
     src_bam = pysam.AlignmentFile(bam, "rb")
     out_bam = pysam.AlignmentFile(output, "wb", template=src_bam)
     for read in src_bam.fetch(region.ref_name, region.start, region.end):
-        if read.query_name in sequences and read.query_name not in taken:
+        if read.query_name in sequences and not (read.is_secondary or read.is_supplementary):
+            if read.query_name not in taken:
+                out_bam.write(read)
+                taken.add(read.query_name)
+        if read.query_name in sequences and secondary and \
+                (read.is_secondary or read.is_supplementary):
             out_bam.write(read)
-            taken.add(read.query_name)
     src_bam.close()
     out_bam.close()
     pysam.index(output)
