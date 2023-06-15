@@ -703,7 +703,7 @@ def plot_summary(df, outdir, prefix, ref_len):
     fig.subplots_adjust(left=0.3)
     y_pos = np.arange(len(df) + 1)
     no_error_score = -10 * np.log10(1/ref_len)
-    ax.barh(y_pos, df['remaining_err_rate_q']._append(pd.Series(no_error_score)), align='center', color='green', ecolor='black')
+    ax.barh(y_pos, np.concat([df['remaining_err_rate_q'].to_numpy(), [no_error_score]]), align='center', color='green', ecolor='black')
     ax.set_xlabel('Q(Accuracy)')
     ax.set_ylabel('Error Class')
     ax.set_ylim((y_pos[0]-0.5, y_pos[-1]+0.5))
