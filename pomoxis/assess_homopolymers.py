@@ -226,7 +226,7 @@ def plot_errors_by_length(e, fname):
 
 
 def count_homopolymers(args):
-    os.makedirs(args.output_dir, exist_ok=True)
+    os.mkdir(args.output_dir)
 
     # create a slice of reads to process in each thread to avoid looping through
     # bam n read times and reduce mp overhead
