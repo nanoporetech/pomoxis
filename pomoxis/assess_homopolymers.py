@@ -127,7 +127,7 @@ def plot_relative_lengths(data, fname):
     fig, axes = plt.subplots(
         ncols=len(cols), nrows=len(rows), sharex=True,
         figsize=(4 * len(cols), 2 * len(rows)), squeeze=False)
-    for rl, rl_df in data.groupby(['ref_len']):
+    for rl, rl_df in data.groupby('ref_len'):
         i = rows.index(rl)
         for qb, qb_df in rl_df.groupby('q_base'):
             j = cols.index(qb)
@@ -168,7 +168,7 @@ def get_heatmap(data, data_comp):
     df_comp[np.isnan(df_comp)] = 0
     df_comp = df_comp.reindex(column_reindex, axis=1)
 
-    df_all = df_comp.sum(level='ref_len', axis=1)
+    df_all = df_comp.groupby(level='ref_len', axis=1).sum()
     df_all.columns = pd.MultiIndex.from_product((['ATGC',], df_all.columns), 
         names=['q_base', 'ref_len'])
 
@@ -226,7 +226,7 @@ def plot_errors_by_length(e, fname):
 
 
 def count_homopolymers(args):
-    os.mkdir(args.output_dir)
+    os.makedirs(args.output_dir, exist_ok=True)
 
     # create a slice of reads to process in each thread to avoid looping through
     # bam n read times and reduce mp overhead
