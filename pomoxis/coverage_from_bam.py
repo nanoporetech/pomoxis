@@ -76,7 +76,7 @@ def main():
             prefix = os.path.splitext(os.path.basename(args.bam))[0]
 
         region_str = '{}_{}_{}'.format(region.ref_name, region.start, region.end)
-        df = coverage_of_region(region, args.bam, args.stride, ignore_secondary=args.primary_only)
+        df = coverage_of_region(region, args.bam, args.stride, primary_only=args.primary_only)
         summary[region_str] = df['depth'].describe()
 
         if not args.summary_only:
