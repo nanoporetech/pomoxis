@@ -7,7 +7,7 @@ import pysam
 from pomoxis.util import parse_regions, Region
 
 
-def coverage_of_region(region, bam_fp, stride, ignore_secondary=False):
+def coverage_of_region(region, bam_fp, stride, primary_only=False):
     """Get coverage data for a region"""
 
     bins = np.arange(region.start, region.end, stride)
@@ -16,7 +16,7 @@ def coverage_of_region(region, bam_fp, stride, ignore_secondary=False):
     coverage_by_is_rev = {True: np.zeros(len(bins)), False: np.zeros(len(bins))}
     for r_obj in pysam.AlignmentFile(bam_fp).fetch(contig=region.ref_name, start=region.start, end=region.end):
         # Ignore secondary/supplementary maps when computing the median depth, if requested
-        if ignore_secondary and (r_obj.is_secondary or r_obj.is_supplementary):
+        if primary_only and (r_obj.is_secondary or r_obj.is_supplementary):
             continue
         start_i = max((r_obj.reference_start - bins[0]) // stride, 0)
         end_i = min((r_obj.reference_end - bins[0]) // stride, len(bins))
@@ -51,7 +51,8 @@ def main():
     grp.add_argument('-p', '--prefix', help='Prefix for output, defaults to basename of bam.')
     grp.add_argument('-o', '--one_file', help='Single output file with "region" column.')
     parser.add_argument('-s', '--stride', type=int, default=1000, help='Stride in genomic coordinate.')
-    parser.add_argument('--ignore_secondary', action='store_true', help='Ignore secondary reads when computing the coverage.')
+    parser.add_argument('--primary_only', action='store_true', 
+                        help='Use only primary reads when computing the coverage.')
     parser.add_argument('--summary_only', action='store_true',
                         help='Output only the depth_summary.txt file')
 
@@ -75,7 +76,7 @@ def main():
             prefix = os.path.splitext(os.path.basename(args.bam))[0]
 
         region_str = '{}_{}_{}'.format(region.ref_name, region.start, region.end)
-        df = coverage_of_region(region, args.bam, args.stride, ignore_secondary=args.ignore_secondary)
+        df = coverage_of_region(region, args.bam, args.stride, primary_only=args.primary_only)
         summary[region_str] = df['depth'].describe()
 
         if not args.summary_only:
