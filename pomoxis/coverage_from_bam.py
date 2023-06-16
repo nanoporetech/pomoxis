@@ -51,7 +51,8 @@ def main():
     grp.add_argument('-p', '--prefix', help='Prefix for output, defaults to basename of bam.')
     grp.add_argument('-o', '--one_file', help='Single output file with "region" column.')
     parser.add_argument('-s', '--stride', type=int, default=1000, help='Stride in genomic coordinate.')
-    parser.add_argument('--ignore_secondary', action='store_true', help='Ignore secondary reads when computing the coverage.')
+    parser.add_argument('--primary_only', action='store_true', 
+                        help='Use only primary reads when computing the coverage.')
     parser.add_argument('--summary_only', action='store_true',
                         help='Output only the depth_summary.txt file')
 
