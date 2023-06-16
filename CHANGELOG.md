@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - `subsample_bam`: `--force_low_coverage` saves contigs with coverage below the target 
 - `subsample_bam`: `--force_non_primary` saves multimapping for the subsampled reads
-- `coverage_from_bam`: `--primary_only` use consider only primary reads when computing the depth
+- `coverage_from_bam`: `--primary_only` considers only primary reads when computing the depth
 ## [v0.3.12] - 2023-02-09
 ### Changed
 - `subsample_bam`: `--quality` filtering now uses mean error probability, not mean of quality scores as previously.
