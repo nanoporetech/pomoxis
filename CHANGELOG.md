@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+### Added
+- Option `-C` for `mini_align` to copy fastx comments into bam tags
+
 ## [v0.3.13] - 2023-06-12
 ### Changed
 - `subsample_bam`: `--force_low_coverage` saves contigs with coverage below the target 
@@ -13,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - `subsample_bam`: `--quality` filtering now uses mean error probability, not mean of quality scores as previously.
 - `subsample_bam`: enable filtering for proportional subsampling.
+
 ## [v0.3.11] - 2022-11-16
 ### Fixed
 - Fix crashes in `subsample_bam` with alignment filtering and `common_errors_from_bam`
