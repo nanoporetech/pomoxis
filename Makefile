@@ -121,8 +121,8 @@ $(BINCACHEDIR)/seqkit: | $(BINCACHEDIR) $(BINBUILDDIR)
 	cp ${BINBUILDDIR}/seqkit $@	
 
 
-#BEDTOOLSVER=2.29.0 Changed to 2.30.0 on 6 December 2021
-BEDTOOLSVER=2.30.0
+#BEDTOOLSVER=2.31.0 on 7th June 2023
+BEDTOOLSVER=2.31.0
 $(BINCACHEDIR)/bedtools: | $(BINCACHEDIR) $(BINBUILDDIR)
 	@echo Making $(@F)
 	if [ ! -e ${BINBUILDDIR}/bedtools-2.29.0.tar.gz	]; then \
