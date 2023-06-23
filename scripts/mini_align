@@ -25,6 +25,7 @@ Align fastq/a formatted reads to a genome using minimap2.
     -p  output file prefix (default: reads).
     -m  fill MD tag.
     -s  fill cs(=long) tag.
+    -C  copy comments from fastx info lines to bam tags
     -X  only create reference index files.
     -x  log all commands before running.
     -M  match score 
@@ -56,7 +57,7 @@ xflag=false
 #GAP_EXTEND="2,1"
 ALIGN_PARAMETERS=""  # match, mismatch, gap options combined
 
-while getopts ':hr:i:d:I:M:S:O:E:fPAymsnp:ac:t:Xx' option; do
+while getopts ':hr:i:d:I:M:S:O:E:fPAymsCnp:ac:t:Xx' option; do
   case "$option" in
     h  ) echo "$usage" >&2; exit;;
     r  ) rflag=true; REFERENCE=$OPTARG;;
@@ -69,6 +70,7 @@ while getopts ':hr:i:d:I:M:S:O:E:fPAymsnp:ac:t:Xx' option; do
     y  ) filter_set=$(($filter_set + 1)); FILTER="-F 260";;
     m  ) csmd_set=$(($csmd_set + 1)); ALIGN_OUTPUT_OPTS="${ALIGN_OUTPUT_OPTS} --MD";;
     s  ) csmd_set=$(($csmd_set + 1)); ALIGN_OUTPUT_OPTS="${ALIGN_OUTPUT_OPTS} --cs=long";;
+    C  ) ALIGN_OUTPUT_OPTS="${ALIGN_OUTPUT_OPTS} -y";;
     n  ) SORT="${SORT} -n";;
     p  ) PREFIX=$OPTARG;;
     a  ) aflag=true; ALIGN_PARAMETERS="-A 1 -B 2 -O 2 -E 1";;

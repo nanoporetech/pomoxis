@@ -7,4 +7,4 @@ ncls
 numpy
 pandas
 pysam >= 0.15.4
-git+https://github.com/rrwick/Porechop
+porechop @ git+https://github.com/artic-network/porechop
