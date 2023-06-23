@@ -96,7 +96,7 @@ def main():
 
 def subsample_region_proportionally(region, args):
     logger = logging.getLogger(region.ref_name)
-    coverage_summary = coverage_summary_of_region(region, args.bam, args.stride, ignore_secondary=True)
+    coverage_summary = coverage_summary_of_region(region, args.bam, args.stride, primary_only=True)
     col = 'depth_{}'.format(args.orientation) if args.orientation is not None else 'depth'
     median_coverage = coverage_summary[col].T['50%']
     logger.info(f'Median coverage {median_coverage}')
