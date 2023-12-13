@@ -1,6 +1,8 @@
 import argparse
 from collections import namedtuple, defaultdict
 import itertools
+import logging
+import os
 import shutil
 import sys
 
@@ -14,7 +16,7 @@ AlignPos = namedtuple('AlignPos', ('qpos', 'qbase', 'rpos', 'rbase'))
 
 
 class FastxWrite:
-    def  __init__(self, fname, mode='w', width=80, force_q=False, mock_q=10):
+    def __init__(self, fname, mode='w', width=80, force_q=False, mock_q=10):
         self.fname = fname
         self.mode = mode
         self.width = width
@@ -436,3 +438,254 @@ def reverse_bed():
     d['rc_start'] = d['chrom_length'] - d['stop']
     d['chrom_rc'] = d['chrom'] + '_rc'
     d[['chrom_rc', 'rc_start', 'rc_stop']].to_csv(args.bed_out, index=False, header=False, sep='\t')
+
+
+class PrimSupAction(argparse.Action):
+    """Parse primary / supplementary option."""
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        if self.dest == 'primary_only':
+            setattr(namespace, self.dest, True)
+            setattr(namespace, 'keep_supplementary', False)
+        elif self.dest == 'keep_supplementary':
+            setattr(namespace, self.dest, True)
+            setattr(namespace, 'primary_only', False)
+
+
+def stats_from_aligned_read(read):
+    """Create summary information for an aligned read
+
+    :param read: :class:`pysam.AlignedSegment` object
+    """
+    try:
+        NM = read.get_tag('NM')
+    except:
+        raise IOError("Read is missing required 'NM' tag. Try running 'samtools fillmd -S - ref.fa'.")
+
+    name = read.query_name
+    start_offset = 0
+    if read.is_secondary or read.is_supplementary:
+        first_cig = read.cigartuples[0]
+        if first_cig[0] == 5:  # should always be true for minimap2
+            start_offset = first_cig[1]
+    counts, _ = read.get_cigar_stats()
+    match = counts[0] + counts[7] + counts[8]  # total of M, =, and X
+    ins = counts[1]
+    delt = counts[2]
+
+    lra_flag = False
+    if read.has_tag('NX'):
+        # likely from lra
+        # NM is number of matches, see https://github.com/ChaissonLab/LRA/issues/32
+        sub = counts[8]
+        lra_flag = True
+    else:
+        # likely from minimap2
+        # NM is edit distance: NM = INS + DEL + SUB
+        sub = NM - ins - delt
+
+    length = match + ins + delt
+    iden = 100 * float(match - sub) / match
+    acc = 100 * float(match - sub) / length
+
+    read_length = read.infer_read_length()
+    coverage = 100 * float(read.query_alignment_length) / read_length
+    direction = '-' if read.is_reverse else '+'
+
+    results = {
+        "name": name,
+        "coverage": coverage,
+        "direction": direction,
+        "length": length,
+        "read_length": read_length,
+        "match": match,
+        "ins": ins,
+        "del": delt,
+        "sub": sub,
+        "iden": iden,
+        "acc": acc,
+        "qstart": read.query_alignment_start + start_offset,
+        "qend": read.query_alignment_end + start_offset,
+        "rstart": read.reference_start,
+        "rend": read.reference_end,
+        "ref": read.reference_name,
+        "aligned_ref_len": read.reference_length,
+        "ref_coverage": 100*float(read.reference_length) / read.header.lengths[read.reference_id],
+        "mapq": read.mapping_quality,
+    }
+
+    return results, lra_flag
+
+
+def masked_stats_from_aligned_read(read, tree):
+    """Create summary information for an aligned read over regions in bed file.
+
+    :param read: :class:`pysam.AlignedSegment` object
+    """
+    try:
+        MD = read.get_tag('MD')
+    except:
+        raise IOError("Read is missing required 'MD' tag. Try running 'samtools callmd - ref.fa'.")
+
+    correct, delt, ins, sub, aligned_ref_len, masked = 0, 0, 0, 0, 0, 0
+    pairs = read.get_aligned_pairs(with_seq=True)
+    qseq = read.query_sequence
+    pos_is_none = lambda x: (x[1] is None or x[0] is None)
+    pos = None
+    insertions = []
+    # TODO: refactor to use get_trimmed_pairs (as in catalogue_errors)?
+    for qp, rp, rb in itertools.dropwhile(pos_is_none, pairs):
+        if rp == read.reference_end or (qp == read.query_alignment_end):
+            break
+        pos = rp if rp is not None else pos
+        if not tree.has_overlap(pos, pos + 1) or (rp is None and not tree.has_overlap(pos + 1, pos + 2)):
+            # if rp is None, we are in an insertion, check if pos + 1 overlaps
+            # (ref position of ins is arbitrary)
+            # print('Skipping ref {}:{}'.format(read.reference_name, pos))
+            masked += 1
+            continue
+        else:
+            if rp is not None:  # we don't have an insertion
+                aligned_ref_len += 1
+                if qp is None:  # deletion
+                    delt += 1
+                elif qseq[qp] == rb:  # correct
+                    correct += 1
+                elif qseq[qp] != rb:  # sub
+                    sub += 1
+            else:  # we have an insertion
+                ins += 1
+
+    name = read.query_name
+    match = correct + sub
+    length = match + ins + delt
+
+    if match == 0:
+        # no matches within bed regions - all bed ref positions were deleted.
+        # skip this alignment.
+        return None
+
+    iden = 100 * float(match - sub) / match
+    acc = 100 - 100 * float(sub + ins + delt) / length
+
+    read_length = read.infer_read_length()
+    masked_query_alignment_length = correct + sub + ins
+    coverage = 100*float(masked_query_alignment_length) / read_length
+    direction = '-' if read.is_reverse else '+'
+
+    results = {
+        "name": name,
+        "coverage": coverage,
+        "direction": direction,
+        "length": length,
+        "read_length": read_length,
+        "match": match,
+        "ins": ins,
+        "del": delt,
+        "sub": sub,
+        "iden": iden,
+        "acc": acc,
+        "qstart": read.query_alignment_start,
+        "qend": read.query_alignment_end,
+        "rstart": read.reference_start,
+        "rend": read.reference_end,
+        "ref": read.reference_name,
+        "aligned_ref_len": aligned_ref_len,
+        "ref_coverage": 100 * float(aligned_ref_len) / read.header.lengths[read.reference_id],
+        "mapq": read.mapping_quality,
+        "masked": masked,
+    }
+    return results
+
+
+def filter_args():
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter, add_help=False)
+    group = parser.add_argument_group('Read filtering options')
+    group.add_argument('-O', '--orientation', choices=['fwd', 'rev'],
+        help='Sample only forward or reverse reads.')
+    group.add_argument('-q', '--quality', type=float,
+        help='Filter reads by mean qscore.')
+    group.add_argument('-a', '--accuracy', type=float,
+        help='Filter reads by accuracy.')
+    group.add_argument('-c', '--coverage', type=float,
+        help='Filter reads by coverage (what fraction of the read aligns).')
+    group.add_argument('-l', '--length', type=int, default=None,
+        help='Filter reads by read length.')
+
+    pgroup = group.add_mutually_exclusive_group()
+    pgroup.add_argument('--primary_only', action=PrimSupAction, default=True, nargs=0,
+                        help='Use only primary reads.')
+    pgroup.add_argument('--keep_supplementary', action=PrimSupAction, default=False, nargs=0,
+        help='Include supplementary alignments.')
+    return parser
+
+
+QSCORES_TO_PROBS = 10 ** (-0.1 * np.array(np.arange(100)))
+
+
+def filter_read(r, args, logger=None):
+    """Decide whether a read should be filtered out, returning a bool"""
+
+    if logger is None:
+        logger = logging.getLogger('Filter')
+    # filter secondary and unmapped reads
+    if r.is_secondary or r.is_unmapped:
+        return True
+    if r.is_supplementary and not args.keep_supplementary:
+        return True
+
+    # filter orientation
+    if (r.is_reverse and args.orientation == 'fwd') or \
+            (not r.is_reverse and args.orientation == 'rev'):
+        return True
+
+    # filter quality
+    if args.quality is not None:
+        mean_q = -10 * np.log10(np.mean(QSCORES_TO_PROBS[r.query_qualities]))
+        if mean_q < args.quality:
+            logger.debug(f"Filtering {r.query_name} with quality {mean_q:.2f}")
+            return True
+
+    # filter accuracy or alignment coverage
+    if args.accuracy is not None or args.coverage is not None or args.length is not None:
+        stats, _ = stats_from_aligned_read(r)
+        if args.accuracy is not None and stats['acc'] < args.accuracy:
+            logger.info("Filtering {} by accuracy ({:.2f}).".format(r.query_name, stats['acc']))
+            return True
+        if args.coverage is not None and stats['coverage'] < args.coverage:
+            logger.info("Filtering {} by coverage ({:.2f}).".format(r.query_name, stats['coverage']))
+            return True
+        if args.length is not None and stats['read_length'] < args.length:
+            logger.info("Filtering {} by length ({:.2f}).".format(r.query_name, stats['length']))
+            return True
+    # don't filter
+    return False
+
+
+def write_bam(bam, prefix, region, sequences, keep_supplementary=False):
+    """Write subset bam.
+
+    :param bam: str, path to input bam.
+    :param prefix: str, prefix for output bam.
+    :param bam: `Region` obj of region to subset to.
+    :param sequences: set of query names to retain.
+    :param keep_supplementary: bool, whether to retain supplementary alignments.
+    """
+    # filtered bam
+    sequences = set(sequences)
+    taken = set()
+    output = '{}_{}.{}'.format(prefix, region.ref_name, os.path.basename(bam))
+    src_bam = pysam.AlignmentFile(bam, "rb")
+    out_bam = pysam.AlignmentFile(output, "wb", template=src_bam)
+    for read in src_bam.fetch(region.ref_name, region.start, region.end):
+        if read.is_secondary:
+            continue
+        if read.is_supplementary and not keep_supplementary:
+            continue
+        if read.query_name in sequences and (read.query_name, read.is_supplementary) not in taken:
+            out_bam.write(read)
+            taken.add((read.query_name, read.is_supplementary))
+    src_bam.close()
+    out_bam.close()
+    pysam.index(output)
