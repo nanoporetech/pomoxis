@@ -99,6 +99,7 @@ setup(
             'split_fastx = {}.util:split_fastx_cmdline'.format(__pkg_name__),
             'stats_from_bam = {}.stats_from_bam:main'.format(__pkg_name__),
             'subsample_bam = {}.subsample_bam:main'.format(__pkg_name__),
+            'filter_bam = {}.filter_bam:main'.format(__pkg_name__),
             'summary_from_stats = {}.summary_from_stats:main'.format(__pkg_name__),
             'tag_bam = {}.util:tag_bam'.format(__pkg_name__),
             'trim_alignments = {}.trim_alignments:main'.format(__pkg_name__),
