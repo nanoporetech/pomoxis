@@ -12,7 +12,7 @@ import sys
 
 import pysam
 
-from pomoxis.util import intervaltrees_from_bed
+from pomoxis.util import intervaltrees_from_bed, masked_stats_from_aligned_read, stats_from_aligned_read
 
 parser = argparse.ArgumentParser(
         prog='stats_from_bam',
@@ -31,151 +31,6 @@ parser.add_argument('-s', '--summary', type=argparse.FileType('w'), default=sys.
 parser.add_argument('-t', '--threads', type=int, default=1,
                     help='Number of threads for parallel processing.')
 
-
-def stats_from_aligned_read(read, references, lengths):
-    """Create summary information for an aligned read
-
-    :param read: :class:`pysam.AlignedSegment` object
-    """
-    try:
-        NM = read.get_tag('NM')
-    except:
-        raise IOError("Read is missing required 'NM' tag. Try running 'samtools fillmd -S - ref.fa'.")
-
-    name = read.qname
-    start_offset = 0
-    if read.is_secondary or read.is_supplementary:
-        first_cig = read.cigartuples[0]
-        if first_cig[0] == 5:  # should always be true for minimap2
-            start_offset = first_cig[1]
-    counts, _ = read.get_cigar_stats()
-    match = counts[0] + counts[7] + counts[8]  # total of M, =, and X
-    ins = counts[1]
-    delt = counts[2]
-
-    lra_flag = False
-    if read.has_tag('NX'):
-        # likely from lra
-        # NM is number of matches, see https://github.com/ChaissonLab/LRA/issues/32
-        sub = counts[8]
-        lra_flag = True
-    else:
-        # likely from minimap2
-        # NM is edit distance: NM = INS + DEL + SUB
-        sub = NM - ins - delt
-
-    length = match + ins + delt
-    iden = 100 * float(match - sub) / match
-    acc = 100 * float(match - sub) / length
-
-    read_length = read.infer_read_length()
-    coverage = 100 * float(read.query_alignment_length) / read_length
-    direction = '-' if read.is_reverse else '+'
-
-    results = {
-        "name": name,
-        "coverage": coverage,
-        "direction": direction,
-        "length": length,
-        "read_length": read_length,
-        "match": match,
-        "ins": ins,
-        "del": delt,
-        "sub": sub,
-        "iden": iden,
-        "acc": acc,
-        "qstart": read.query_alignment_start + start_offset,
-        "qend": read.query_alignment_end + start_offset,
-        "rstart": read.reference_start,
-        "rend": read.reference_end,
-        "ref": references[read.reference_id],
-        "aligned_ref_len": read.reference_length,
-        "ref_coverage": 100*float(read.reference_length) / lengths[read.reference_id],
-        "mapq": read.mapping_quality,
-    }
-
-    return results, lra_flag
-
-
-def masked_stats_from_aligned_read(read, references, lengths, tree):
-    """Create summary information for an aligned read over regions in bed file.
-
-    :param read: :class:`pysam.AlignedSegment` object
-    """
-    try:
-        MD = read.get_tag('MD')
-    except:
-        raise IOError("Read is missing required 'MD' tag. Try running 'samtools callmd - ref.fa'.")
-
-    correct, delt, ins, sub, aligned_ref_len, masked = 0, 0, 0, 0, 0, 0
-    pairs = read.get_aligned_pairs(with_seq=True)
-    qseq = read.query_sequence
-    pos_is_none = lambda x: (x[1] is None or x[0] is None)
-    pos = None
-    insertions = []
-    # TODO: refactor to use get_trimmed_pairs (as in catalogue_errors)?
-    for qp, rp, rb in itertools.dropwhile(pos_is_none, pairs):
-        if rp == read.reference_end or (qp == read.query_alignment_end):
-            break
-        pos = rp if rp is not None else pos
-        if not tree.has_overlap(pos, pos + 1) or (rp is None and not tree.has_overlap(pos + 1, pos + 2)):
-            # if rp is None, we are in an insertion, check if pos + 1 overlaps
-            # (ref position of ins is arbitrary)
-            # print('Skipping ref {}:{}'.format(read.reference_name, pos))
-            masked += 1
-            continue
-        else:
-            if rp is not None:  # we don't have an insertion
-                aligned_ref_len += 1
-                if qp is None:  # deletion
-                    delt += 1
-                elif qseq[qp] == rb:  # correct
-                    correct += 1
-                elif qseq[qp] != rb:  # sub
-                    sub += 1
-            else:  # we have an insertion
-                ins += 1
-
-    name = read.qname
-    match = correct + sub
-    length = match + ins + delt
-
-    if match == 0:
-        # no matches within bed regions - all bed ref positions were deleted.
-        # skip this alignment.
-        return None
-
-    iden = 100 * float(match - sub) / match
-    acc = 100 - 100 * float(sub + ins + delt) / length
-
-    read_length = read.infer_read_length()
-    masked_query_alignment_length = correct + sub + ins
-    coverage = 100*float(masked_query_alignment_length) / read_length
-    direction = '-' if read.is_reverse else '+'
-
-    results = {
-        "name": name,
-        "coverage": coverage,
-        "direction": direction,
-        "length": length,
-        "read_length": read_length,
-        "match": match,
-        "ins": ins,
-        "del": delt,
-        "sub": sub,
-        "iden": iden,
-        "acc": acc,
-        "qstart": read.query_alignment_start,
-        "qend": read.query_alignment_end,
-        "rstart": read.reference_start,
-        "rend": read.reference_end,
-        "ref": references[read.reference_id],
-        "aligned_ref_len": aligned_ref_len,
-        "ref_coverage": 100 * float(aligned_ref_len) / lengths[read.reference_id],
-        "mapq": read.mapping_quality,
-        "masked": masked,
-    }
-    return results
 
 
 def _process_reads(bam_fp, start_stop, all_alignments=False, min_length=None, bed_file=None):
@@ -205,12 +60,12 @@ def _process_reads(bam_fp, start_stop, all_alignments=False, min_length=None, be
                     counts['masked'] += 1
                     continue
                 else:
-                    result = masked_stats_from_aligned_read(read, bam.references, bam.lengths, trees[read.reference_name])
+                    result = masked_stats_from_aligned_read(read, trees[read.reference_name])
                     if result is None:  # no matches within bed regions
                         counts['all_matches_masked'] +=  1
                         continue
             else:
-                result, lra_flag = stats_from_aligned_read(read, bam.references, bam.lengths)
+                result, lra_flag = stats_from_aligned_read(read)
 
             if min_length is not None and result['length'] < min_length:
                 counts['short'] += 1

@@ -10,9 +10,8 @@ import numpy as np
 import pysam
 
 
-from pomoxis.util import parse_regions, Region
+from pomoxis.util import parse_regions, Region, filter_args, filter_read, write_bam
 from pomoxis.coverage_from_bam import coverage_summary_of_region
-from pomoxis.stats_from_bam import stats_from_aligned_read
 
 
 def main():
@@ -20,6 +19,7 @@ def main():
     parser = argparse.ArgumentParser(
         prog='subsample_bam',
         description='Subsample a bam to uniform or proportional depth',
+        parents=[filter_args()],
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('bam',
         help='input bam file.')
@@ -31,22 +31,10 @@ def main():
         help='Only process given regions.')
     parser.add_argument('-p', '--profile', type=int, default=1000,
         help='Stride in genomic coordinates for depth profile.')
-    parser.add_argument('-O', '--orientation', choices=['fwd', 'rev'],
-        help='Sample only forward or reverse reads.')
     parser.add_argument('-t', '--threads', type=int, default=-1,
         help='Number of threads to use.')
-    parser.add_argument('-q', '--quality', type=float,
-        help='Filter reads by mean qscore.')
-    parser.add_argument('-a', '--accuracy', type=float,
-        help='Filter reads by accuracy.')
-    parser.add_argument('-c', '--coverage', type=float,
-        help='Filter reads by coverage (what fraction of the read aligns).')
-    parser.add_argument('-l', '--length', type=int, default=None,
-        help='Filter reads by read length.')
     parser.add_argument('--force_low_depth', action='store_true',
         help='Force saving reads mapped to a sequence with coverage below the expected value.')
-    parser.add_argument('--force_non_primary', action='store_true',
-        help='Force saving non-primary alignments.')
 
     eparser = parser.add_mutually_exclusive_group()
     eparser.add_argument('--any_fail', action='store_true',
@@ -96,14 +84,15 @@ def main():
 
 def subsample_region_proportionally(region, args):
     logger = logging.getLogger(region.ref_name)
-    coverage_summary = coverage_summary_of_region(region, args.bam, args.stride, primary_only=True)
+    coverage_summary = coverage_summary_of_region(
+        region, args.bam, args.stride, functools.partial(filter_read, args=args, logger=logger))
     col = 'depth_{}'.format(args.orientation) if args.orientation is not None else 'depth'
     median_coverage = coverage_summary[col].T['50%']
     logger.info(f'Median coverage {median_coverage}')
     with pysam.AlignmentFile(args.bam) as bam:
         def _read_iter():
             for r in bam.fetch(region.ref_name, region.start, region.end):
-                if not filter_read(r, bam, args, logger):
+                if not filter_read(r, args, logger):
                     yield r
         # Prepare iterator
         reads = _read_iter()
@@ -147,50 +136,13 @@ def subsample_region_proportionally(region, args):
         else:
             prefix = '{}_{}X'.format(args.output_prefix, int(median_coverage))
         if n_reads > 0:
-            _write_bam(args.bam, prefix, region, target_reads['name'], secondary=args.force_non_primary)
+            write_bam(args.bam, prefix, region, target_reads['name'], keep_supplementary=args.keep_supplementary)
         coverage.fill(0.0)  # reset coverage for each target depth
         for read in target_reads:
             coverage[read['start'] - region.start:read['end'] - region.start] += 1
         _write_coverage(prefix, region, coverage, args.profile)
 
     return found_enough_depth
-
-
-QSCORES_TO_PROBS = 10 ** (-0.1 * np.array(np.arange(100)))
-
-def filter_read(r, bam, args, logger):
-    """Decide whether a read should be filtered out, returning a bool"""
-
-    # primary alignments
-    if r.is_secondary or r.is_supplementary:
-        return True
-
-    # filter orientation
-    if (r.is_reverse and args.orientation == 'fwd') or \
-            (not r.is_reverse and args.orientation == 'rev'):
-        return True
-
-    # filter quality
-    if args.quality is not None:
-        mean_q = -10 * np.log10(np.mean(QSCORES_TO_PROBS[r.query_qualities]))
-        if mean_q < args.quality:
-            logger.debug(f"Filtering {r.query_name} with quality {mean_q:.2f}")
-            return True
-
-    # filter accuracy or alignment coverage
-    if args.accuracy is not None or args.coverage is not None or args.length is not None:
-        stats, _ = stats_from_aligned_read(r, bam.references, bam.lengths)
-        if args.accuracy is not None and stats['acc'] < args.accuracy:
-            logger.info("Filtering {} by accuracy ({:.2f}).".format(r.query_name, stats['acc']))
-            return True
-        if args.coverage is not None and stats['coverage'] < args.coverage:
-            logger.info("Filtering {} by coverage ({:.2f}).".format(r.query_name, stats['coverage']))
-            return True
-        if args.length is not None and stats['read_length'] < args.length:
-            logger.info("Filtering {} by length ({:.2f}).".format(r.query_name, stats['length']))
-            return True
-    # don't filter
-    return False
 
 
 def subsample_region_uniformly(region, args):
@@ -200,7 +152,7 @@ def subsample_region_uniformly(region, args):
     with pysam.AlignmentFile(args.bam) as bam:
         ref_lengths = dict(zip(bam.references, bam.lengths))
         for r in bam.fetch(region.ref_name, region.start, region.end):
-            if filter_read(r, bam, args, logger):
+            if filter_read(r, args, logger):
                 continue
             # trim reads to region
             tree.add(Interval(
@@ -241,7 +193,7 @@ def subsample_region_uniformly(region, args):
                 msg = "Hit target depth {}."
                 logger.info(msg.format(target))
                 prefix = '{}_{}X'.format(args.output_prefix, target)
-                _write_bam(args.bam, prefix, region, reads, secondary=args.force_non_primary)
+                write_bam(args.bam, prefix, region, reads, keep_supplementary=args.keep_supplementary)
                 _write_coverage(prefix, region, coverage, args.profile)
                 try:
                     target = next(targets)
@@ -252,7 +204,7 @@ def subsample_region_uniformly(region, args):
                 logger.warn(msg.format(target, int(median_depth)))
                 prefix = '{}_{}X'.format(args.output_prefix, int(median_depth))
                 if median_depth > 0:
-                    _write_bam(args.bam, prefix, region, reads, secondary=args.force_non_primary)
+                    write_bam(args.bam, prefix, region, reads, keep_supplementary=args.keep_supplementary)
                     _write_coverage(prefix, region, coverage, args.profile)
                 break
         # exit if nothing happened this iteration
@@ -293,26 +245,6 @@ def _nearest_overlapping_point(src, point):
     items = sorted(items, key=lambda x: x.end - x.begin, reverse=True)
     items.sort(key=lambda x: abs(x.begin - point))
     return items[0]
-
-
-def _write_bam(bam, prefix, region, sequences, secondary=False):
-    # filtered bam
-    sequences = set(sequences)
-    taken = set()
-    output = '{}_{}.{}'.format(prefix, region.ref_name, os.path.basename(bam))
-    src_bam = pysam.AlignmentFile(bam, "rb")
-    out_bam = pysam.AlignmentFile(output, "wb", template=src_bam)
-    for read in src_bam.fetch(region.ref_name, region.start, region.end):
-        if read.query_name in sequences and not (read.is_secondary or read.is_supplementary):
-            if read.query_name not in taken:
-                out_bam.write(read)
-                taken.add(read.query_name)
-        if read.query_name in sequences and secondary and \
-                (read.is_secondary or read.is_supplementary):
-            out_bam.write(read)
-    src_bam.close()
-    out_bam.close()
-    pysam.index(output)
 
 
 def _write_coverage(prefix, region, coverage, profile):

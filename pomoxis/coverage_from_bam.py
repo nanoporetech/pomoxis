@@ -1,13 +1,16 @@
 import argparse
+import functools
 import logging
-import numpy as np
 import os
+
+import numpy as np
 import pandas as pd
 import pysam
-from pomoxis.util import parse_regions, Region
+
+from pomoxis.util import filter_args, filter_read, parse_regions, Region
 
 
-def coverage_of_region(region, bam_fp, stride, primary_only=False):
+def coverage_of_region(region, bam_fp, stride, read_filter_func):
     """Get coverage data for a region"""
 
     bins = np.arange(region.start, region.end, stride)
@@ -16,7 +19,7 @@ def coverage_of_region(region, bam_fp, stride, primary_only=False):
     coverage_by_is_rev = {True: np.zeros(len(bins)), False: np.zeros(len(bins))}
     for r_obj in pysam.AlignmentFile(bam_fp).fetch(contig=region.ref_name, start=region.start, end=region.end):
         # Ignore secondary/supplementary maps when computing the median depth, if requested
-        if primary_only and (r_obj.is_secondary or r_obj.is_supplementary):
+        if read_filter_func(r_obj):
             continue
         start_i = max((r_obj.reference_start - bins[0]) // stride, 0)
         end_i = min((r_obj.reference_end - bins[0]) // stride, len(bins))
@@ -39,11 +42,13 @@ def coverage_summary_of_region(*args, **kwargs):
 
 def main():
     logging.basicConfig(format='[%(asctime)s - %(name)s] %(message)s', datefmt='%H:%M:%S', level=logging.INFO)
+
     parser = argparse.ArgumentParser(
         prog='coverage_from_bam',
         description='Calculate read coverage depth from a bam.',
         epilog='By default a file is written per reference sequence, this can be changed with the `--one_file` '
         'option. If overlapping regions are specified, `--one_file` should not be used.',
+        parents=[filter_args()],
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('bam', help='.fasta/fastq file.')
     parser.add_argument('-r', '--regions', nargs='+', help='Only process given regions.')
@@ -51,12 +56,11 @@ def main():
     grp.add_argument('-p', '--prefix', help='Prefix for output, defaults to basename of bam.')
     grp.add_argument('-o', '--one_file', help='Single output file with "region" column.')
     parser.add_argument('-s', '--stride', type=int, default=1000, help='Stride in genomic coordinate.')
-    parser.add_argument('--primary_only', action='store_true', 
-                        help='Use only primary reads when computing the coverage.')
     parser.add_argument('--summary_only', action='store_true',
                         help='Output only the depth_summary.txt file')
 
     args = parser.parse_args()
+    read_filter_func = functools.partial(filter_read, args=args)
 
     bam = pysam.AlignmentFile(args.bam)
     ref_lengths = dict(zip(bam.references, bam.lengths))
@@ -76,7 +80,7 @@ def main():
             prefix = os.path.splitext(os.path.basename(args.bam))[0]
 
         region_str = '{}_{}_{}'.format(region.ref_name, region.start, region.end)
-        df = coverage_of_region(region, args.bam, args.stride, primary_only=args.primary_only)
+        df = coverage_of_region(region, args.bam, args.stride, read_filter_func)
         summary[region_str] = df['depth'].describe()
 
         if not args.summary_only:

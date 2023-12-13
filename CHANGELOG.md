@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.3.14] - 2023-10-25
+### Changed
+- `subsample_bam` and `coverage_from_bam` now have unified read filtering options and logic.
+### Added
+- `filter_bam` to filter a bam with the same logic used in `subsample_bam`. 
+### Fixed
+- `subsample_bam` was previously subsampling proportionally before filtering resulting in lower than expected depth. 
+
 ## [v0.3.13] - 2023-06-23
 ### Changed
 - `subsample_bam`: `--force_low_coverage` saves contigs with coverage below the target 
