@@ -3,12 +3,12 @@ set -eo pipefail
 
 usage="$(basename "$0") [-h] -r <reference> -i <fastq>
 
-Align fastq/a formatted reads to a genome using minimap2.
+Align fastq/a or bam formatted reads to a genome using minimap2.
 
     -h  show this help text.
     -r  reference, should be a fasta file. If correspondng minimap indices
         do not exist they will be created. (required).
-    -i  fastq/a input reads (required).
+    -i  fastq/a or bam input reads (required).
     -I  split index every ~NUM input bases (default: 16G, this is larger
         than the usual minimap2 default).
     -d  set the minimap2 preset, e.g. map-ont, asm5, asm10, asm20 [default: map-ont]
@@ -25,12 +25,13 @@ Align fastq/a formatted reads to a genome using minimap2.
     -p  output file prefix (default: reads).
     -m  fill MD tag.
     -s  fill cs(=long) tag.
-    -C  copy comments from fastx info lines to bam tags
+    -C  copy comments from fastx info lines to bam tags.
+    -T  which input bam tags to retain if input is in bam format (implies -C, default: '*').
     -X  only create reference index files.
     -x  log all commands before running.
-    -M  match score 
-    -S  mismatch score
-    -O  open gap penalty
+    -M  match score. 
+    -S  mismatch score.
+    -O  open gap penalty.
     -E  extend gap penalty."
 
 
@@ -56,8 +57,10 @@ xflag=false
 #GAP_OPEN="4,24"
 #GAP_EXTEND="2,1"
 ALIGN_PARAMETERS=""  # match, mismatch, gap options combined
+BAM_TAGS_TO_KEEP="*"
+mm2copyfqtagsflag=false
 
-while getopts ':hr:i:d:I:M:S:O:E:fPAymsCnp:ac:t:Xx' option; do
+while getopts ':hr:i:d:I:M:S:O:E:fPAymsCT:np:ac:t:Xx' option; do
   case "$option" in
     h  ) echo "$usage" >&2; exit;;
     r  ) rflag=true; REFERENCE=$OPTARG;;
@@ -70,7 +73,8 @@ while getopts ':hr:i:d:I:M:S:O:E:fPAymsCnp:ac:t:Xx' option; do
     y  ) filter_set=$(($filter_set + 1)); FILTER="-F 260";;
     m  ) csmd_set=$(($csmd_set + 1)); ALIGN_OUTPUT_OPTS="${ALIGN_OUTPUT_OPTS} --MD";;
     s  ) csmd_set=$(($csmd_set + 1)); ALIGN_OUTPUT_OPTS="${ALIGN_OUTPUT_OPTS} --cs=long";;
-    C  ) ALIGN_OUTPUT_OPTS="${ALIGN_OUTPUT_OPTS} -y";;
+    C  ) mm2copyfqtagsflag=true;;
+    T  ) mm2copyfqtagsflag=true; BAM_TAGS_TO_KEEP=$OPTARG;;
     n  ) SORT="${SORT} -n";;
     p  ) PREFIX=$OPTARG;;
     a  ) aflag=true; ALIGN_PARAMETERS="-A 1 -B 2 -O 2 -E 1";;
@@ -122,6 +126,9 @@ if $xflag; then
   set -x;
 fi
 
+if $mm2copyfqtagsflag; then
+ ALIGN_OUTPUT_OPTS="${ALIGN_OUTPUT_OPTS} -y";
+fi
 
 # Check if the indices are present and create them if not
 # fai index
@@ -162,9 +169,30 @@ if [ "$CHUNK" != "" ]; then
   INPUT="${INPUT}.chunks"
 fi
 
+# if INPUT is in bam format, convert to fastq in named pipe avoiding file IO
+baminputflag=false
+if [[ ${INPUT} == *.bam ]]; then
+    baminputflag=true
+    PIPEDIR=$(mktemp -d)
+    FQPIPE=${PIPEDIR}/bam_to_fq
+    mkfifo ${FQPIPE}
+	if ${mm2copyfqtagsflag}; then
+    	echo "Detected bam input, converting to fastq, retaining tags: ${BAM_TAGS_TO_KEEP}."
+		samtools fastq -T "${BAM_TAGS_TO_KEEP}" ${INPUT} -@ ${THREADS} > ${FQPIPE} &
+	else
+    	echo "Detected bam input, converting to fastq, discarding input bam tags."
+		samtools fastq ${INPUT} -@ ${THREADS} > ${FQPIPE} &
+	fi
+    INPUT=${FQPIPE}
+fi
+
 minimap2 -x ${minimap_PRESET} ${ALIGN_OUTPUT_OPTS} ${ALIGN_PARAMETERS} -t "${THREADS}" -a "${mmi_index}" "${INPUT}" |
   samtools view -@ "${THREADS}" -T "${REFERENCE}" ${FILTER} -bS - |
   samtools sort -@ "${THREADS}" ${SORT} -o "${PREFIX}.bam" - \
     || { echo "Alignment pipeline failed." >&2; exit 1; }
 samtools index -@ "${THREADS}" "${PREFIX}.bam" "${PREFIX}.bam.bai" \
     || { echo "Failed to index alignment file." >&2; exit 1; }
+
+if $baminputflag; then
+    rm -rf $PIPEDIR
+fi
