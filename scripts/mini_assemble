@@ -78,6 +78,14 @@ if $eflag && [[ $ERRCORR = *x ]]; then
 fi
 
 
+if $CHOP && [[ ! $(command -v porechop) ]]; then
+  echo "-c requires porechop to be installed.";
+  echo "Run `pip install git+https://github.com/artic-network/porechop` or"
+  echo "`conda install -c bioconda artic-porechop`"
+  exit 1;
+fi
+
+
 if $xflag; then
   set -x;
 fi
