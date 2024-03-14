@@ -50,7 +50,7 @@ def main():
         'option. If overlapping regions are specified, `--one_file` should not be used.',
         parents=[filter_args()],
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('bam', help='.fasta/fastq file.')
+    parser.add_argument('bam', help='.bam/sam file.')
     parser.add_argument('-r', '--regions', nargs='+', help='Only process given regions.')
     grp = parser.add_mutually_exclusive_group()
     grp.add_argument('-p', '--prefix', help='Prefix for output, defaults to basename of bam.')
