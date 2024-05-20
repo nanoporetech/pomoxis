@@ -612,6 +612,8 @@ def filter_args():
         help='Filter reads by coverage (what fraction of the read aligns).')
     group.add_argument('-l', '--length', type=int, default=None,
         help='Filter reads by read length.')
+    group.add_argument('--keep_unmapped', action='store_true',
+        help='Include unmapped reads.')
 
     pgroup = group.add_mutually_exclusive_group()
     pgroup.add_argument('--primary_only', action=PrimSupAction, default=True, nargs=0,
@@ -630,16 +632,14 @@ def filter_read(r, args, logger=None):
     if logger is None:
         logger = logging.getLogger('Filter')
     # filter secondary and unmapped reads
-    if r.is_secondary or r.is_unmapped:
+    if r.is_secondary:
+        return True
+    if r.is_unmapped and not args.keep_unmapped:
         return True
     if r.is_supplementary and not args.keep_supplementary:
         return True
 
-    # filter orientation
-    if (r.is_reverse and args.orientation == 'fwd') or \
-            (not r.is_reverse and args.orientation == 'rev'):
-        return True
-
+    # Filters that apply on unaligned reads
     # filter quality
     if args.quality is not None:
         mean_q = -10 * np.log10(np.mean(QSCORES_TO_PROBS[r.query_qualities]))
@@ -647,18 +647,28 @@ def filter_read(r, args, logger=None):
             logger.debug(f"Filtering {r.query_name} with quality {mean_q:.2f}")
             return True
 
-    # filter accuracy or alignment coverage
-    if args.accuracy is not None or args.coverage is not None or args.length is not None:
-        stats, _ = stats_from_aligned_read(r)
-        if args.accuracy is not None and stats['acc'] < args.accuracy:
-            logger.info("Filtering {} by accuracy ({:.2f}).".format(r.query_name, stats['acc']))
+    # filter length
+    if args.length is not None:
+        read_length = r.query_length
+        if read_length < args.length:
+            logger.info("Filtering {} by length ({:.2f}).".format(r.query_name, read_length))
             return True
-        if args.coverage is not None and stats['coverage'] < args.coverage:
-            logger.info("Filtering {} by coverage ({:.2f}).".format(r.query_name, stats['coverage']))
+
+    # Filters that only apply on aligned reads
+    if not r.is_unmapped:
+        # filter orientation
+        if (r.is_reverse and args.orientation == 'fwd') or \
+                (not r.is_reverse and args.orientation == 'rev'):
             return True
-        if args.length is not None and stats['read_length'] < args.length:
-            logger.info("Filtering {} by length ({:.2f}).".format(r.query_name, stats['length']))
-            return True
+
+        if args.accuracy is not None or args.coverage is not None:
+            stats, _ = stats_from_aligned_read(r)
+            if args.accuracy is not None and stats['acc'] < args.accuracy:
+                logger.info("Filtering {} by accuracy ({:.2f}).".format(r.query_name, stats['acc']))
+                return True
+            if args.coverage is not None and stats['coverage'] < args.coverage:
+                logger.info("Filtering {} by coverage ({:.2f}).".format(r.query_name, stats['coverage']))
+                return True
     # don't filter
     return False
 

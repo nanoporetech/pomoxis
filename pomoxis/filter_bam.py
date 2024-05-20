@@ -23,7 +23,7 @@ def main():
     args = parser.parse_args()
     logger = logging.getLogger('filter')
 
-    with pysam.AlignmentFile(args.bam) as bam:
+    with pysam.AlignmentFile(args.bam, check_sq=False) as bam:
 
         if args.region is not None:
             ref_lengths = dict(zip(bam.references, bam.lengths))
