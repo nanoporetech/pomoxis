@@ -492,12 +492,18 @@ def stats_from_aligned_read(read):
     coverage = 100 * float(read.query_alignment_length) / read_length
     direction = '-' if read.is_reverse else '+'
 
+    if read.query_qualities is None:
+        mean_quality = None
+    else:
+        mean_quality = round(mean_q_from_qualities(read.query_qualities), ndigits=2)
+
     results = {
         "name": name,
         "coverage": coverage,
         "direction": direction,
         "length": length,
         "read_length": read_length,
+        "mean_quality": mean_quality,
         "match": match,
         "ins": ins,
         "del": delt,
@@ -512,6 +518,7 @@ def stats_from_aligned_read(read):
         "aligned_ref_len": read.reference_length,
         "ref_coverage": 100*float(read.reference_length) / read.header.lengths[read.reference_id],
         "mapq": read.mapping_quality,
+        "flag": read.flag,
     }
 
     return results, lra_flag
@@ -573,12 +580,19 @@ def masked_stats_from_aligned_read(read, tree):
     coverage = 100*float(masked_query_alignment_length) / read_length
     direction = '-' if read.is_reverse else '+'
 
+    if read.query_qualities is None:
+        mean_quality = None
+    else:
+        mean_quality = round(mean_q_from_qualities(read.query_qualities), ndigits=2)
+
+
     results = {
         "name": name,
         "coverage": coverage,
         "direction": direction,
         "length": length,
         "read_length": read_length,
+        "mean_quality": mean_quality,
         "match": match,
         "ins": ins,
         "del": delt,
@@ -593,6 +607,7 @@ def masked_stats_from_aligned_read(read, tree):
         "aligned_ref_len": aligned_ref_len,
         "ref_coverage": 100 * float(aligned_ref_len) / read.header.lengths[read.reference_id],
         "mapq": read.mapping_quality,
+        "flag": read.flag,
         "masked": masked,
     }
     return results
@@ -623,6 +638,9 @@ def filter_args():
 
 QSCORES_TO_PROBS = 10 ** (-0.1 * np.array(np.arange(100)))
 
+def mean_q_from_qualities(qualities):
+    return -10 * np.log10(np.mean(QSCORES_TO_PROBS[qualities]))
+
 
 def filter_read(r, args, logger=None):
     """Decide whether a read should be filtered out, returning a bool"""
@@ -642,7 +660,7 @@ def filter_read(r, args, logger=None):
 
     # filter quality
     if args.quality is not None:
-        mean_q = -10 * np.log10(np.mean(QSCORES_TO_PROBS[r.query_qualities]))
+        mean_q = mean_q_from_qualities(r.query_qualities)
         if mean_q < args.quality:
             logger.debug(f"Filtering {r.query_name} with quality {mean_q:.2f}")
             return True
