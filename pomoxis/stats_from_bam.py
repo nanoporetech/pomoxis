@@ -89,8 +89,8 @@ def main(arguments=None):
 
     headers = ['name', 'ref', 'coverage', 'ref_coverage', 'qstart', 'qend',
                'rstart', 'rend', 'aligned_ref_len', 'direction', 'length',
-               'read_length', 'match', 'ins', 'del', 'sub', 'iden', 'acc',
-               'mapq']
+               'read_length', 'mean_quality', 'match', 'ins', 'del', 'sub',
+               'iden', 'acc', 'mapq', 'flag']
 
     masked_headers = ['masked']
     if args.bed is not None:
