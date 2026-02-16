@@ -1,4 +1,4 @@
-venv
+venv*
 *.pyd
 *.pyc
 *.so
@@ -16,3 +16,6 @@ tmp/
 *.fna
 bincache
 binbuild
+docs/_build
+docs/modules.rst
+docs/pomoxis.rst
