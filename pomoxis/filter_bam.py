@@ -3,7 +3,7 @@ import logging
 
 import pysam
 
-from pomoxis.util import filter_args, filter_read, parse_regions, Region
+from pomoxis.util import filter_args, filter_read, parse_regions
 
 
 def main():

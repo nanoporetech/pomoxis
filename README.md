@@ -1,9 +1,7 @@
-![Oxford Nanopore Technologies logo](https://github.com/nanoporetech/pomoxis/raw/master/images/ONT_logo_590x106.png)
+<img src="images/ONT_3Line_Black_RGB_1000px.png" alt="Oxford Nanopore Technologies logo" height="128">
 
 Pomoxis - bioinformatics tools for nanopore research 
 ====================================================
-
-[![Build Status](https://travis-ci.org/nanoporetech/pomoxis.svg?branch=master)](https://travis-ci.org/nanoporetech/pomoxis)
 
 Pomoxis comprises a set of basic bioinformatic tools tailored to nanopore
 sequencing. Notably tools are included for generating and analysing draft
@@ -17,33 +15,27 @@ Documentation can be found at https://nanoporetech.github.io/pomoxis/.
 
 Features
 --------
-
+ 
  * Wraps third party tools with known good default parameters
    and methods of use.
  * Creates an isolated environment with all third-party tools.
  * Can be installed with conda.
  * Streamlines common short analysis chains.
- * Integrates into [katuali](https://github.com/nanoporetech/katuali)
-   for performing more complex analysis pipelines.
  * Open source (Mozilla Public License 2.0).
 
 
 Compatibility
 -------------
 
-Pomoxis is developed on Ubuntu 16.04, other recent linuxes should be
-equally compatible (see build notes below). Pomoxis is known to work on
-at least some MacOS High Sierra configurations, though some components,
-notably scrappy, are known to not work on some MacOS configurations
-(combinations of OS and xcode versions).
-
+Pomoxis is developed on Ubuntu 24.04, other recent linux distributions 
+should be equally compatible (see build notes below).
 
 Installation
 ------------
 
 Much of pomoxis's functionality is dependent on thirty party tools. These
-can be provided by the user, or can be installed with the help of the
-provided `Makefile`
+can be provided by the user, or can be installed from source with the 
+help of the provided `Makefile`
 
 **Installation with conda**
 
@@ -54,29 +46,20 @@ and so can be most easily installed with:
 
 **Installation with pip**
   
-For those who prefer python's native package manager, pomoxis is also available
-on pypi and can be installed using pip:
+Pomoxis can be installed without binary dependencies using pip:
 
-    pip install git+https://github.com/rrwick/Porechop
+    python3 -m venv venv
+    . venv/bin/activate
+    pip install --update pip
     pip install pomoxis
 
-We recommend using pomoxis within a virtual environment, viz.:
+Using this method requires the user to add binaries on the `PATH`:
 
-    virtualenv pomoxis --python=python3 --prompt "(pomoxis) "
-    . pomoxis/bin/activate
-    pip install git+https://github.com/rrwick/Porechop
-    pip install pomoxis
+ * [minimap2](https://github.com/lh3/minimap2)
+ * [samtools](https://github.com/samtools/samtools)
+ * [bcftools](https://github.com/samtools/bcftools/)
+ * [seqkit](https://github.com/shenwei356/seqkit)
 
-Using this method requires the user to provide several binaries:
-
- * [minimap2](https://github.com/lh3/minimap2),
- * [miniasm](https://github.com/lh3/miniasm),
- * [racon](https://github.com/isovic/racon),
- * [samtools](https://github.com/samtools/samtools),
- * [bcftools](https://github.com/samtools/bcftools/), and
- * [seqkit](https://github.com/shenwei356/seqkit),
-
-and place these within the `PATH`.
 
 **Installation from source**
 
@@ -87,21 +70,13 @@ use conda, but will not be providing the third-party binaries.
 
 > Before installing pomoxis is may be required to install some prerequisite
 > packages, best installed by a package manager. On Ubuntu these are:
-> * gcc-4.9
-> * g++-4.9
+> * gcc
 > * zlib1g-dev
 > * libncurses5-dev
-> * python3-all-dev
 > * libhdf5-dev
-> * libatlas-base-dev
-> * libopenblas-base
-> * libopenblas-dev
 > * libbz2-dev
 > * liblzma-dev
-> * libffi-dev
 > * make
-> * python-virtualenv
-> * cmake (for racon)
 > * wget (for fetching modules from github)
 > * bzip2 (for extracting those modules)
 
@@ -113,33 +88,20 @@ To setup the environment run:
     . ./venv/bin/activate
     
 
-The installation of porechop (https://github.com/rrwick/Porechop)
-requires a newer compiler than is a available on some systems. It may therefore
-be necessary to install a newer compiler and set environment variables before
-the `make install` step:
-
-    # For porechop to be compiled on older systems set these, e.g.:
-    export CXX="g++-4.9" CC="gcc-4.9"
-
-Note also that racon requires at least `gcc>=4.8.5` to
-[compile smoothly](https://github.com/isovic/racon/issues/57).
-
-
-**Installation without compiling third-party binaries**
+**Installation from source without compiling third-party binaries**
 
 Running the above within a pre-exisiting (virtual) environnment may well fail;
 advanced may wish to simply run
 
-    python setup.py install
+    pip install ./pomoxis
 
 in the standard manner after compiling the third party programs listed below
-and ensuring they are present on the `PATH`. The `setup.py` script can copy
-the binaries into the python interpreter path if they are placed within a
-directory named `bincache` alongside `setup.py`. To make use of this facility
-run:
+and ensuring they are present on the `PATH`. The `Makefile` provides a rule to 
+copy the binaries into the python interpreter path if they are placed within a
+directory named `bincache`. To make use of this facility run:
 
-    pip install -r requirements.txt
-    POMO_BINARIES=1 python setup.py install
+    make venv
+    make copy_binaries
 
 
 Third party binaries
@@ -147,13 +109,10 @@ Third party binaries
 
 The distribution bundles some common bioinformatics tools:
 
-* miniasm
 * minimap2
-* racon
 * samtools
 * bcftools
 * seqkit
-* porechop
 
 
 Help

@@ -8,9 +8,9 @@ import pickle
 import re
 import shutil
 
+from intervaltree import IntervalTree
 import matplotlib
 matplotlib.use('Agg', force=True)
-
 import  matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 import numpy as np
@@ -154,8 +154,8 @@ def get_heatmap(data, data_comp):
     column_reindex = pd.MultiIndex.from_product((['A','T','G','C'],
             range(df.columns.levels[1].min(), df.columns.levels[1].max() + 1)))
     df = df.reindex(range(df.index.min(), df.index.max() + 1))
-    df[np.isnan(df)] = 0
     df = df.reindex(column_reindex, axis=1)
+    df = df.fillna(0).astype(int)
 
     df_comp = data_comp.copy()
     df_comp['query_len'] = df_comp['ref_len'] + df_comp['rel_len']
@@ -165,15 +165,15 @@ def get_heatmap(data, data_comp):
             range(df_comp.columns.levels[1].min(), df_comp.columns.levels[1].max() + 1)),
             names=['q_base', 'ref_len'])
     df_comp = df_comp.reindex(range(df_comp.index.min(), df_comp.index.max() + 1))
-    df_comp[np.isnan(df_comp)] = 0
     df_comp = df_comp.reindex(column_reindex, axis=1)
+    df_comp = df_comp.fillna(0).astype(int)
 
-    df_all = df_comp.groupby(level='ref_len', axis=1).sum()
+    df_all = df_comp.stack(level=1).sum(axis=1).unstack()
     df_all.columns = pd.MultiIndex.from_product((['ATGC',], df_all.columns), 
         names=['q_base', 'ref_len'])
 
     df = pd.concat((df, df_comp, df_all), axis=1)
-    df[np.isnan(df)] = 0
+    df = df.fillna(0).astype(int)
     return df
 
 
@@ -444,17 +444,23 @@ def process_bam(bam, prefix, homo_len, read_range, bed_file=None):
         for i, seq in enumerate(bam_obj.fetch(until_eof=True)):
             if i < read_range[1]:
                 continue
-            elif i == read_range[2]:
+            elif i >= read_range[2]:
                 break
 
             if seq.is_secondary or seq.is_supplementary or seq.is_unmapped:
                 continue
-            seq_reference_start = seq.reference_start  # avoid recomputing for each HP
-            seq_reference_end = seq.reference_end  # avoid recomputing for each HP
 
-            if trees is not None and (seq.reference_name not in trees or not
-                trees[seq.reference_name].has_overlap(seq_reference_start, seq_reference_end)):
-                continue
+            # ref_end in htslib is calculated by parsing the cigar string each time
+            # we cache it for performance so we don't recompute for every HP
+            seq_ref_start = seq.reference_start 
+            seq_ref_end = seq.reference_end 
+
+
+            if trees is not None:
+                t = trees.get(seq.reference_name)
+                if t is None or not t.overlap(seq_ref_start, seq_ref_end):
+                    # Filter only to reads which are in the bed file
+                    continue
 
             refseq = seq.get_reference_sequence().upper()
             align_pairs = seq.get_aligned_pairs(with_seq=True)
@@ -496,19 +502,21 @@ def process_bam(bam, prefix, homo_len, read_range, bed_file=None):
                     query_start = seq.query_length - query_start - call_len
                     base = bio.comp[base]
 
-                ref_hp_pos = seq_reference_start + ref_start
+                ref_hp_pos = seq_ref_start + ref_start
 
                 # skip hps at the end of a segment since we don't know their true length
-                if ref_hp_pos == seq_reference_start or ref_hp_pos + ref_hp_len == seq_reference_end:
+                if ref_hp_pos == seq_ref_start or ref_hp_pos + ref_hp_len == seq_ref_end:
                     continue
 
                 if trees is not None:
+                    t = trees[seq.reference_name]
                     # skip hps that at the end of an interval or spanning multiple intervals
                     # since we don't know their true length
-                    interval_left_end = set(trees[seq.reference_name].find_overlap(ref_hp_pos - 1, ref_hp_pos))
-                    interval_right_end = set(trees[seq.reference_name].find_overlap(ref_hp_pos + ref_hp_len, ref_hp_pos + ref_hp_len + 1))
-                    if (len(interval_left_end) == 0 or len(interval_right_end) == 0 or
-                        not bool(interval_left_end.intersection(interval_right_end))):
+                    interval_left_end = set(t.overlap(ref_hp_pos - 1, ref_hp_pos))
+                    interval_right_end = set(t.overlap(ref_hp_pos + ref_hp_len,
+                                                       ref_hp_pos + ref_hp_len + 1))
+                    if (not interval_left_end or not interval_right_end or
+                            not interval_left_end.intersection(interval_right_end)):
                         continue
 
                 aligned_ref_len += ref_hp_len
