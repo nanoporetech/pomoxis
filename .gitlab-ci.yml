@@ -70,7 +70,10 @@ push-conda:
         UPLOAD: "yes"
         USE_ORG_CHANNEL: "yes"
         CONDA_PKG: "${CI_PROJECT_NAME}"
-        CONDA_PKG_VERSION: ${CI_COMMIT_TAG}
         PACKAGE_ARCH: "noarch"
+    before_script:
+        # We need to strip off the "v" from the front of the tag
+        # otherwise conda keeps it in the version string
+        - export CONDA_PKG_VERSION=${CI_COMMIT_TAG/v/}
     rules:
         - if: '$CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+(\S+)?$/'
