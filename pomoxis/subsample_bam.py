@@ -3,7 +3,7 @@ from concurrent.futures import ProcessPoolExecutor
 import functools
 import logging
 import multiprocessing
-import os
+
 
 from intervaltree import IntervalTree, Interval
 import numpy as np

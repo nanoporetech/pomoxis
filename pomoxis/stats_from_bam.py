@@ -6,7 +6,6 @@ import argparse
 from collections import Counter
 from concurrent.futures import ProcessPoolExecutor
 import functools
-import itertools
 from math import ceil
 import sys
 

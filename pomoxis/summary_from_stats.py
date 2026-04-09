@@ -106,8 +106,8 @@ def main(arguments=None):
         errors = pd.DataFrame(summarise_stats(stats, percentiles=args.percentiles, accumulate=n))
 
         pcnt_formatter = {}
-        for col in errors.columns:
-            if np.issubdtype(errors[col].dtype, np.number):
+        for col, typ in errors.dtypes.items():
+            if pd.api.types.is_numeric_dtype(typ):
                 pcnt_formatter[col] = '{:5.3%}'.format
             else:
                 pcnt_formatter[col] = '{}'.format
@@ -115,8 +115,8 @@ def main(arguments=None):
         errors.to_string(formatters=pcnt_formatter, **to_str_opts)
 
         args.output.write('\n\n# {} Q Scores\n'.format(prefix))
-        for col in errors.columns:
-            if np.issubdtype(errors[col].dtype, np.number):
+        for col, typ in errors.dtypes.items():
+            if pd.api.types.is_numeric_dtype(typ):
                 errors[col] = qscore(errors[col])
         errors.to_string(float_format='%5.2f', **to_str_opts)
 

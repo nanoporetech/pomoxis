@@ -1,9 +1,7 @@
-__version__ = '0.3.16'
+__version__ = '0.4.0'
 
 import argparse
 import os
-import sys
-import platform
 import subprocess
 
 def get_prog_path(prog):

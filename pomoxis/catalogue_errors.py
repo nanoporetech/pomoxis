@@ -13,6 +13,7 @@ import re
 import unittest
 import warnings
 
+from intervaltree import IntervalTree
 import matplotlib; matplotlib.use('Agg', force=True)  # enforce non-interactive backend
 from matplotlib import pyplot as plt
 import numpy as np
@@ -61,7 +62,7 @@ def get_errors(aln, tree=None):
 
     :param aln: iterable of `AlignPos` objects.
     :param bed_file: path to .bed file of regions to include in analysis.
-    :param tree: `ncls.NCLS` object of regions to analyse.
+    :param tree: interval tree of regions to analyse.
     :returns: ( [(ri, qi, 'error_type', last_ri, last_qi)], aligned_ref_len)
         ri, qi: ref and query positions
         error_type: 'D', 'I' or 'S'
@@ -79,12 +80,13 @@ def get_errors(aln, tree=None):
     for (qi, qb, ri, rb) in aln:
         if tree is not None:
             pos = ri if ri is not None else pos
-            if not tree.has_overlap(pos, pos + 1) or (ri is None and not tree.has_overlap(pos + 1, pos + 2)):
+            if not tree.overlap(pos, pos + 1) or (ri is None and not tree.overlap(pos + 1, pos + 2)):
                 # if ri is None, we are in an insertion, check if pos + 1 overlaps
                 # (ref position of ins is arbitrary)
                 # print('Skipping ref {}:{}'.format(read.reference_name, pos))
                 n_masked += 1
                 continue
+
         if qi is None:  # deletion
             last_ri = ri  # ri will not be None
             err.append((ri, qi, 'D', (last_ri, last_qi)))
@@ -159,7 +161,6 @@ def _get_context_bounds(p, aln, search_by_q, offset):
         pos = [x.rpos for x in aln]
 
 
-    offset_tmp = offset
     start_p = max(p - offset, pos[0])
     end_p = min(p + offset, pos[-1])
     s = pos.index(start_p)
@@ -592,17 +593,19 @@ def _process_read(bam, outdir, read_range, bed_file=None):
             if rec.is_unmapped or rec.is_supplementary or rec.is_secondary:
                 return
 
-            if bed_file is not None:
-                if not rec.reference_name in trees or not trees[rec.reference_name].has_overlap(rec.reference_start, rec.reference_end):
+            tree = None
+            if trees is not None:
+                tree = trees.get(rec.reference_name)
+                if tree is None or not tree.overlap(rec.reference_start, rec.reference_end):
                     #sys.stderr.write('read {} does not overlap with any regions in bedfile\n'.format(rec.query_name))
                     continue
-                tree = trees[rec.reference_name]
-            else:
-                tree = None
-
-            seg = AlignSeg(rname=rec.reference_name, qname=rec.query_name,
-                           pairs=list(get_trimmed_pairs(rec)), rlen=rec.reference_length
-                          )
+    
+            seg = AlignSeg(
+                rname=rec.reference_name,
+                qname=rec.query_name,
+                pairs=list(get_trimmed_pairs(rec)),
+                rlen=rec.reference_length,
+            )
             logging.debug('Loaded query {}'.format(seg.qname))
 
             seg_result = _process_seg(seg, db_fh, txt_fh, headers, tree)
@@ -628,7 +631,7 @@ def _process_seg(seg, db_fh, txt_fh, headers, tree=None):
     :param db_fh: file object, catalogue db file
     :param txt_fh: file object, catalogue file
     :param headers: list of tuples, error properties and their label ids
-    :param tree: `ncls.NCLS` object of regions to analyse.
+    :param tree: interval tree of regions to analyse.
     :returns: (seg.rname, aligned_ref_len, error_count, n_masked)
         error_count: `Counter` of error classes
         n_masked: number of reference positions excluded by tree.

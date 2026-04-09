@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pomoxis"
+description = "Assembly, consensensus, and analysis tools by ONT research."
+readme = { file = "README.md", content-type = "text/markdown" }
+requires-python = ">=3.10,<3.15"
+license = "MPL-2.0"
+license-files = ["LICENSE.md"]
+authors = [{ name = "cwright", email = "cwright@nanoporetech.com" }]
+dynamic = ["version", "dependencies"]
+
+[project.scripts]
+assess_homopolymers    = "pomoxis.assess_homopolymers:main"
+catalogue_errors       = "pomoxis.catalogue_errors:main"
+coverage_from_bam      = "pomoxis.coverage_from_bam:main"
+filter_bam             = "pomoxis.filter_bam:main"
+pomoxis_path           = "pomoxis:show_prog_path"
+ref_seqs_from_bam      = "pomoxis.ref_seqs_from_bam:main"
+reverse_bed            = "pomoxis.util:reverse_bed"
+stats_from_bam         = "pomoxis.stats_from_bam:main"
+subsample_bam          = "pomoxis.subsample_bam:main"
+summary_from_stats     = "pomoxis.summary_from_stats:main"
+split_fastx            = "pomoxis.split_fastx:main"
+tag_bam                = "pomoxis.util:tag_bam"
+trim_alignments        = "pomoxis.trim_alignments:main"
+
+[project.optional-dependencies]
+packaging = ["setuptools", "build", " wheel", "twine", "readme_renderer[md]"]
+
+[tool.setuptools]
+zip-safe = false
+script-files = [
+    "scripts/assess_assembly",
+    "scripts/mini_align",
+]
+
+[tool.setuptools.packages.find]
+exclude = ["*.test", "*.test.*", "test.*", "test"]
+
+[tool.setuptools.dynamic]
+dependencies = { file = "requirements.txt" }
+version = { attr = "pomoxis.__version__" }
