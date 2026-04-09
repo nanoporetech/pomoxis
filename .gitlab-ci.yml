@@ -3,7 +3,6 @@ image: ${CI_REGISTRY}/traque/ont-docker-base/ont-base-python:3.12
 include:
     - project: "epi2melabs/ci-templates"
       file:
-          - "push-github.yaml"
           - "push-conda.yaml"
           - "snippets.yaml"
 
@@ -77,3 +76,47 @@ push-conda:
         - export CONDA_PKG_VERSION=${CI_COMMIT_TAG/v/}
     rules:
         - if: '$CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+(\S+)?$/'
+
+##########
+# GITHUB #
+##########
+
+# Send all tags matching vX.Y.Z to github (code and release)
+push-github:
+    stage: release
+    variables:
+        GH_TOKEN: ${RESEARCH_BOT_GH_TOKEN}
+    before_script:
+        - apt-get update -qq && apt-get install -y -qq git
+        - mkdir ~/.ssh/
+        - cp $RESEARCH_BOT_GH_KEY ~/.ssh/id_rsa && chmod 600 ~/.ssh/id_rsa
+        - echo -e "Host github.com\n\tStrictHostKeyChecking no\n\tHostname ssh.github.com\n\tPort 443\n\n" > ~/.ssh/config
+        - git config --global user.email "research.git@nanoporetech.com"
+        - git config --global user.name "ontresearch"
+        # Install github cli tool and create repo if it does not exist
+        - !reference [.install, mamba]
+        - mamba install gh -c conda-forge
+        - gh auth status
+    script:
+        # Push master and tag to github
+        - git remote add ont ${CI_REPOSITORY_URL} || true
+        - git remote add github git@github.com:nanoporetech/${CI_PROJECT_NAME}.git || true
+        - git fetch ont dev --tags
+        - git fetch github master
+        - git checkout --track github/master || git checkout master
+        - git merge ${CI_COMMIT_TAG}
+        - git push github master
+        - git push github ${CI_COMMIT_TAG}
+        # Source archive has already been built
+        - ls dist/*
+        # Install gleeok and print the changelog entry for the version being tagged, trimming first line (## [vX.X.X])
+        - python -m venv gleeok
+        - . gleeok/bin/activate
+        - pip install git+https://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}/epi2melabs/gleeok.git
+        - gleeok changelog print CHANGELOG.md ${CI_COMMIT_TAG} | tail -n +2 > version-note.md
+        - cat version-note.md
+        - gh release create ${CI_COMMIT_TAG} --title ${CI_COMMIT_TAG} -F version-note.md dist/*.tar.gz
+    only:
+        - /^v[[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+$/
+    except:
+        - branches
