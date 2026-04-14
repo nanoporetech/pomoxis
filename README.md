@@ -1,7 +1,12 @@
-<img src="images/ONT_3Line_Black_RGB_1000px.png" alt="Oxford Nanopore Technologies logo" height="128">
+<img src="https://github.com/nanoporetech/pomoxis/raw/master/images/ONT_3Line_Black_RGB_1000px.png" alt="Oxford Nanopore Technologies logo" height="128">
 
 Pomoxis - bioinformatics tools for nanopore research 
 ====================================================
+
+[![](https://img.shields.io/pypi/v/pomoxis.svg)](https://pypi.org/project/pomoxis/)
+[![](https://img.shields.io/pypi/wheel/pomoxis.svg)](https://pypi.org/project/pomoxis/)
+[![](https://anaconda.org/nanoporetech/pomoxis/badges/version.svg)](https://anaconda.org/nanoporetech/pomoxis)
+
 
 Pomoxis comprises a set of basic bioinformatic tools tailored to nanopore
 sequencing. Notably tools are included for generating and analysing draft
@@ -39,10 +44,11 @@ help of the provided `Makefile`
 
 **Installation with conda**
 
-Pomoxis is available on [bioconda](https://bioconda.github.io/recipes/pomoxis/)
-and so can be most easily installed with:
+Conda packages for pomoxis are published on the
+[anaconda.org](https://anaconda.org/nanoporetech/pomoxis) channel
+and can be installed with:
 
-    conda install pomoxis
+    conda create -n pomoxis -c conda-forge -c nanoporetech -c bioconda pomoxis
 
 **Installation with pip**
   
