@@ -6,6 +6,13 @@ include:
           - "push-conda.yaml"
           - "snippets.yaml"
 
+default:
+    tags:
+        - linux
+        - small
+        - standard
+        - x86_64
+
 stages:
     - test
     - build
@@ -48,6 +55,8 @@ deploy:pypi:
 #########
 # CONDA #
 #########
+
+# Tags are inherited from parent rule
 
 conda:
     extends: .deploy-conda
