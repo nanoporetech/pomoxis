@@ -54,7 +54,7 @@ def _process_reads(bam_fp, start_stop, all_alignments=False, min_length=None, be
             lra_flag = False
             if bed_file is not None:
                 if (read.reference_name not in trees or
-                    not trees[read.reference_name].has_overlap(read.reference_start, read.reference_end)):
+                    not trees[read.reference_name].overlaps(read.reference_start, read.reference_end)):
                     sys.stderr.write('read {} does not overlap with any regions in bedfile\n'.format(read.query_name))
                     counts['masked'] += 1
                     continue
