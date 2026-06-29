@@ -458,7 +458,7 @@ def process_bam(bam, prefix, homo_len, read_range, bed_file=None):
 
             if trees is not None:
                 t = trees.get(seq.reference_name)
-                if t is None or not t.overlap(seq_ref_start, seq_ref_end):
+                if t is None or not t.overlaps(seq_ref_start, seq_ref_end):
                     # Filter only to reads which are in the bed file
                     continue
 

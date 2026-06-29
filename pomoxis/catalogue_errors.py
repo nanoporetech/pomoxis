@@ -80,7 +80,7 @@ def get_errors(aln, tree=None):
     for (qi, qb, ri, rb) in aln:
         if tree is not None:
             pos = ri if ri is not None else pos
-            if not tree.overlap(pos, pos + 1) or (ri is None and not tree.overlap(pos + 1, pos + 2)):
+            if not tree.overlaps(pos, pos + 1) or (ri is None and not tree.overlaps(pos + 1, pos + 2)):
                 # if ri is None, we are in an insertion, check if pos + 1 overlaps
                 # (ref position of ins is arbitrary)
                 # print('Skipping ref {}:{}'.format(read.reference_name, pos))
@@ -596,7 +596,7 @@ def _process_read(bam, outdir, read_range, bed_file=None):
             tree = None
             if trees is not None:
                 tree = trees.get(rec.reference_name)
-                if tree is None or not tree.overlap(rec.reference_start, rec.reference_end):
+                if tree is None or not tree.overlaps(rec.reference_start, rec.reference_end):
                     #sys.stderr.write('read {} does not overlap with any regions in bedfile\n'.format(rec.query_name))
                     continue
     

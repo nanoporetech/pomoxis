@@ -259,7 +259,7 @@ def masked_stats_from_aligned_read(read, tree):
         if rp == read.reference_end or (qp == read.query_alignment_end):
             break
         pos = rp if rp is not None else pos
-        if not tree.has_overlap(pos, pos + 1) or (rp is None and not tree.has_overlap(pos + 1, pos + 2)):
+        if not tree.overlaps(pos, pos + 1) or (rp is None and not tree.overlaps(pos + 1, pos + 2)):
             # if rp is None, we are in an insertion, check if pos + 1 overlaps
             # (ref position of ins is arbitrary)
             # print('Skipping ref {}:{}'.format(read.reference_name, pos))
