@@ -5,9 +5,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
-## [unreleased]
+## [v0.4.2] - 2026-07-01
 ### Fixed
 - Correct function calls for intervaltree in `stats_from_bam`.
+- Update conda installation instructions.
+- Update README logo.
 
 ## [v0.4.1] - 2026-04-09
 ### Fixed
