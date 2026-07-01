@@ -190,7 +190,7 @@ minimap2 -x ${minimap_PRESET} ${ALIGN_OUTPUT_OPTS} ${ALIGN_PARAMETERS} -t "${THR
   samtools view -@ "${THREADS}" -T "${REFERENCE}" ${FILTER} -bS - |
   samtools sort -@ "${THREADS}" ${SORT} -o "${PREFIX}.bam" - \
     || { echo "Alignment pipeline failed." >&2; exit 1; }
-samtools index -@ "${THREADS}" "${PREFIX}.bam" "${PREFIX}.bam.bai" \
+samtools index -c -@ "${THREADS}" "${PREFIX}.bam" "${PREFIX}.bam.csi" \
     || { echo "Failed to index alignment file." >&2; exit 1; }
 
 if $baminputflag; then
